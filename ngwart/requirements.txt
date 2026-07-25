@@ -1,0 +1,41 @@
+# NGWART — full install.
+#
+#   py -m pip install -r requirements.txt
+#
+# Installs everything needed to run the operator UI, execute programs against
+# real hardware, and run the test suite. Lower bounds are the versions this was
+# developed and tested against; upper bounds are deliberately absent so a
+# station can take security updates.
+#
+# Every vendor library is imported lazily, inside the backend that uses it, so a
+# station missing one SDK still runs everything else. For a headless
+# engine-only install (CI, program linting) use requirements-min.txt.
+
+# --- program formats ---------------------------------------------------
+PyYAML>=6.0                 # native .yaml program format
+                            # .ods needs nothing — read via stdlib zipfile + XML
+
+# --- operator UI -------------------------------------------------------
+PySide6>=6.5                # Qt 6 widgets, ~100 MB
+
+# --- instrument backends ----------------------------------------------
+pyserial>=3.5               # serial verbs (WinSerialManager)
+pyvisa>=1.13                # SCPI instruments (GlobalVISAManager). A VISA
+                            #   implementation is also needed on the station:
+                            #   NI-VISA, Keysight IO, or pyvisa-py below.
+numpy>=1.24                 # image buffers, white balance
+opencv-python>=4.8          # ImageProcessManager, image save/load
+
+# --- development -------------------------------------------------------
+pytest>=7.4                 # py -m pytest tests -q
+
+# --- optional, station-specific ---------------------------------------
+# Uncomment only where the hardware is actually present. Several of these are
+# vendor SDKs that ship with the instrument rather than living on PyPI.
+#
+# pyvisa-py>=0.7            # pure-python VISA backend (avoids an NI-VISA install)
+# nidaqmx>=0.9              # NidaqManager   — needs the NI-DAQmx driver
+# canlib>=1.24              # CANManager     — Kvaser, needs their driver
+# pywin32>=306              # PrinterManager (win32print), Windows only
+# mvIMPACT                  # BaluffManager  — Balluff / MATRIX VISION SDK,
+#                           #   installed by the vendor package, not by pip

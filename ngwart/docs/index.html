@@ -1,0 +1,868 @@
+<title>NGWART — Functional Test Sequencer</title>
+
+<style>
+  :root {
+    /* Neutrals biased cool, toward the accent — picked, not inherited. */
+    --ground:      #F2F5F6;
+    --panel:       #FFFFFF;
+    --panel-2:     #E9EEF0;
+    --rule:        #D2DCDF;
+    --ink:         #0E1619;
+    --ink-2:       #46585E;
+    --ink-3:       #6E8188;
+
+    --accent:      #0B6E82;   /* instrument trace */
+    --accent-soft: #E0F0F3;
+    --accent-ink:  #06525F;
+
+    --pass:        #1C7A4B;
+    --fail:        #B3282D;
+    --warn:        #8A5A0B;
+    --pass-bg:     #E3F3EA;
+    --fail-bg:     #FBE7E7;
+    --warn-bg:     #FAF0DD;
+
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+    --measure: 68ch;
+    --radius: 4px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:      #0D1417;
+      --panel:       #131C20;
+      --panel-2:     #1A252A;
+      --rule:        #263439;
+      --ink:         #E7EEF0;
+      --ink-2:       #A8BAC0;
+      --ink-3:       #7C9098;
+
+      --accent:      #3FB6CE;
+      --accent-soft: #102C33;
+      --accent-ink:  #7FD3E4;
+
+      --pass:        #4FC98A;
+      --fail:        #F0797E;
+      --warn:        #E0AC55;
+      --pass-bg:     #102A1E;
+      --fail-bg:     #2E1517;
+      --warn-bg:     #2C2213;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:#0D1417; --panel:#131C20; --panel-2:#1A252A; --rule:#263439;
+    --ink:#E7EEF0; --ink-2:#A8BAC0; --ink-3:#7C9098;
+    --accent:#3FB6CE; --accent-soft:#102C33; --accent-ink:#7FD3E4;
+    --pass:#4FC98A; --fail:#F0797E; --warn:#E0AC55;
+    --pass-bg:#102A1E; --fail-bg:#2E1517; --warn-bg:#2C2213;
+  }
+  :root[data-theme="light"] {
+    --ground:#F2F5F6; --panel:#FFFFFF; --panel-2:#E9EEF0; --rule:#D2DCDF;
+    --ink:#0E1619; --ink-2:#46585E; --ink-3:#6E8188;
+    --accent:#0B6E82; --accent-soft:#E0F0F3; --accent-ink:#06525F;
+    --pass:#1C7A4B; --fail:#B3282D; --warn:#8A5A0B;
+    --pass-bg:#E3F3EA; --fail-bg:#FBE7E7; --warn-bg:#FAF0DD;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 56px;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 120px;
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; gap: 0; padding: 0 20px 80px; }
+    nav.index { position: static !important; border-right: none !important;
+                border-bottom: 1px solid var(--rule); padding-bottom: 20px; margin-bottom: 28px; }
+  }
+
+  /* ---- masthead ---- */
+  header.masthead {
+    grid-column: 1 / -1;
+    padding: 64px 0 40px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .wordmark {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: clamp(2.6rem, 7vw, 4.4rem);
+    letter-spacing: -0.045em;
+    line-height: 0.95;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .wordmark .v { color: var(--accent); }
+  .standfirst {
+    max-width: 60ch;
+    margin: 18px 0 0;
+    font-size: 1.18rem;
+    color: var(--ink-2);
+  }
+  .kicker {
+    font-family: var(--sans);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  .specline {
+    display: flex; flex-wrap: wrap; gap: 8px 26px;
+    margin-top: 26px;
+    font-family: var(--mono); font-size: 0.78rem;
+    color: var(--ink-3);
+  }
+  .specline b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---- index ---- */
+  nav.index {
+    position: sticky; top: 0; align-self: start;
+    padding: 40px 20px 40px 0;
+    border-right: 1px solid var(--rule);
+    max-height: 100vh; overflow-y: auto;
+  }
+  nav.index h2 {
+    font-family: var(--sans); font-size: 0.68rem; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0 0 12px;
+  }
+  nav.index ol { list-style: none; margin: 0; padding: 0;
+                 display: flex; flex-direction: column; gap: 2px; counter-reset: idx; }
+  nav.index a {
+    display: block; padding: 4px 0;
+    font-family: var(--sans); font-size: 0.86rem;
+    color: var(--ink-2); text-decoration: none;
+    border-left: 2px solid transparent; padding-left: 10px;
+  }
+  nav.index a:hover { color: var(--accent); border-left-color: var(--accent); }
+  nav.index a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---- content ---- */
+  main { padding-top: 40px; min-width: 0; }
+  section { margin-bottom: 68px; scroll-margin-top: 24px; }
+  section > p, section > ul, section > ol { max-width: var(--measure); }
+
+  h2 {
+    font-family: var(--sans);
+    font-size: 1.72rem; font-weight: 750; letter-spacing: -0.022em;
+    margin: 0 0 6px; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 1.06rem; font-weight: 700; letter-spacing: -0.01em;
+    margin: 34px 0 8px;
+  }
+  .sectionmark {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--accent);
+    letter-spacing: 0.1em; display: block; margin-bottom: 4px;
+  }
+  p { margin: 0 0 15px; }
+  a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--panel-2);
+         padding: 1px 5px; border-radius: 3px; }
+  strong { font-weight: 700; }
+
+  ul, ol { padding-left: 20px; }
+  li { margin-bottom: 7px; }
+
+  /* ---- code blocks ---- */
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 15px 18px;
+    overflow-x: auto;
+    margin: 0 0 18px;
+    font-family: var(--mono); font-size: 0.8rem; line-height: 1.62;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .cm { color: var(--ink-3); }
+  .kw { color: var(--accent-ink); font-weight: 600; }
+  .st { color: var(--pass); }
+
+  /* ---- tables ---- */
+  .scroller { overflow-x: auto; margin: 0 0 20px;
+              border: 1px solid var(--rule); border-radius: var(--radius); background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 0.83rem; }
+  th, td { text-align: left; padding: 9px 13px; border-bottom: 1px solid var(--rule);
+           vertical-align: top; }
+  th { font-weight: 700; font-size: 0.7rem; letter-spacing: 0.09em; text-transform: uppercase;
+       color: var(--ink-3); background: var(--panel-2); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  td code { font-size: 0.84em; }
+  .num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+  /* ---- row anatomy: the program's actual 10-column shape ---- */
+  .anatomy { overflow-x: auto; margin: 0 0 8px; }
+  .anatomy table { border-collapse: separate; border-spacing: 3px; width: auto; min-width: 100%; }
+  .anatomy td, .anatomy th { border: none; border-radius: 3px; padding: 8px 10px;
+                             font-family: var(--mono); font-size: 0.74rem; white-space: nowrap; }
+  .anatomy th { background: none; color: var(--ink-3); font-family: var(--mono);
+                font-size: 0.66rem; letter-spacing: 0.06em; text-transform: none;
+                padding-bottom: 2px; }
+  .c-fixed { background: var(--panel-2); color: var(--ink); font-weight: 600; }
+  .c-arg   { background: var(--panel); border: 1px solid var(--rule) !important; color: var(--ink-2); }
+  .c-route { background: var(--fail-bg); color: var(--fail); font-weight: 600; }
+  .c-alive { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .c-note  { background: none; color: var(--ink-3); font-style: italic; }
+  .anatomy caption { caption-side: bottom; text-align: left; font-family: var(--sans);
+                     font-size: 0.78rem; color: var(--ink-3); padding-top: 10px; }
+
+  /* ---- callouts ---- */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 13px 17px; margin: 0 0 20px; border-radius: 0 var(--radius) var(--radius) 0;
+    max-width: var(--measure); font-size: 0.94rem;
+  }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note p:last-child { margin-bottom: 0; }
+  .note .lbl { font-family: var(--sans); font-weight: 700; font-size: 0.7rem;
+               letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-ink);
+               display: block; margin-bottom: 4px; }
+  .note.warn .lbl { color: var(--warn); }
+
+  /* ---- verdict pills: state encoded in form, not colour alone ---- */
+  .pill { font-family: var(--sans); font-size: 0.68rem; font-weight: 700;
+          letter-spacing: 0.06em; padding: 2px 7px; border-radius: 3px;
+          display: inline-block; }
+  .pill.p { background: var(--pass-bg); color: var(--pass); }
+  .pill.f { background: var(--fail-bg); color: var(--fail); }
+  .pill.w { background: var(--warn-bg); color: var(--warn); }
+
+  /* ---- the serial matrix: four switches, one function ---- */
+  .matrix { display: grid; gap: 10px; margin: 0 0 20px;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .switch { border: 1px solid var(--rule); border-radius: var(--radius);
+            background: var(--panel); padding: 13px 15px; }
+  .switch h4 { font-family: var(--mono); font-size: 0.76rem; margin: 0 0 8px;
+               color: var(--accent-ink); font-weight: 700; }
+  .switch ul { margin: 0; padding-left: 15px; font-family: var(--sans);
+               font-size: 0.8rem; color: var(--ink-2); }
+  .switch li { margin-bottom: 4px; }
+
+  footer { grid-column: 1 / -1; border-top: 1px solid var(--rule); padding-top: 22px;
+           margin-top: 20px; font-family: var(--sans); font-size: 0.8rem; color: var(--ink-3);
+           display: flex; flex-wrap: wrap; gap: 8px 28px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="shell">
+
+  <header class="masthead">
+    <p class="kicker">Functional test sequencer · v2.0.0</p>
+    <h1 class="wordmark">NG<span class="v">WART</span></h1>
+    <p class="standfirst">
+      End-of-line PCBA test software. The test program is a spreadsheet; this is
+      the interpreter. A rewrite of NGINE that keeps the table-driven design and
+      fixes the engine underneath it.
+    </p>
+    <div class="specline">
+      <span>Python <b>3.10+</b></span>
+      <span>Verbs <b>161</b></span>
+      <span>Modules <b>9</b></span>
+      <span>Tests <b>92</b></span>
+      <span>UI <b>PySide6</b></span>
+      <span>Legacy <code>.ods</code> <b>supported</b></span>
+    </div>
+  </header>
+
+  <nav class="index">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#model">How a program works</a></li>
+      <li><a href="#row">Anatomy of a row</a></li>
+      <li><a href="#alive">The alive mask</a></li>
+      <li><a href="#vars">Named variables</a></li>
+      <li><a href="#errors">Errors and routing</a></li>
+      <li><a href="#teardown">Teardown</a></li>
+      <li><a href="#validation">Validation</a></li>
+      <li><a href="#serial">The serial matrix</a></li>
+      <li><a href="#example">Worked example</a></li>
+      <li><a href="#sim">Simulation</a></li>
+      <li><a href="#migrate">Migrating from v1</a></li>
+      <li><a href="#arch">Architecture</a></li>
+      <li><a href="#cli">Command reference</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="start">
+      <span class="sectionmark">§ 1</span>
+      <h2>Getting started</h2>
+      <p>
+        Install everything a bench station needs, then run the bundled demo
+        against simulated instruments — no hardware required.
+      </p>
+<pre><code><span class="cm"># everything: UI, instrument backends, test suite</span>
+py -m pip install -r requirements.txt
+
+<span class="cm"># headless engine only (CI, program linting)</span>
+py -m pip install -r requirements-min.txt</code></pre>
+<pre><code>py run.py ui programs/demo.yaml --simulate    <span class="cm"># operator station</span>
+py run.py run programs/demo.yaml --simulate   <span class="cm"># headless run</span>
+py run.py check TestTables/cargo.ods          <span class="cm"># lint a legacy table</span>
+py -m pytest tests -q                         <span class="cm"># 92 passed</span></code></pre>
+      <div class="note">
+        <span class="lbl">Existing tables keep working</span>
+        <p>
+          Every verb a v1 <code>.ods</code> table uses resolves unchanged. Point
+          <code>check</code> at one before anything else — it reports what the
+          table gets wrong without energising the fixture.
+        </p>
+      </div>
+    </section>
+
+    <section id="model">
+      <span class="sectionmark">§ 2</span>
+      <h2>How a program works</h2>
+      <p>
+        A program is a flat list of rows, read top to bottom. That shape is
+        deliberate: a test engineer follows a sequence, and nesting would not
+        help. Rows are grouped into sections.
+      </p>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Section</th><th>When it runs</th><th>What belongs in it</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>&lt;Modules&gt;</code></td><td>load time</td>
+                <td>alias → driver, e.g. <code>Camera → BaluffManager</code></td></tr>
+            <tr><td><code>&lt;Vars&gt;</code></td><td>load time</td>
+                <td>friendly name → <code>l,c,p</code> coordinate <em>(new in v2)</em></td></tr>
+            <tr><td><code>&lt;Config&gt;</code></td><td>once, before the test</td>
+                <td>open ports and instruments, lay out the result grids</td></tr>
+            <tr><td><code>&lt;Exec&gt;</code></td><td>the test itself</td>
+                <td>every measurement and judgement</td></tr>
+            <tr><td><code>&lt;Ehandling&gt;</code></td><td>only when jumped to</td>
+                <td>the error-handler labels</td></tr>
+            <tr><td><code>&lt;Teardown&gt;</code></td><td><strong>always</strong></td>
+                <td>de-energise supplies, open relays <em>(new in v2)</em></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Control flow is labels and jumps. Execution begins after <code>&lt;Exec&gt;</code>
+        and ends when the pointer runs past the last executable row — normally
+        because the program jumped to a terminal label.
+      </p>
+      <div class="note">
+        <span class="lbl">Why Ehandling sits after Exec</span>
+        <p>
+          Real v1 tables close <code>&lt;Exec/&gt;</code> and then declare their
+          handlers. Those labels are jump targets, so the executable range
+          extends past the closing marker — you can jump into the block, but
+          never fall into it.
+        </p>
+      </div>
+    </section>
+
+    <section id="row">
+      <span class="sectionmark">§ 3</span>
+      <h2>Anatomy of a row</h2>
+      <p>
+        Ten columns, unchanged from v1. The first two say what to do, the middle
+        five are arguments, and the last three are the row's contract with the
+        engine.
+      </p>
+      <div class="anatomy">
+        <table>
+          <caption>One row from the cargo fixture: close a relay on the second supply channel.</caption>
+          <thead>
+            <tr>
+              <th>C0</th><th>C1</th><th>C2</th><th>C3</th><th>C4</th>
+              <th>C5</th><th>C6</th><th>C7</th><th>C8</th><th>C9</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="c-fixed">Serial</td>
+              <td class="c-fixed">EXCHANGEBYTES_LVS</td>
+              <td class="c-arg">D2</td>
+              <td class="c-arg">48,49,43,47,47</td>
+              <td class="c-arg">48,49,43,47,47</td>
+              <td class="c-arg">5,5</td>
+              <td class="c-arg">—</td>
+              <td class="c-route">SERIAL_EX</td>
+              <td class="c-alive">1</td>
+              <td class="c-note">CH1 + ON → UUT 2</td>
+            </tr>
+            <tr>
+              <td class="c-note">module</td>
+              <td class="c-note">verb</td>
+              <td class="c-note" colspan="5">arguments</td>
+              <td class="c-note">on error</td>
+              <td class="c-note">alive</td>
+              <td class="c-note">comment</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Module</strong> is an alias declared in <code>&lt;Modules&gt;</code>,
+        so a table chooses its own drivers — swap <code>BaluffManager</code> for
+        <code>CameraManager</code> and the rest of the program is untouched.
+        <strong>On error</strong> names a label to jump to if the verb fails; leave
+        it blank and failures route to <code>STD_EX</code>. <strong>Alive</strong>
+        decides which units the row applies to.
+      </p>
+    </section>
+
+    <section id="alive">
+      <span class="sectionmark">§ 4</span>
+      <h2>The alive mask</h2>
+      <p>
+        One fixture holds several boards. When a board fails, it is killed and
+        every later row that names it is skipped — while the others carry on and
+        get their own verdict. This is the mechanism that makes a multi-up
+        fixture worth building.
+      </p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Column 8</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>-</code> or blank</td><td>run unconditionally</td></tr>
+            <tr><td><code>0,2</code></td><td>run if UUT 0 <strong>or</strong> 2 is still alive</td></tr>
+            <tr><td><code>-,0,2</code></td><td>run only if 0 <strong>and</strong> 2 are <em>both</em> alive</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        A unit is killed by a limit failure, by <code>AKILL</code>, or by
+        <code>VALIDATE_DET</code> when the fixture reports it absent. The engine
+        emits the mask on every change, so the UI dims a dead unit immediately.
+      </p>
+    </section>
+
+    <section id="vars">
+      <span class="sectionmark">§ 5</span>
+      <h2>Named variables</h2>
+      <p>
+        Values live in a three-dimensional store addressed as
+        <code>line,column,page</code>. v1 wrote those coordinates literally, which
+        is how a product file ends up full of <code>*0,1,2</code> and
+        <code>39,0,29</code>. Declare names instead:
+      </p>
+<pre><code><span class="kw">vars:</span>
+  uut0.vbat:   <span class="st">'2,0,0'</span>
+  uut0.iload:  <span class="st">'3,0,0'</span>
+  img.raw:     <span class="st">'4,0,0'</span></code></pre>
+      <p>
+        Then <code>*uut0.vbat</code> works anywhere <code>*2,0,0</code> did. Both go
+        through the same accessor, so a table can be migrated one line at a time
+        and a half-converted file still runs. A leading <code>*</code> is accepted
+        on destinations too, so there is no source/destination trap.
+      </p>
+      <div class="note">
+        <span class="lbl">Errors name what you meant</span>
+        <p>
+          Mistype a variable and the message lists the declared names and
+          suggests the closest one — rather than an <code>IndexError</code> from
+          inside the store.
+        </p>
+      </div>
+    </section>
+
+    <section id="errors">
+      <span class="sectionmark">§ 6</span>
+      <h2>Errors and routing</h2>
+      <p>
+        When a verb fails, the engine looks at the row's <strong>on error</strong>
+        column and jumps to that label. A blank column routes to
+        <code>STD_EX</code>, which is what most rows in a real table rely on.
+      </p>
+<pre><code><span class="kw">ehandling:</span>
+  - [Flow, LABEL, SERIAL_EX, <span class="st">'SERIAL FAILURE'</span>, <span class="st">''</span>, <span class="st">'#E5484D'</span>]
+  - [Flow, J, SHUTDOWN_ALL]
+  - [Flow, LABEL, STD_EX, <span class="st">'SYSTEM FAILURE'</span>, <span class="st">''</span>, <span class="st">'#E5484D'</span>]
+  - [Flow, J, SHUTDOWN_ALL]</code></pre>
+      <p>Failures are not all the same, and the type decides what happens:</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Type</th><th>Means</th><th>Routable</th></tr></thead>
+          <tbody>
+            <tr><td><code>ValidationFailure</code></td><td>a measurement fell outside limits — a real reject</td><td><span class="pill p">yes</span></td></tr>
+            <tr><td><code>HardwareError</code></td><td>an instrument misbehaved or is absent — the rig is at fault, not the board</td><td><span class="pill p">yes</span></td></tr>
+            <tr><td><code>VerbError</code></td><td>the verb could not do its job</td><td><span class="pill p">yes</span></td></tr>
+            <tr><td><code>ProgramError</code></td><td>the program itself is wrong — bad reference, unknown verb</td><td><span class="pill f">never</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        A <code>ProgramError</code> is deliberately not routable. A broken program
+        must stop rather than limp along on its own error handlers, and the
+        distinction also keeps yield reporting honest: a board that fails a limit
+        is a reject, a rig fault is not.
+      </p>
+    </section>
+
+    <section id="teardown">
+      <span class="sectionmark">§ 7</span>
+      <h2>Teardown</h2>
+      <p>
+        <code>&lt;Teardown&gt;</code> runs in a <code>finally</code>. It executes when
+        the test passes, when it fails, when the operator presses stop, and when
+        the engine hits an internal error.
+      </p>
+<pre><code><span class="kw">teardown:</span>
+  - [VISA, WRITE, DP2A243200206, <span class="st">'OUTP OFF'</span>]
+  - [VISA, WRITE, DP2A243200206, <span class="st">'VOLT 0'</span>]
+  - [Serial, EXCHANGEBYTES_LVS, D1, <span class="st">'111,102,102,47,47'</span>, <span class="st">'111,102,102,47,47'</span>, <span class="st">'5,5'</span>]</code></pre>
+      <div class="note warn">
+        <span class="lbl">A teardown step that fails does not stop the rest</span>
+        <p>
+          Failures inside teardown are logged and recorded, never re-raised —
+          one stuck relay must not prevent the supply being switched off. This is
+          the one place in the engine where an error is deliberately swallowed.
+        </p>
+      </div>
+      <p>
+        A program without a teardown block loads and runs, but validation warns
+        about it. Add one.
+      </p>
+    </section>
+
+    <section id="validation">
+      <span class="sectionmark">§ 8</span>
+      <h2>Validation</h2>
+      <p>
+        Because every verb declares its parameters, a whole program can be checked
+        before the fixture is powered. This is the single biggest change from v1,
+        where a mistyped verb surfaced as an <code>AttributeError</code> partway
+        through a run with the supply already at 13.5&nbsp;V.
+      </p>
+      <p>Checked up front:</p>
+      <ul>
+        <li>every module alias resolves to a registered driver</li>
+        <li>every verb exists — with a spelling suggestion when it does not</li>
+        <li>required arguments are present; unexpected ones are flagged</li>
+        <li>every jump target and error label exists</li>
+        <li>alive indices fit the <code>initAlive</code> count</li>
+        <li>data references fit the <code>INITDATA</code> dimensions</li>
+        <li><code>&lt;ParallelTask&gt;</code> blocks are closed and not nested</li>
+        <li>no row has a verb but a blank module cell</li>
+      </ul>
+<pre><code>$ py run.py check TestTables/cargo.ods
+
+ERROR   row 124: <span class="st">'VALIDATE_DET'</span> has no module in column 0
+        v1 raised KeyError here and diverted to the row's exception
+        handler, so this step never actually ran.
+ERROR   row 360: jump to undefined label <span class="st">'Remove_DUT'</span>
+WARNING program: program has no &lt;Teardown&gt; section
+
+8 error(s), 1 warning(s)</code></pre>
+      <p>
+        The operator UI runs the same check on load and refuses to arm
+        <strong>Run</strong> until it is clean. Double-click a diagnostic to jump
+        to the offending row.
+      </p>
+    </section>
+
+    <section id="serial">
+      <span class="sectionmark">§ 9</span>
+      <h2>The serial matrix</h2>
+      <p>
+        v1 shipped 27 near-identical serial functions. Decoding the names shows
+        they are one operation with four independent switches, so there is now one
+        implementation and 27 aliases. Every old name still resolves.
+      </p>
+      <div class="matrix">
+        <div class="switch">
+          <h4>operation</h4>
+          <ul><li><code>READ</code> — receive only</li>
+              <li><code>EXCHANGE</code> — write, then receive</li></ul>
+        </div>
+        <div class="switch">
+          <h4>payload</h4>
+          <ul><li><code>LINE</code> — text</li>
+              <li><code>BYTES</code> — comma-separated byte list</li></ul>
+        </div>
+        <div class="switch">
+          <h4>terminator</h4>
+          <ul><li><code>_LT_</code> — read to a newline</li>
+              <li>absent — read a fixed byte count</li></ul>
+        </div>
+        <div class="switch">
+          <h4>validation level</h4>
+          <ul><li><code>_LV0</code> store the response</li>
+              <li><code>_LV1</code> judge it</li>
+              <li><code>_LV2</code> judge, with retries</li>
+              <li><code>_LV3</code> judge, retry, kill the UUT</li>
+              <li><code>_LVS</code> strict — retry, then raise</li></ul>
+        </div>
+      </div>
+      <p>
+        So <code>EXCHANGEBYTES_LT_LV3</code> reads as
+        <em>write bytes, read a line, judge with retries, kill on failure</em>. A
+        fix to the retry logic now fixes every variant at once — which was
+        emphatically not true before.
+      </p>
+    </section>
+
+    <section id="example">
+      <span class="sectionmark">§ 10</span>
+      <h2>Worked example</h2>
+      <p>
+        A two-unit program: wait for boards, power them, measure, judge, score,
+        and always shut down. This is <code>programs/demo.yaml</code>, trimmed.
+      </p>
+<pre><code><span class="kw">modules:</span>
+  Flow: FlowManager
+  Serial: WinSerialManager
+  VISA: GlobalVISAManager
+  Product: CargoManager
+
+<span class="kw">vars:</span>
+  det.raw:    <span class="st">'0,0,0'</span>
+  uut0.vbat:  <span class="st">'2,0,0'</span>
+
+<span class="kw">config:</span>
+  - [TestData, initAlive, 2]
+  - [Serial, FINDPORT, <span class="st">'115200,1'</span>, <span class="st">'066CFF383355...'</span>, CONTROL]
+  - [Serial, OPEN, CONTROL]
+  - [VISA, OPENALL, <span class="st">'10000'</span>]
+
+<span class="kw">exec:</span>
+  <span class="cm"># poll until every board is seated</span>
+  - [Flow, LABEL, DETECTION, <span class="st">'WAITING FOR BOARDS'</span>]
+  - [Serial, EXCHANGELINE_LT_LV0, CONTROL, <span class="st">'d/n'</span>, <span class="st">''</span>, <span class="st">''</span>, <span class="st">'*det.raw'</span>, SERIAL_EX]
+  - [Flow, DELAY, <span class="st">'0.1'</span>]
+  - [Flow, JNE, DETECTION, <span class="st">'*det.raw'</span>, <span class="st">'16'</span>]
+  - [Product, VALIDATE_DET, <span class="st">'*det.raw'</span>]
+
+  <span class="cm"># energise</span>
+  - [VISA, WRITE, DP2A243200206, <span class="st">'VOLT 13.5'</span>, <span class="st">''</span>, <span class="st">''</span>, <span class="st">''</span>, VISA_EX]
+  - [VISA, WRITE, DP2A243200206, <span class="st">'OUTP ON'</span>, <span class="st">''</span>, <span class="st">''</span>, <span class="st">''</span>, VISA_EX]
+  - [Flow, DELAY, <span class="st">'0.2'</span>]
+
+  <span class="cm"># measure and judge: limits, destination, retries + which UUT</span>
+  - [VISA, MEASURE_FEVAL, DP2A243200206, <span class="st">'MEAS:VOLT?'</span>,
+     <span class="st">'13.0,14.0'</span>, <span class="st">'*uut0.vbat'</span>, <span class="st">'3,0,VBAT'</span>, VISA_EX]
+
+  - [Product, VALIDATE]
+  - [Flow, J, DONE]
+
+<span class="kw">teardown:</span>
+  - [VISA, WRITE, DP2A243200206, <span class="st">'OUTP OFF'</span>]</code></pre>
+      <p>Running it against the simulators:</p>
+<pre><code>$ py run.py run programs/demo.yaml --simulate
+
+     56  Detection: all units present.
+     63  D1 &lt;&lt; 48,49,43,47,47 (attempt 1/5)
+     65  VISA DP2A243200206 &lt;&lt; INST:NSEL 1
+ok   71  VBAT: 13.50917 in [13.0, 14.0] -&gt; PASS
+ok   72  ILOAD: 0.660475 in [0.1, 1.0] -&gt; PASS
+     79  BIN2CONT: 4 contour(s) found
+ok   85  UUT 0: PASS (4 point(s))
+    107  --- Teardown ---
+    109  VISA DP2A243200206 &lt;&lt; OUTP OFF
+
+  duration  0.594s
+  points    8 (0 failed)
+  UUT 0     PASS
+  UUT 1     PASS</code></pre>
+    </section>
+
+    <section id="sim">
+      <span class="sectionmark">§ 11</span>
+      <h2>Simulation</h2>
+      <p>
+        <code>--simulate</code> swaps every backend for a model rather than a stub,
+        which is what makes a dry run worth anything:
+      </p>
+      <ul>
+        <li>the supply tracks per-channel setpoints — measure with the output off and you read ~0, not a canned number</li>
+        <li>the control board reports boards absent, then present, so retry loops are genuinely exercised</li>
+        <li>relay boards echo their command frames, as the real Denkovi units do</li>
+        <li>the camera renders lit discs for the contour and LED verbs to find</li>
+      </ul>
+      <div class="note warn">
+        <span class="lbl">Simulated runs are tagged</span>
+        <p>
+          Reports carry <code>&lt;simulated&gt;true&lt;/simulated&gt;</code>, so a dry
+          run can never be mistaken downstream for a real one.
+        </p>
+      </div>
+    </section>
+
+    <section id="migrate">
+      <span class="sectionmark">§ 12</span>
+      <h2>Migrating from v1</h2>
+      <p>These steps are a sequence — each one depends on the last.</p>
+      <ol>
+        <li>
+          <strong>Lint the table.</strong> <code>py run.py check table.ods</code>.
+          Fix what it reports; nothing else needs to change yet.
+        </li>
+        <li>
+          <strong>Run it in simulation.</strong>
+          <code>py run.py run table.ods --simulate</code> exercises the control
+          flow without touching the fixture.
+        </li>
+        <li>
+          <strong>Add a teardown block.</strong> The one thing a v1 table cannot
+          express, and the reason a crashed run used to leave the supply on.
+        </li>
+        <li>
+          <strong>Adopt any unported driver.</strong> A v1 manager works as-is:
+          <pre><code><span class="kw">from</span> ngwart.drivers.legacy <span class="kw">import</span> adopt
+adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CANManager.py"</span>)</code></pre>
+          Each <code>async def VERB(line, UI)</code> becomes a verb, a shim stands
+          in for the Tk UI, <code>TestData</code> globals are bound to the live
+          context by reference, and <code>"LABEL::msg"</code> exceptions are
+          translated back into typed errors.
+        </li>
+        <li>
+          <strong>Convert to YAML when ready.</strong>
+          <code>py run.py convert table.ods program.yaml</code> gives you a file
+          that diffs in git — so a reviewer can see what changed between the
+          revision that passed qualification and the one running now.
+        </li>
+      </ol>
+      <div class="note">
+        <span class="lbl">Adopted verbs are opaque to the validator</span>
+        <p>
+          It can confirm a legacy verb exists, not that its arguments are sane.
+          Port the ones you touch most often; leave the rest until they get in
+          your way.
+        </p>
+      </div>
+    </section>
+
+    <section id="arch">
+      <span class="sectionmark">§ 13</span>
+      <h2>Architecture</h2>
+      <p>
+        The engine never imports Qt, and the UI never touches the data store. That
+        seam is the reason the display cannot freeze: no widget is touched from
+        the thread doing serial I/O.
+      </p>
+<pre><code>ngwart/
+  engine/          <span class="cm">no UI imports, no vendor SDKs — runs headless</span>
+    registry.py    <span class="cm">@verb with declared parameters → makes linting possible</span>
+    program.py     <span class="cm">rows, sections, labels</span>
+    context.py     <span class="cm">data store, alive mask, events</span>
+    sequencer.py   <span class="cm">the run loop: jumps, parallel blocks, teardown</span>
+    validator.py   <span class="cm">pre-flight checks</span>
+    errors.py      <span class="cm">typed, routable exceptions</span>
+    loaders/       <span class="cm">.ods (no pandas), .txt, .csv, .yaml</span>
+  drivers/
+    backends/      <span class="cm">sim + real behind one protocol</span>
+    legacy.py      <span class="cm">adopt unported v1 managers as-is</span>
+  ui/              <span class="cm">PySide6; bridge.py is the only Qt↔engine seam</span>
+  reports/         <span class="cm">XML / JSON / CSV from the run record</span></code></pre>
+      <p>
+        The engine emits plain dataclass events to a listener. The Qt bridge is a
+        <code>QObject</code> living on the GUI thread, so every signal it re-emits
+        is delivered through the event queue and every slot runs on the GUI
+        thread. Swap the listener for a recorder and the same run is a unit test.
+      </p>
+      <h3>What changed, and why</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th></th><th>NGINE v1</th><th>NGWART</th></tr></thead>
+          <tbody>
+            <tr><td>Threading</td>
+                <td>UI and test loop share one asyncio loop; 36 blocking serial calls inside <code>async def</code>, no executors</td>
+                <td>engine on a worker thread, Qt on the main thread</td></tr>
+            <tr><td><code>&lt;ParallelTask&gt;</code></td>
+                <td><code>gather</code> over blocking calls — ran sequentially</td>
+                <td>real thread pool</td></tr>
+            <tr><td>Errors</td>
+                <td><code>Exception(label + "::" + msg)</code>, 129 times</td>
+                <td>typed, route as a field, tracebacks preserved</td></tr>
+            <tr><td>Validation</td><td>none</td><td>whole program, before power-up</td></tr>
+            <tr><td>Teardown</td><td>none</td><td>guaranteed</td></tr>
+            <tr><td>Data refs</td><td><code>data[39][0][29]</code></td><td><code>*uut1.vbat</code></td></tr>
+            <tr><td>Serial verbs</td><td>27 copy-pasted functions</td><td>1 implementation, 27 aliases</td></tr>
+            <tr><td>Grid verbs</td><td>24 copy-pasted functions</td><td>1, registered per grid</td></tr>
+            <tr><td>Program format</td><td><code>.ods</code> only — un-diffable</td><td><code>.ods</code> still loads, <code>.yaml</code> for review</td></tr>
+            <tr><td>Tests</td><td>none</td><td>92, no hardware needed</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cli">
+      <span class="sectionmark">§ 14</span>
+      <h2>Command reference</h2>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Command</th><th>Does</th></tr></thead>
+          <tbody>
+            <tr><td><code>ui [program]</code></td><td>launch the operator station</td></tr>
+            <tr><td><code>run &lt;program&gt;</code></td><td>execute headlessly; exit code 0 on pass</td></tr>
+            <tr><td><code>check &lt;program&gt;</code></td><td>validate without executing</td></tr>
+            <tr><td><code>convert &lt;in&gt; &lt;out&gt;</code></td><td><code>.ods</code> ↔ <code>.yaml</code> ↔ <code>.csv</code></td></tr>
+            <tr><td><code>verbs [--module M]</code></td><td>list registered verbs and their arguments</td></tr>
+            <tr><td><code>adopt &lt;v1-src-dir&gt;</code></td><td>report which legacy managers can be adopted</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Useful flags</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><code>--simulate</code></td><td>use simulated instruments</td></tr>
+            <tr><td><code>--report path.xml</code></td><td>write XML, JSON or CSV by extension</td></tr>
+            <tr><td><code>--no-strict</code></td><td>run despite validation errors — bench debugging only</td></tr>
+            <tr><td><code>--warnings-as-errors</code></td><td>for <code>check</code> in CI</td></tr>
+            <tr><td><code>--light</code></td><td>light theme for the UI</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Verbs by module</h3>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Module</th><th class="num">Verbs</th><th>Covers</th></tr></thead>
+          <tbody>
+            <tr><td><code>WinSerialManager</code></td><td class="num">48</td><td>the four-switch matrix</td></tr>
+            <tr><td><code>FlowManager</code></td><td class="num">42</td><td>jumps, arithmetic, strings, files, limits</td></tr>
+            <tr><td><code>UIManager</code></td><td class="num">24</td><td>grids, status, log, barcodes, progress</td></tr>
+            <tr><td><code>ImageProcessManager</code></td><td class="num">15</td><td>conversions, contours, LEDs, cropping</td></tr>
+            <tr><td><code>TestData</code></td><td class="num">10</td><td>alive mask, data store, datecodes, saving</td></tr>
+            <tr><td><code>WinShellManager</code></td><td class="num">7</td><td>subprocess</td></tr>
+            <tr><td><code>GlobalVISAManager</code></td><td class="num">6</td><td>SCPI write, query, measure with limits</td></tr>
+            <tr><td><code>BaluffManager</code></td><td class="num">6</td><td>capture, properties, white balance</td></tr>
+            <tr><td><code>CargoManager</code></td><td class="num">3</td><td>product validators</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>NGWART 2.0.0</span>
+    <span>Uartrónica</span>
+    <span>Full reference: <code>README.md</code></span>
+    <span><code>py run.py verbs --long</code> for every verb signature</span>
+  </footer>
+
+</div>

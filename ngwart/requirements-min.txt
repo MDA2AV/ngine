@@ -1,0 +1,10 @@
+# NGWART — headless engine only.
+#
+#   py -m pip install -r requirements-min.txt
+#
+# Enough to load, lint and execute programs without a UI, and to run the test
+# suite's engine tests. Use this in CI or on a build machine. The Qt UI, the
+# instrument backends and the image verbs are absent; a program that reaches
+# one of them raises a clear error naming the missing package.
+PyYAML>=6.0
+pytest>=7.4

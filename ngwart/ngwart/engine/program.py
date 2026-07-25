@@ -1,0 +1,293 @@
+"""The program model: rows, sections and labels.
+
+A NGWART program keeps NGINE v1's shape -- a flat list of rows, each one
+instruction -- because that shape is genuinely right for the domain. Test
+engineers read a sequence top to bottom; nesting would not help them.
+
+What changes is that the structure is *parsed once, up front* into an object
+with named sections and a label index, instead of being rediscovered by
+scanning for marker strings on every run (v1 did a linear scan of the whole
+table inside resetPointer() and again in updateLabels()).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from .errors import ProgramError
+
+#: Number of argument columns. Legacy layout: cells[2] .. cells[6].
+ARG_START = 2
+ARG_END = 6
+
+#: Fixed column meanings, inherited from the v1 spreadsheet layout.
+COL_MODULE = 0
+COL_VERB = 1
+COL_ROUTE = 7
+COL_ALIVE = 8
+COL_COMMENT = 9
+
+NCOLS = 10
+
+# Section markers. <Vars> and <Teardown> are new in v2; <Modules>, <Config>
+# and <Exec> are read exactly as v1 wrote them.
+#: <Ehandling> holds the error-handler labels. It sits *after* <Exec/> in real
+#: tables, but its rows are jump targets, so it is part of the executable range
+#: -- reachable only by a jump, never by falling into it.
+SECTIONS = ("Modules", "Vars", "Config", "Exec", "Ehandling", "Teardown")
+
+#: Sections whose rows are declarations, not instructions.
+DECLARATIVE = ("Modules", "Vars")
+
+
+@dataclass
+class Row:
+    """One instruction."""
+
+    index: int
+    cells: list[str]
+    #: Source line number in the originating file, for error messages.
+    source_line: int | None = None
+
+    def __post_init__(self) -> None:
+        if len(self.cells) < NCOLS:
+            self.cells = list(self.cells) + [""] * (NCOLS - len(self.cells))
+
+    # -- fixed columns ----------------------------------------------------
+
+    @property
+    def module(self) -> str:
+        return self.cells[COL_MODULE].strip()
+
+    @property
+    def verb(self) -> str:
+        return self.cells[COL_VERB].strip()
+
+    @property
+    def route(self) -> str | None:
+        """Exception label from column 7, or None if blank/placeholder."""
+        v = self.cells[COL_ROUTE].strip()
+        return v if v and v != "-" else None
+
+    @property
+    def alive(self) -> str:
+        """UUT mask from column 8. '-' means 'run regardless'."""
+        v = self.cells[COL_ALIVE].strip()
+        return v if v else "-"
+
+    @property
+    def comment(self) -> str:
+        return self.cells[COL_COMMENT].strip()
+
+    # -- arguments --------------------------------------------------------
+
+    def raw(self, index: int) -> str:
+        """Unresolved cell text. Blank for out-of-range columns."""
+        if index < 0 or index >= len(self.cells):
+            return ""
+        return self.cells[index].strip()
+
+    def has(self, index: int) -> bool:
+        v = self.raw(index)
+        return bool(v) and v != "-"
+
+    @property
+    def args(self) -> list[str]:
+        return [self.raw(i) for i in range(ARG_START, ARG_END + 1)]
+
+    @property
+    def is_blank(self) -> bool:
+        """A spacer row. v1 tables use them liberally for readability."""
+        return not any(c.strip() for c in self.cells)
+
+    @property
+    def is_marker(self) -> bool:
+        m = self.module
+        return m.startswith("<") and m.endswith(">")
+
+    def __str__(self) -> str:
+        body = " ".join(a for a in [self.module, self.verb] + self.args if a)
+        return f"[{self.index}] {body}"
+
+
+@dataclass
+class Section:
+    name: str
+    start: int  # index of the opening marker row
+    end: int    # index of the closing marker row (exclusive of content)
+
+    @property
+    def body(self) -> range:
+        return range(self.start + 1, self.end)
+
+
+@dataclass
+class Program:
+    """A parsed, structurally-validated test program."""
+
+    rows: list[Row] = field(default_factory=list)
+    #: alias -> module name, from <Modules>.
+    modules: dict[str, str] = field(default_factory=dict)
+    #: friendly name -> "l,c,p" coordinate, from <Vars>. New in v2.
+    vars: dict[str, str] = field(default_factory=dict)
+    sections: dict[str, Section] = field(default_factory=dict)
+    #: label name -> row index, built once at load.
+    labels: dict[str, int] = field(default_factory=dict)
+    source: str = ""
+    #: Free-form metadata (product, revision, author) from the native format.
+    meta: dict = field(default_factory=dict)
+
+    # -- section access ---------------------------------------------------
+
+    def section(self, name: str) -> Section | None:
+        return self.sections.get(name)
+
+    def body(self, name: str) -> range:
+        sec = self.sections.get(name)
+        return sec.body if sec else range(0)
+
+    @property
+    def exec_start(self) -> int:
+        sec = self.sections.get("Exec")
+        if sec is None:
+            raise ProgramError("program has no <Exec> section")
+        return sec.start + 1
+
+    @property
+    def exec_end(self) -> int:
+        """One past the last row a jump may legitimately land on.
+
+        Everything from <Exec> to the start of <Teardown> (or the end of the
+        program) is reachable, because <Ehandling> lives past <Exec/> and its
+        labels are jump targets. v1 had no upper bound at all here and simply
+        ran off the end of the table into an IndexError.
+        """
+        teardown = self.sections.get("Teardown")
+        if teardown is not None and teardown.start > self.exec_start:
+            return teardown.start
+        return len(self.rows)
+
+    @property
+    def has_teardown(self) -> bool:
+        return "Teardown" in self.sections
+
+    def in_declarative_section(self, index: int) -> bool:
+        for name in DECLARATIVE:
+            section = self.sections.get(name)
+            if section is not None and section.start <= index <= section.end:
+                return True
+        return False
+
+    # -- labels -----------------------------------------------------------
+
+    def label_index(self, name: str) -> int:
+        if name not in self.labels:
+            raise ProgramError(f"jump to undefined label '{name}'")
+        return self.labels[name]
+
+    def build_labels(self) -> None:
+        """Index every ``* LABEL <name>`` row.
+
+        v1 rebuilt this list at config time by scanning the table and matching
+        on column 1 regardless of module, so a verb named LABEL in any module
+        would register. That behaviour is preserved intentionally -- existing
+        tables call it as ``Flow LABEL`` and occasionally with a blank module.
+        """
+        self.labels.clear()
+        for row in self.rows:
+            if row.verb == "LABEL" and row.has(2):
+                name = row.raw(2)
+                if name in self.labels:
+                    raise ProgramError(
+                        f"duplicate label '{name}' at rows "
+                        f"{self.labels[name]} and {row.index}",
+                        row=row.index,
+                    )
+                self.labels[name] = row.index
+
+    @property
+    def span(self) -> tuple[int, int]:
+        """(START, END) label indices, used for the progress bar.
+
+        Falls back to the whole Exec section when the program does not define
+        the conventional START/END labels.
+        """
+        start = self.labels.get("START")
+        end = self.labels.get("END")
+        if start is not None and end is not None and end > start:
+            return start, end
+        sec = self.sections.get("Exec")
+        if sec:
+            return sec.start + 1, sec.end
+        return 0, max(len(self.rows) - 1, 1)
+
+    # -- construction -----------------------------------------------------
+
+    def finalize(self) -> "Program":
+        """Parse sections, modules and vars out of the row list."""
+        self._parse_sections()
+        self._parse_modules()
+        self._parse_vars()
+        self.build_labels()
+        return self
+
+    def _parse_sections(self) -> None:
+        open_at: dict[str, int] = {}
+        for row in self.rows:
+            tok = row.module
+            if not (tok.startswith("<") and tok.endswith(">")):
+                continue
+            inner = tok[1:-1]
+            closing = inner.endswith("/")
+            name = inner[:-1] if closing else inner
+            if name not in SECTIONS:
+                continue
+            if closing:
+                if name not in open_at:
+                    raise ProgramError(f"<{name}/> closes a section that was never opened",
+                                       row=row.index)
+                self.sections[name] = Section(name, open_at.pop(name), row.index)
+            else:
+                if name in open_at:
+                    raise ProgramError(f"<{name}> opened twice", row=row.index)
+                open_at[name] = row.index
+
+        # <Exec> conventionally has no closing marker in v1 tables -- it simply
+        # runs to the end of the sheet. Accept that, and let <Teardown> (if
+        # present) bound it.
+        for name, start in list(open_at.items()):
+            end = len(self.rows)
+            if name == "Exec":
+                td = self.sections.get("Teardown")
+                if td and td.start > start:
+                    end = td.start
+            self.sections[name] = Section(name, start, end)
+
+    def _parse_modules(self) -> None:
+        for i in self.body("Modules"):
+            row = self.rows[i]
+            if row.is_blank or not row.module:
+                continue
+            alias, target = row.module, row.verb
+            if not target:
+                raise ProgramError(f"module alias '{alias}' has no target module",
+                                   row=row.index)
+            self.modules[alias] = target
+
+    def _parse_vars(self) -> None:
+        """Read the <Vars> section: friendly name -> l,c,p coordinate.
+
+        This is the readability fix for ``data[39][0][29]``. It is additive --
+        a program with no <Vars> section behaves exactly as it did in v1.
+        """
+        for i in self.body("Vars"):
+            row = self.rows[i]
+            if row.is_blank or not row.module:
+                continue
+            name, coord = row.module, row.verb
+            if not coord:
+                raise ProgramError(f"variable '{name}' has no coordinate", row=row.index)
+            if name.startswith("*"):
+                raise ProgramError(f"variable name '{name}' must not start with '*'",
+                                   row=row.index)
+            self.vars[name] = coord
