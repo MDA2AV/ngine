@@ -1,0 +1,79 @@
+61- Datecode: 2024y_5m_17d
+61- Extended Datecode: 16h_31m_27s
+63- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+63- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\
+64- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+64- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s
+65- Adding %0\Captures;*4,0,23 to data 0,0,24
+65- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\Captures
+66- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+66- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\Binary_Captures
+68- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s
+69- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\Captures
+70- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\Binary_Captures
+79- Label START was reached.
+86- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+87- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+88- Writing on VISA resource (DP2A243200206): CURR 1A ..
+89- Writing on VISA resource (DP2A243200206): OUTP ON ..
+91- Delay 3 seconds.
+93- Jumping to UUT_SERIAL
+100- Label UUT_SERIAL was reached.
+101- Bytes received: array('B', [64])
+101- Saving PASS @ 0,0,20
+101- Saving 64 @ 1,0,20
+102- Bytes received: array('B', [64])
+102- Saving PASS @ 0,0,20
+102- Saving 64 @ 1,0,20
+103- Bytes received: array('B', [64])
+103- Saving PASS @ 0,0,20
+103- Saving 64 @ 1,0,20
+104- Bytes received: array('B', [64])
+104- Saving PASS @ 0,0,20
+104- Saving 64 @ 1,0,20
+105- Adding SERIAL_COM;1;-;-;-;-;-;-;PASS;-;PASS to DGRID1.
+107- Label WEST_BTN was reached.
+108- Delay 5 seconds.
+109- Bytes received: array('B', [64])
+109- Response did not match target :(
+109- Saving FAIL @ 0,0,20
+109- Saving 64 @ 1,0,20
+110- Bytes received: array('B', [64])
+110- Response did not match target :(
+110- Saving FAIL @ 0,0,20
+110- Saving 64 @ 1,0,20
+111- Bytes received: array('B', [64])
+111- Response did not match target :(
+111- Saving FAIL @ 0,0,20
+111- Saving 64 @ 1,0,20
+112- Bytes received: array('B', [64])
+112- Response did not match target :(
+112- Saving FAIL @ 0,0,20
+112- Saving 64 @ 1,0,20
+113- Bytes received: array('B', [64])
+113- Response did not match target :(
+113- Saving FAIL @ 0,0,20
+113- Saving 64 @ 1,0,20
+114- Bytes received: array('B', [64])
+114- Response did not match target :(
+114- Saving FAIL @ 0,0,20
+114- Saving 64 @ 1,0,20
+115- Bytes received: array('B', [64])
+115- Response did not match target :(
+115- Saving FAIL @ 0,0,20
+115- Saving 64 @ 1,0,20
+116- Adding WEST_BTN;1;-;-;-;-;-;-;FAIL;-;FAIL to DGRID1.
+118- Label EAST_BTN was reached.
+120- 0 is NOT alive!
+121- 0 is NOT alive!
+122- 0 is NOT alive!
+123- Label EMERGENCY_BTN was reached.
+125- 0 is NOT alive!
+126- 0 is NOT alive!
+127- 0 is NOT alive!
+132- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+132- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\LOG_1.txt
+133- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+133- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\DATA_1.txt
+134- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_31m_27s\LOG_1.txt
+

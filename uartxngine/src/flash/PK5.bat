@@ -1,0 +1,1 @@
+java -jar "C:\Program Files\Microchip\MPLABX\v6.20\mplab_platform\mplab_ipe\ipecmdboost.jar" /P16F15344 /FFLASH.hex /OY2012 /M /TPPK5

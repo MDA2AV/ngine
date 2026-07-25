@@ -1,0 +1,43 @@
+48- Messages cleared!
+Everyone is alive!
+Data initialized: 40 lines, 3 cols, 25 pages.
+54- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+55- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+56- Writing on VISA resource (DP2A243200206): CURR 0A ..
+57- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+63- Datecode: 2024y_8m_2d
+63- Extended Datecode: 9h_28m_45s
+65- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+65- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\
+66- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+66- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s
+67- Adding %0\Captures;*4,0,23 to data 0,0,24
+67- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\Captures
+68- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+68- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\Binary_Captures
+70- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s
+71- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\Captures
+72- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\Binary_Captures
+81- Label START was reached.
+88- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+89- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+90- Writing on VISA resource (DP2A243200206): CURR 1A ..
+91- Writing on VISA resource (DP2A243200206): OUTP ON ..
+93- Delay 1 seconds.
+94- Jumping to DMM_MEAS
+117- Label DMM_MEAS was reached.
+118- 0,0,2 = +9.900000000E+37
+118- 1,0,2 = +3.072296652E+00
+118- 2,0,2 = +7.777746652E-04
+118- 3,0,2 = +6.713308360E-04
+120- Adding CHAN1;1;0.0;-;100.0;9.9e+37;-;-;FAIL;-;FAIL to DGRID1.
+122- 0 is NOT alive!
+123- 0 is NOT alive!
+124- 0 is NOT alive!
+127- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+127- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\LOG_111111111111.txt
+128- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+128- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\DATA_111111111111.txt
+129- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_28m_45s\LOG_111111111111.txt
+
+

@@ -1,0 +1,19 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# LibreOffice / Excel lock and temp files
+.~lock.*#
+~$*
+
+# MPLAB X lock files
+*.lck
+
+# Local editor / tool settings
+.claude/settings.local.json
+.idea/
+.vscode/
+
+# OS cruft
+.DS_Store
+Thumbs.db

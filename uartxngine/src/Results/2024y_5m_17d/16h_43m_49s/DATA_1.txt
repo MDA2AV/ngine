@@ -1,0 +1,36 @@
+PAGE 0::
+PAGE 1::
+[0,0,1]: O.K. 		|| [0,1,1]: PASS 		|| [0,2,1]: SERIAL_COM
+[1,0,1]: N.O.K. 		|| [1,1,1]: FAIL 		|| [1,2,1]: WEST_BTN
+PAGE 2::
+PAGE 3::
+PAGE 4::
+PAGE 5::
+PAGE 6::
+PAGE 7::
+PAGE 8::
+PAGE 9::
+PAGE 10::
+PAGE 11::
+PAGE 12::
+PAGE 13::
+PAGE 14::
+PAGE 15::
+PAGE 16::
+PAGE 17::
+PAGE 18::
+PAGE 19::
+PAGE 20::
+[0,0,20]: FAIL 		|| [0,1,20]: - 		|| [0,2,20]: -
+[1,0,20]: 64 		|| [1,1,20]: - 		|| [1,2,20]: -
+PAGE 21::
+PAGE 22::
+PAGE 23::
+[0,0,23]: 1 		|| [0,1,23]: - 		|| [0,2,23]: -
+[2,0,23]: 2024y_5m_17d 		|| [2,1,23]: - 		|| [2,2,23]: -
+[3,0,23]: 16h_43m_49s 		|| [3,1,23]: - 		|| [3,2,23]: -
+[4,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_43m_49s 		|| [4,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\ 		|| [4,2,23]: -
+[5,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_43m_49s\LOG_1.txt 		|| [5,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_43m_49s\DATA_1.txt 		|| [5,2,23]: -
+PAGE 24::
+[0,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_43m_49s\Captures 		|| [0,1,24]: - 		|| [0,2,24]: -
+[1,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\16h_43m_49s\Binary_Captures 		|| [1,1,24]: - 		|| [1,2,24]: -

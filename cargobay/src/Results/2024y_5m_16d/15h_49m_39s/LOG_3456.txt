@@ -1,0 +1,36 @@
+41- Messages cleared!
+Everyone is alive!
+Data initialized: 40 lines, 3 cols, 25 pages.
+47- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+48- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+49- Writing on VISA resource (DP2A243200206): CURR 0A ..
+50- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+56- Datecode: 2024y_5m_16d
+56- Extended Datecode: 15h_49m_39s
+58- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+58- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\
+59- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+59- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s
+60- Adding %0\Captures;*4,0,23 to data 0,0,24
+60- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\Captures
+61- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+61- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\Binary_Captures
+62- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\
+63- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s
+64- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\Captures
+65- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\Binary_Captures
+74- Label START was reached.
+81- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+82- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+83- Writing on VISA resource (DP2A243200206): CURR 1A ..
+84- Writing on VISA resource (DP2A243200206): OUTP ON ..
+87- Delay 1 seconds.
+89- Starting Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat
+89- Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat finished with exit code: 1
+90- Adding R3_FLASH;1;-;-;-;-;-;-;FAIL;-;FAIL to DGRID1.
+92- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+92- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\LOG_3456.txt
+93- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+93- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\DATA_3456.txt
+94- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\15h_49m_39s\LOG_3456.txt
+

@@ -1,0 +1,5 @@
+connect
+r
+loadfile C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.hex
+r
+exit

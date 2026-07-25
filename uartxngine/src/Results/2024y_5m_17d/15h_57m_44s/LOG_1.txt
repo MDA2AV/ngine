@@ -1,0 +1,62 @@
+46- Messages cleared!
+Everyone is alive!
+Data initialized: 40 lines, 3 cols, 25 pages.
+52- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+53- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+54- Writing on VISA resource (DP2A243200206): CURR 0A ..
+55- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+61- Datecode: 2024y_5m_17d
+61- Extended Datecode: 15h_57m_44s
+63- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+63- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\
+64- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+64- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s
+65- Adding %0\Captures;*4,0,23 to data 0,0,24
+65- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\Captures
+66- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+66- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\Binary_Captures
+68- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s
+69- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\Captures
+70- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\Binary_Captures
+79- Label START was reached.
+86- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+87- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+88- Writing on VISA resource (DP2A243200206): CURR 1A ..
+89- Writing on VISA resource (DP2A243200206): OUTP ON ..
+91- Delay 1 seconds.
+93- Label FLASH was reached.
+94- Starting Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat
+94- Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat finished with exit code: 0
+95- Adding R3_FLASH;1;-;-;-;-;-;-;PASS;-;PASS to DGRID1.
+97- Delay 3 seconds.
+99- Label UUT_SERIAL was reached.
+100- Bytes received: array('B')
+100- Arrays dimensions do not match!
+100- Array1: 0
+100- Array2: 1
+100- Bytes received: array('B', [1])
+100- Bytes received: array('B', [16])
+100- Bytes received: array('B', [144])
+100- Bytes received: array('B', [61])
+100- Response did not match target :(
+100- Saving FAIL @ 0,0,20
+100- Saving 61 @ 1,0,20
+101- Adding SERIAL_COM;1;-;-;-;-;-;-;FAIL;-;FAIL to DGRID1.
+103- Label WEST_BTN was reached.
+105- 0 is NOT alive!
+106- 0 is NOT alive!
+107- 0 is NOT alive!
+108- Label EAST_BTN was reached.
+110- 0 is NOT alive!
+111- 0 is NOT alive!
+112- 0 is NOT alive!
+113- Label EMERGENCY_BTN was reached.
+115- 0 is NOT alive!
+116- 0 is NOT alive!
+117- 0 is NOT alive!
+122- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+122- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\LOG_1.txt
+123- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+123- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\DATA_1.txt
+124- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\15h_57m_44s\LOG_1.txt
+

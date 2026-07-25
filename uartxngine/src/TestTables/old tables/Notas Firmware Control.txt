@@ -1,0 +1,22 @@
+COnfigurar 2 I/O Out
+	   2 I/O In
+
+	   UART3 115200
+
+Em ciclo infinito..
+
+	- se receber r\n
+		- Resetar todos os I/O de saída
+
+	- se receber d\n
+		- Consoante os I/O de entrada retornar 0,1,2 ou 3
+
+
+	- se receber s01\n
+		- Colocar pino de saida 1 em HIGH
+	- se receber s00\n 
+		- Colocar pino de saída 1 em LOW
+	- se receber s11\n
+		- Colocar pino de saida 2 em HIGH
+	- se receber s10\n 
+		- Colocar pino de saída 2 em LOW

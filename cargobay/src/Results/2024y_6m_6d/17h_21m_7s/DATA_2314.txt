@@ -1,0 +1,85 @@
+PAGE 0::
+[0,0,0]: N.O.K. 		|| [0,1,0]: FAIL 		|| [0,2,0]: R3_FLASH
+PAGE 1::
+PAGE 2::
+PAGE 3::
+PAGE 4::
+PAGE 5::
+PAGE 6::
+PAGE 7::
+PAGE 8::
+PAGE 9::
+PAGE 10::
+PAGE 11::
+PAGE 12::
+PAGE 13::
+PAGE 14::
+[0,0,14]: 
+C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src>C:\"Program Files"\SEGGER\JLink\JLink.exe USB 822005001 -device "STM32L072CZ" -if SWD -speed 4000,-1 -autoconnect 1 -CommanderScript C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.jlink 
+SEGGER J-Link Commander V7.63b (Compiled Mar  1 2022 16:42:47)
+DLL version V7.63b, compiled Mar  1 2022 16:41:28
+
+
+J-Link Command File read successfully.
+Processing script file...
+J-Link>connect
+J-Link connection not established yet but required for command.
+Connecting to J-Link via USB...O.K.
+Firmware: J-Link V12 compiled Mar 14 2024 13:16:19
+Hardware version: V12.00
+S/N: 822005001
+License(s): GDB
+USB speed mode: High speed (480 MBit/s)
+VTref=0.000V
+Device "STM32L072CZ" selected.
+
+
+Connecting to target via SWD
+Target voltage too low. Please check https://wiki.segger.com/J-Link_cannot_connect_to_the_CPU#Target_connection.
+Cannot connect to target.
+J-Link>r
+Target connection not established yet but required for command.
+Device "STM32L072CZ" selected.
+
+
+Connecting to target via SWD
+Target voltage too low. Please check https://wiki.segger.com/J-Link_cannot_connect_to_the_CPU#Target_connection.
+Cannot connect to target.
+J-Link>loadfile C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.hex
+Target connection not established yet but required for command.
+Device "STM32L072CZ" selected.
+
+
+Connecting to target via SWD
+Target voltage too low. Please check https://wiki.segger.com/J-Link_cannot_connect_to_the_CPU#Target_connection.
+Cannot connect to target.
+J-Link>r
+Target connection not established yet but required for command.
+Device "STM32L072CZ" selected.
+
+
+Connecting to target via SWD
+Target voltage too low. Please check https://wiki.segger.com/J-Link_cannot_connect_to_the_CPU#Target_connection.
+Cannot connect to target.
+J-Link>exit
+
+Script processing completed.
+
+ 		|| [0,1,14]:  		|| [0,2,14]: 0
+PAGE 15::
+PAGE 16::
+PAGE 17::
+PAGE 18::
+PAGE 19::
+PAGE 20::
+PAGE 21::
+PAGE 22::
+PAGE 23::
+[0,0,23]: 2314 		|| [0,1,23]: - 		|| [0,2,23]: -
+[2,0,23]: 2024y_6m_6d 		|| [2,1,23]: - 		|| [2,2,23]: -
+[3,0,23]: 17h_21m_7s 		|| [3,1,23]: - 		|| [3,2,23]: -
+[4,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_21m_7s 		|| [4,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\ 		|| [4,2,23]: -
+[5,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_21m_7s\LOG_2314.txt 		|| [5,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_21m_7s\DATA_2314.txt 		|| [5,2,23]: -
+PAGE 24::
+[0,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_21m_7s\Captures 		|| [0,1,24]: - 		|| [0,2,24]: -
+[1,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_21m_7s\Binary_Captures 		|| [1,1,24]: - 		|| [1,2,24]: -

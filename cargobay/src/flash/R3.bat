@@ -1,0 +1,1 @@
+C:\"Program Files"\SEGGER\JLink\JLink.exe USB 822005001 -device "STM32L072CZ" -if SWD -speed 4000,-1 -autoconnect 1 -CommanderScript C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.jlink

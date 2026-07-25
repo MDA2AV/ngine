@@ -1,0 +1,103 @@
+PAGE 0::
+[0,0,0]: O.K. 		|| [0,1,0]: PASS 		|| [0,2,0]: R3_FLASH
+PAGE 1::
+[0,0,1]: O.K. 		|| [0,1,1]: PASS 		|| [0,2,1]: SERIAL_COM
+[1,0,1]: O.K. 		|| [1,1,1]: PASS 		|| [1,2,1]: WEST_BTN
+[2,0,1]: O.K. 		|| [2,1,1]: PASS 		|| [2,2,1]: EAST_BTN
+[3,0,1]: O.K. 		|| [3,1,1]: PASS 		|| [3,2,1]: EMERGENCY_BTN
+PAGE 2::
+PAGE 3::
+PAGE 4::
+PAGE 5::
+PAGE 6::
+PAGE 7::
+PAGE 8::
+PAGE 9::
+PAGE 10::
+PAGE 11::
+PAGE 12::
+PAGE 13::
+PAGE 14::
+[0,0,14]: 
+C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src>C:\"Program Files"\SEGGER\JLink\JLink.exe USB 822005001 -device "STM32L072CZ" -if SWD -speed 4000,-1 -autoconnect 1 -CommanderScript C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.jlink 
+SEGGER J-Link Commander V7.63b (Compiled Mar  1 2022 16:42:47)
+DLL version V7.63b, compiled Mar  1 2022 16:41:28
+
+
+J-Link Command File read successfully.
+Processing script file...
+J-Link>connect
+J-Link connection not established yet but required for command.
+Connecting to J-Link via USB...O.K.
+Firmware: J-Link V12 compiled Mar 14 2024 13:16:19
+Hardware version: V12.00
+S/N: 822005001
+License(s): GDB
+USB speed mode: High speed (480 MBit/s)
+VTref=3.173V
+Device "STM32L072CZ" selected.
+
+
+Connecting to target via SWD
+InitTarget() start
+InitTarget() end
+Found SW-DP with ID 0x0BC11477
+DPIDR: 0x0BC11477
+CoreSight SoC-400 or earlier
+Scanning AP map to find all available APs
+AP[1]: Stopped AP scan as end of AP map has been reached
+AP[0]: AHB-AP (IDR: 0x04770031)
+Iterating through AP map to find AHB-AP to use
+AP[0]: Core found
+AP[0]: AHB-AP ROM base: 0xF0000000
+CPUID register: 0x410CC601. Implementer code: 0x41 (ARM)
+Found Cortex-M0 r0p1, Little endian.
+FPUnit: 4 code (BP) slots and 0 literal slots
+CoreSight components:
+ROMTbl[0] @ F0000000
+[0][0]: E00FF000 CID B105100D PID 000BB4C0 ROM Table
+ROMTbl[1] @ E00FF000
+[1][0]: E000E000 CID B105E00D PID 000BB008 SCS
+[1][1]: E0001000 CID B105E00D PID 000BB00A DWT
+[1][2]: E0002000 CID B105E00D PID 000BB00B FPB
+Cortex-M0 identified.
+J-Link>r
+Reset delay: 0 ms
+Reset type NORMAL: Resets core & peripherals via SYSRESETREQ & VECTRESET bit.
+Reset: Halt core after reset via DEMCR.VC_CORERESET.
+Reset: Reset device via AIRCR.SYSRESETREQ.
+J-Link>loadfile C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.hex
+Downloading file [C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.hex]...
+J-Link: Flash download: Bank 0 @ 0x08000000: 7 ranges affected (14336 bytes)
+J-Link: Flash download: Total: 3.059s (Prepare: 0.085s, Compare: 1.748s, Erase: 0.392s, Program & Verify: 0.802s, Restore: 0.030s)
+J-Link: Flash download: Program & Verify speed: 17 KB/s
+O.K.
+J-Link>r
+Reset delay: 0 ms
+Reset type NORMAL: Resets core & peripherals via SYSRESETREQ & VECTRESET bit.
+Reset: Halt core after reset via DEMCR.VC_CORERESET.
+Reset: Reset device via AIRCR.SYSRESETREQ.
+J-Link>exit
+
+Script processing completed.
+
+ 		|| [0,1,14]:  		|| [0,2,14]: 0
+PAGE 15::
+PAGE 16::
+PAGE 17::
+PAGE 18::
+PAGE 19::
+PAGE 20::
+[0,0,20]: PASS 		|| [0,1,20]: - 		|| [0,2,20]: -
+[1,0,20]: 96 		|| [1,1,20]: - 		|| [1,2,20]: -
+PAGE 21::
+PAGE 22::
+PAGE 23::
+[0,0,23]: 12 		|| [0,1,23]: - 		|| [0,2,23]: -
+[2,0,23]: 2024y_6m_6d 		|| [2,1,23]: - 		|| [2,2,23]: -
+[3,0,23]: 17h_32m_30s 		|| [3,1,23]: - 		|| [3,2,23]: -
+[4,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_32m_30s 		|| [4,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\ 		|| [4,2,23]: -
+[5,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_32m_30s\LOG_12.txt 		|| [5,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_32m_30s\DATA_12.txt 		|| [5,2,23]: -
+PAGE 24::
+[0,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_32m_30s\Captures 		|| [0,1,24]: - 		|| [0,2,24]: -
+[1,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_6m_6d\17h_32m_30s\Binary_Captures 		|| [1,1,24]: - 		|| [1,2,24]: -

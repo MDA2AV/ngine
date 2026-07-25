@@ -1,0 +1,36 @@
+PAGE 0::
+PAGE 1::
+PAGE 2::
+[0,0,2]: 23.97926324 		|| [0,1,2]: PASS 		|| [0,2,2]: CHAN1
+[1,0,2]: 3.075199167 		|| [1,1,2]: PASS 		|| [1,2,2]: CHAN2
+[2,0,2]: 0.000611709748 		|| [2,1,2]: PASS 		|| [2,2,2]: CHAN3
+[3,0,2]: 0.0006732798562 		|| [3,1,2]: PASS 		|| [3,2,2]: CHAN4
+PAGE 3::
+PAGE 4::
+PAGE 5::
+PAGE 6::
+PAGE 7::
+PAGE 8::
+PAGE 9::
+PAGE 10::
+PAGE 11::
+PAGE 12::
+PAGE 13::
+PAGE 14::
+PAGE 15::
+PAGE 16::
+PAGE 17::
+PAGE 18::
+PAGE 19::
+PAGE 20::
+PAGE 21::
+PAGE 22::
+PAGE 23::
+[0,0,23]: 85581 		|| [0,1,23]: - 		|| [0,2,23]: -
+[2,0,23]: 2024y_8m_2d 		|| [2,1,23]: - 		|| [2,2,23]: -
+[3,0,23]: 9h_56m_48s 		|| [3,1,23]: - 		|| [3,2,23]: -
+[4,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_56m_48s 		|| [4,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\ 		|| [4,2,23]: -
+[5,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_56m_48s\LOG_85581.txt 		|| [5,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_56m_48s\DATA_85581.txt 		|| [5,2,23]: -
+PAGE 24::
+[0,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_56m_48s\Captures 		|| [0,1,24]: - 		|| [0,2,24]: -
+[1,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_56m_48s\Binary_Captures 		|| [1,1,24]: - 		|| [1,2,24]: -

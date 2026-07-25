@@ -1,0 +1,37 @@
+PAGE 0::
+PAGE 1::
+PAGE 2::
+[0,0,2]: 9.9e+37 		|| [0,1,2]: FAIL 		|| [0,2,2]: CHAN1
+[1,0,2]: +3.073431973E+00 		|| [1,1,2]: - 		|| [1,2,2]: -
+[2,0,2]: +7.547743410E-04 		|| [2,1,2]: - 		|| [2,2,2]: -
+[3,0,2]: +6.602308765E-04
+ 		|| [3,1,2]: - 		|| [3,2,2]: -
+PAGE 3::
+PAGE 4::
+PAGE 5::
+PAGE 6::
+PAGE 7::
+PAGE 8::
+PAGE 9::
+PAGE 10::
+PAGE 11::
+PAGE 12::
+PAGE 13::
+PAGE 14::
+PAGE 15::
+PAGE 16::
+PAGE 17::
+PAGE 18::
+PAGE 19::
+PAGE 20::
+PAGE 21::
+PAGE 22::
+PAGE 23::
+[0,0,23]: 324324 		|| [0,1,23]: - 		|| [0,2,23]: -
+[2,0,23]: 2024y_8m_2d 		|| [2,1,23]: - 		|| [2,2,23]: -
+[3,0,23]: 9h_48m_11s 		|| [3,1,23]: - 		|| [3,2,23]: -
+[4,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_48m_11s 		|| [4,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\ 		|| [4,2,23]: -
+[5,0,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_48m_11s\LOG_324324.txt 		|| [5,1,23]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_48m_11s\DATA_324324.txt 		|| [5,2,23]: -
+PAGE 24::
+[0,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_48m_11s\Captures 		|| [0,1,24]: - 		|| [0,2,24]: -
+[1,0,24]: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_8m_2d\9h_48m_11s\Binary_Captures 		|| [1,1,24]: - 		|| [1,2,24]: -

@@ -1,0 +1,70 @@
+45- Messages cleared!
+Everyone is alive!
+Data initialized: 40 lines, 3 cols, 25 pages.
+51- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+52- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+53- Writing on VISA resource (DP2A243200206): CURR 0A ..
+54- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+56- Writing on VISA resource (DP2A243200206): INST:NSEL 2 ..
+57- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+58- Writing on VISA resource (DP2A243200206): CURR 0A ..
+59- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+66- Datecode: 2024y_5m_16d
+66- Extended Datecode: 16h_20m_38s
+68- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+68- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\
+69- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+69- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s
+70- Adding %0\Captures;*4,0,23 to data 0,0,24
+70- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\Captures
+71- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+71- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\Binary_Captures
+73- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s
+74- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\Captures
+75- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\Binary_Captures
+84- Label START was reached.
+91- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+92- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+93- Writing on VISA resource (DP2A243200206): CURR 1A ..
+94- Writing on VISA resource (DP2A243200206): OUTP ON ..
+96- Writing on VISA resource (DP2A243200206): INST:NSEL 2 ..
+97- Writing on VISA resource (DP2A243200206): VOLT 12V ..
+98- Writing on VISA resource (DP2A243200206): CURR 1A ..
+99- Writing on VISA resource (DP2A243200206): OUTP ON ..
+103- Delay 1 seconds.
+104- Writing 111,102,102,47,47 on port D1..
+104- Bytes received: array('B', [111, 102, 102, 47, 47])
+104- Received message 111 102 102 47 47 matches target
+109- Starting Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat
+109- Subprocess: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\flash\R3.bat finished with exit code: 0
+110- Adding R3_FLASH;1;-;-;-;-;-;-;PASS;-;PASS to DGRID1.
+112- Writing 49,54,43,47,47 on port D1..
+112- Bytes received: array('B', [49, 54, 43, 47, 47])
+112- Received message 49 54 43 47 47 matches target
+113- Writing 49,53,43,47,47 on port D1..
+113- Bytes received: array('B', [49, 53, 43, 47, 47])
+113- Received message 49 53 43 47 47 matches target
+114- Writing 49,52,43,47,47 on port D1..
+114- Bytes received: array('B', [49, 52, 43, 47, 47])
+114- Received message 49 52 43 47 47 matches target
+115- Writing 49,51,43,47,47 on port D1..
+115- Bytes received: array('B', [49, 51, 43, 47, 47])
+115- Received message 49 51 43 47 47 matches target
+116- Writing 49,50,43,47,47 on port D1..
+116- Bytes received: array('B', [49, 50, 43, 47, 47])
+116- Received message 49 50 43 47 47 matches target
+117- Writing 49,49,43,47,47 on port D1..
+117- Bytes received: array('B', [49, 49, 43, 47, 47])
+117- Received message 49 49 43 47 47 matches target
+118- Writing 48,57,43,47,47 on port D1..
+118- Bytes received: array('B', [48, 57, 43, 47, 47])
+118- Received message 48 57 43 47 47 matches target
+119- Writing 48,56,43,47,47 on port D1..
+119- Bytes received: array('B', [48, 56, 43, 47, 47])
+119- Received message 48 56 43 47 47 matches target
+126- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+126- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\LOG_23456.txt
+127- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+127- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\DATA_23456.txt
+128- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_16d\16h_20m_38s\LOG_23456.txt
+

@@ -1,0 +1,1 @@
+CreateObject("Wscript.Shell").Run "ngine.bat", 0, True

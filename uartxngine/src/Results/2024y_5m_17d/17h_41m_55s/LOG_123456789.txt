@@ -1,0 +1,37 @@
+50- Messages cleared!
+Everyone is alive!
+Data initialized: 40 lines, 3 cols, 25 pages.
+56- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+57- Writing on VISA resource (DP2A243200206): VOLT 0V ..
+58- Writing on VISA resource (DP2A243200206): CURR 0A ..
+59- Writing on VISA resource (DP2A243200206): OUTP OFF ..
+65- Datecode: 2024y_5m_17d
+65- Extended Datecode: 17h_41m_55s
+67- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\;*2,0,23 to data 4,1,23
+67- 4,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\
+68- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+68- 4,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s
+69- Adding %0\Captures;*4,0,23 to data 0,0,24
+69- 0,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Captures
+70- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+70- 1,0,24 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Binary_Captures
+72- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s
+73- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Captures
+74- Directory created: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Binary_Captures
+83- Label START was reached.
+90- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+91- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+92- Writing on VISA resource (DP2A243200206): CURR 1A ..
+93- Writing on VISA resource (DP2A243200206): OUTP ON ..
+95- Delay 1 seconds.
+96- Jumping to CAPTURE
+119- Label CAPTURE was reached.
+120- Adding %0\capture.jpg;*0,0,24 to data 5,0,23
+120- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Captures\capture.jpg
+121- Saving image at C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\Captures\capture.jpg
+132- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+132- 5,0,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\LOG_123456789.txt
+133- Adding C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+133- 5,1,23 = C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\DATA_123456789.txt
+134- Saving LOG at: C:\Users\Admin.ONTPC12\Desktop\NGINERepo\uartxngine\src\Results\2024y_5m_17d\17h_41m_55s\LOG_123456789.txt
+

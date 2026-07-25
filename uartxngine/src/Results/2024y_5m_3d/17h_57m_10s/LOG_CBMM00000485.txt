@@ -1,0 +1,28 @@
+56- Datecode: 2024y_5m_3d
+56- Extended Datecode: 17h_57m_10s
+58- Adding C:\Users\pmarques\Desktop\NGINE\Results\%0\;*2,0,23 to data 4,1,23
+58- 4,1,23 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\
+59- Adding C:\Users\pmarques\Desktop\NGINE\Results\%0\%1;*2,0,23;*3,0,23 to data 4,0,23
+59- 4,0,23 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s
+60- Adding %0\Captures;*4,0,23 to data 0,0,24
+60- 0,0,24 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\Captures
+61- Adding %0\Binary_Captures;*4,0,23 to data 1,0,24
+61- 1,0,24 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\Binary_Captures
+63- Directory created: C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s
+64- Directory created: C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\Captures
+65- Directory created: C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\Binary_Captures
+74- Label START was reached.
+81- Writing on VISA resource (DP2A243200206): INST:NSEL 1 ..
+82- Writing on VISA resource (DP2A243200206): VOLT 24V ..
+83- Writing on VISA resource (DP2A243200206): CURR 1A ..
+84- Writing on VISA resource (DP2A243200206): OUTP ON ..
+87- Delay 1 seconds.
+89- Starting Subprocess: C:\Users\pmarques\Desktop\NGINE\flash\R3.bat
+89- Subprocess: C:\Users\pmarques\Desktop\NGINE\flash\R3.bat finished with exit code: 0
+90- Adding R3_FLASH;1;-;-;-;-;-;-;PASS;-;PASS to DGRID1.
+92- Adding C:\Users\pmarques\Desktop\NGINE\Results\%0\%1\LOG_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,0,23
+92- 5,0,23 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\LOG_CBMM00000485.txt
+93- Adding C:\Users\pmarques\Desktop\NGINE\Results\%0\%1\DATA_%2.txt;*2,0,23;*3,0,23;*0,0,23 to data 5,1,23
+93- 5,1,23 = C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\DATA_CBMM00000485.txt
+94- Saving LOG at: C:\Users\pmarques\Desktop\NGINE\Results\2024y_5m_3d\17h_57m_10s\LOG_CBMM00000485.txt
+
