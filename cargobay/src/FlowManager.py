@@ -289,8 +289,8 @@ async def JL(line, UI):
 		line3 = TestData.getContent(line[3])
 		line4 = TestData.getContent(line[4])
 
-		base = float(line3)
-		target = float(line4)
+		base = to_float(line3)
+		target = to_float(line4)
 
 		if(base < target):
 
@@ -1325,5 +1325,16 @@ def jump(target):
 		if(label["Label"] == target):
 
 			TestData.pointer = int(label["index"]) - 1
+
+def to_float(s):
+    s = s.strip()
+    try:
+        return float(s)
+    except ValueError:
+        pass
+    try:
+        return float(int(s, 16))
+    except ValueError:
+        raise ValueError(f"Cannot convert {s!r} to float")
 
 #end

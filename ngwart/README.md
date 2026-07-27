@@ -145,6 +145,43 @@ exceptions are translated back into typed errors. Legacy verbs are opaque to the
 validator — it confirms they exist, not that their arguments are sane. Port the
 ones you touch most, in whatever order suits you.
 
+## Live telemetry
+
+The station serves a port for the whole session, publishing everything the run
+is doing. Clients come and go; the test never waits for one.
+
+```bash
+py run.py ui  TestTables/cargo.ods --telemetry        # default port 8765
+py run.py run TestTables/cargo.ods --telemetry 9000
+```
+
+Three kinds of client on the same port, told apart by what they send first:
+
+| Client | Gets |
+|---|---|
+| Browser at `http://localhost:8765` | a live dashboard — log, results, progress, no tooling needed |
+| WebSocket to `ws://localhost:8765` | every event as JSON, one per frame |
+| Raw TCP | the same JSON, newline-delimited — for tooling that does not speak WebSocket |
+
+`tools/telemetry_client.py` is a stdlib-only WebSocket client to build on:
+
+```bash
+py tools/telemetry_client.py localhost 8765
+```
+
+Every engine event is published, tagged with `type`: `log`, `step`, `status`,
+`progress`, `timer`, `grid`, `field`, `alive`, `runstate`, `result`.
+
+Three properties it is built around:
+
+- **The test is never blocked.** Each client has its own thread and a bounded
+  queue. A client that cannot keep up overflows its own queue and is dropped;
+  nothing applies backpressure to the sequencer.
+- **Late joiners are not lost.** A snapshot plus the last 500 events are
+  replayed on connect, so a dashboard opened mid-run shows the whole picture.
+- **Telemetry failures are never test failures.** Every socket path swallows
+  its own exceptions.
+
 ## Debugging a failed test
 
 ```bash

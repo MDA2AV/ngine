@@ -27,7 +27,8 @@ MAX_UUTS = 4
 class MainWindow(QMainWindow):
     def __init__(self, program_path: str | None = None, simulate: bool = False,
                  dark: bool = True, station: str = "", operator: str = "",
-                 debug_dir: str | None = None) -> None:
+                 debug_dir: str | None = None,
+                 telemetry_port: int | None = None) -> None:
         super().__init__()
         self.setWindowTitle(f"NGWART {__version__} — Functional Test")
         self.resize(1500, 900)
@@ -41,6 +42,16 @@ class MainWindow(QMainWindow):
         self.operator = operator
         self.debug_dir = debug_dir
         self._last_record = None
+
+        # Owned by the window, not by a run: a dashboard stays connected while
+        # the operator swaps boards.
+        self.telemetry = None
+        if telemetry_port:
+            from ..engine.telemetry import TelemetryServer
+            try:
+                self.telemetry = TelemetryServer(port=int(telemetry_port)).start()
+            except OSError as exc:
+                print(f"telemetry disabled: {exc}")
 
         self.bridge = QtBridge()
         self._connect_bridge()
@@ -80,7 +91,11 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self._build_footer())
         self.setCentralWidget(root)
-        self.statusBar().showMessage("No program loaded.")
+        if self.telemetry is not None:
+            self.statusBar().showMessage(
+                f"Telemetry live on http://localhost:{self.telemetry.bound_port}")
+        else:
+            self.statusBar().showMessage("No program loaded.")
 
     def _build_toolbar(self) -> None:
         bar = self.addToolBar("Main")
@@ -363,6 +378,7 @@ class MainWindow(QMainWindow):
             station=self.station,
             workdir=os.path.dirname(self.program.source or ".") or ".",
             debug_dir=(self.debug_dir or "debug") if self.debug_box.isChecked() else None,
+            telemetry=self.telemetry,
         )
         self.sequencer = Sequencer(REGISTRY, self.bridge, options)
         ctx = Context(self.program, self.bridge, simulate=options.simulate,
@@ -489,6 +505,8 @@ class MainWindow(QMainWindow):
     # -- shutdown ---------------------------------------------------------
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt name
+        if self.telemetry is not None and not (self.thread and self.thread.is_alive()):
+            self.telemetry.stop()
         if self.thread and self.thread.is_alive():
             answer = QMessageBox.question(
                 self, "Test in progress",

@@ -302,6 +302,7 @@
       <li><a href="#validation">Validation</a></li>
       <li><a href="#serial">The serial matrix</a></li>
       <li><a href="#example">Worked example</a></li>
+      <li><a href="#telemetry">Live telemetry</a></li>
       <li><a href="#debug">Debugging a failure</a></li>
       <li><a href="#sim">Simulation</a></li>
       <li><a href="#migrate">Migrating from v1</a></li>
@@ -689,8 +690,50 @@ ok   85  UUT 0: PASS (4 point(s))
   UUT 1     PASS</code></pre>
     </section>
 
-    <section id="debug">
+    <section id="telemetry">
       <span class="sectionmark">§ 11</span>
+      <h2>Live telemetry</h2>
+      <p>
+        The station serves a port for the whole session, publishing everything
+        the run is doing. Clients come and go; the test never waits for one.
+      </p>
+<pre><code>py run.py ui TestTables/cargo.ods --telemetry      <span class="cm"># default 8765</span></code></pre>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Client</th><th>Gets</th></tr></thead>
+          <tbody>
+            <tr><td>Browser at <code>http://localhost:8765</code></td>
+                <td>a live dashboard — log, results, progress. No tooling needed.</td></tr>
+            <tr><td>WebSocket <code>ws://localhost:8765</code></td>
+                <td>every event as JSON, one per frame</td></tr>
+            <tr><td>Raw TCP</td>
+                <td>the same JSON, newline-delimited — for tooling that does not speak WebSocket</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Every event carries a <code>type</code>: <code>log</code>,
+        <code>step</code>, <code>status</code>, <code>progress</code>,
+        <code>timer</code>, <code>grid</code>, <code>field</code>,
+        <code>alive</code>, <code>runstate</code>, <code>result</code>.
+        <code>tools/telemetry_client.py</code> is a stdlib-only client to build on.
+      </p>
+      <div class="note">
+        <span class="lbl">Three properties it is built around</span>
+        <p>
+          <strong>The test is never blocked</strong> — each client has its own
+          thread and a bounded queue; one that cannot keep up is dropped rather
+          than allowed to pace the sequencer.
+          <strong>Late joiners are not lost</strong> — a snapshot and the last
+          500 events replay on connect.
+          <strong>Telemetry failures are never test failures</strong> — every
+          socket path swallows its own exceptions.
+        </p>
+      </div>
+    </section>
+
+    <section id="debug">
+      <span class="sectionmark">§ 12</span>
       <h2>Debugging a failure</h2>
       <p>
         Written for the question <em>"why did INTENSITY_A fail?"</em> — which a
@@ -721,7 +764,7 @@ ok   85  UUT 0: PASS (4 point(s))
     </section>
 
     <section id="sim">
-      <span class="sectionmark">§ 12</span>
+      <span class="sectionmark">§ 13</span>
       <h2>Simulation</h2>
       <p>
         <code>--simulate</code> swaps every backend for a model rather than a stub,
@@ -743,7 +786,7 @@ ok   85  UUT 0: PASS (4 point(s))
     </section>
 
     <section id="migrate">
-      <span class="sectionmark">§ 13</span>
+      <span class="sectionmark">§ 14</span>
       <h2>Migrating from v1</h2>
       <p>These steps are a sequence — each one depends on the last.</p>
       <ol>
@@ -806,7 +849,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
     </section>
 
     <section id="arch">
-      <span class="sectionmark">§ 14</span>
+      <span class="sectionmark">§ 15</span>
       <h2>Architecture</h2>
       <p>
         The engine never imports Qt, and the UI never touches the data store. That
@@ -860,7 +903,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
     </section>
 
     <section id="cli">
-      <span class="sectionmark">§ 15</span>
+      <span class="sectionmark">§ 16</span>
       <h2>Command reference</h2>
       <div class="scroller">
         <table>
@@ -884,6 +927,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
             <tr><td><code>--report path.xml</code></td><td>write XML, JSON or CSV by extension</td></tr>
             <tr><td><code>--no-strict</code></td><td>run despite validation errors — bench debugging only</td></tr>
             <tr><td><code>--warnings-as-errors</code></td><td>for <code>check</code> in CI</td></tr>
+            <tr><td><code>--telemetry [PORT]</code></td><td>serve live execution data (browser dashboard, WebSocket, or raw TCP)</td></tr>
             <tr><td><code>--debug [DIR]</code></td><td>write a debug bundle: captures, binaries, contour overlays, data store, full log</td></tr>
             <tr><td><code>--legacy DIR</code></td><td>use the site's own v1 hardware drivers instead of the bundled ones</td></tr>
             <tr><td><code>--legacy-only M1,M2</code></td><td>name exactly which modules <code>--legacy</code> takes</td></tr>

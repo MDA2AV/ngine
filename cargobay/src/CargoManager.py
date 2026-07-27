@@ -28,7 +28,7 @@ async def VALIDATE_DET(line, UI):
         print("chk0")
         print(input)
 
-        value = int(input) - 16  # Result should be 0-15 (4-bit hex digit)
+        value = to_int(input) - 16  # Result should be 0-15 (4-bit hex digit)
 
         print(value)
 
@@ -325,6 +325,17 @@ async def VALIDATE_BCODE(line, UI):
 
 
 #Helpers
+
+def to_int(s):
+    s = s.strip()
+    try:
+        return int(s)
+    except ValueError:
+        pass
+    try:
+        return int(s, 16)
+    except ValueError:
+        raise ValueError(f"Cannot convert {s!r} to int")
 
 def add2GRID(grid_message, kill_index, UI):
 

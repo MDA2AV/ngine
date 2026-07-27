@@ -13,12 +13,14 @@ from .program import Program, Row, Section
 from .registry import REGISTRY, Param, Registry, VerbSpec, p, verb
 from .runrecord import RunRecord, StepRecord, TestPoint
 from .sequencer import RunOptions, RunThread, Sequencer
+from .telemetry import DEFAULT_PORT, TelemetryServer
 from .validator import Diagnostic, Report, validate
 
 __all__ = [
     "Context", "Program", "Row", "Section",
     "REGISTRY", "Registry", "VerbSpec", "Param", "verb", "p",
     "Sequencer", "RunOptions", "RunThread",
+    "TelemetryServer", "DEFAULT_PORT",
     "validate", "Report", "Diagnostic",
     "RunRecord", "StepRecord", "TestPoint",
     "NgwartError", "VerbError", "HardwareError", "ValidationFailure",

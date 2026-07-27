@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 
 from . import __version__
+from .engine.telemetry import DEFAULT_PORT
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
     ui.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
                     help=_DEBUG_HELP)
+    ui.add_argument("--telemetry", nargs="?", const=DEFAULT_PORT, type=int,
+                    metavar="PORT", help=_TELEMETRY_HELP)
 
 
     run = sub.add_parser("run", help="execute a program without a UI")
@@ -45,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
     run.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
                     help=_DEBUG_HELP)
+    run.add_argument("--telemetry", nargs="?", const=DEFAULT_PORT, type=int,
+                    metavar="PORT", help=_TELEMETRY_HELP)
 
 
     check = sub.add_parser("check", help="validate a program")
@@ -70,6 +76,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     return globals()[f"_cmd_{args.command}"](args)
 
+
+_TELEMETRY_HELP = (
+    "serve live execution data on this port (default 8765). Open it in a "
+    "browser for a dashboard, or connect a WebSocket client. Runs for the whole "
+    "session; the test never waits for a client."
+)
 
 _DEBUG_HELP = (
     "write a debug bundle: captures, binary images, contour overlays with the "
@@ -127,6 +139,26 @@ def _use_legacy(directory: str | None, only: str | None = None) -> None:
               f"(use --legacy-only to override)")
 
 
+def _start_telemetry(port):
+    """Bring up the live feed, or explain why it could not start.
+
+    A port already in use must not stop a test running -- it usually means a
+    second station process, which is the operator's problem, not the board's.
+    """
+    if port is None:
+        return None
+    from .engine.telemetry import TelemetryServer
+
+    try:
+        server = TelemetryServer(port=int(port)).start()
+    except OSError as exc:
+        print(f"  telemetry disabled: {exc}")
+        return None
+    print(f"  telemetry live on http://localhost:{server.bound_port}"
+          f"  (browser dashboard, or ws://localhost:{server.bound_port})")
+    return server
+
+
 def _load(path: str, legacy: str | None = None, only: str | None = None):
     from . import drivers  # noqa: F401 - registers verbs
     from .engine.loaders import load
@@ -142,7 +174,8 @@ def _cmd_ui(args) -> int:
                 getattr(args, "legacy_only", None))
     return launch(program=args.program, simulate=args.simulate,
                   dark=not args.light, station=args.station,
-                  operator=args.operator, debug_dir=getattr(args, "debug", None))
+                  operator=args.operator, debug_dir=getattr(args, "debug", None),
+                  telemetry_port=getattr(args, "telemetry", None))
 
 
 def _cmd_run(args) -> int:
@@ -163,8 +196,10 @@ def _cmd_run(args) -> int:
     recorder = RecordingListener()
     from .engine.events import FanOut
 
+    telemetry = _start_telemetry(getattr(args, "telemetry", None))
     options = RunOptions(simulate=args.simulate, strict=not args.no_strict,
-                         debug_dir=getattr(args, "debug", None))
+                         debug_dir=getattr(args, "debug", None),
+                         telemetry=telemetry)
     sequencer = Sequencer(REGISTRY, FanOut(Printer(), recorder), options)
     record = sequencer.run(program)
 
@@ -191,6 +226,12 @@ def _cmd_run(args) -> int:
         fmt = os.path.splitext(args.report)[1].lstrip(".").lower() or "json"
         write_report(record, args.report, fmt)
         print(f"  report    {args.report}")
+
+    if telemetry is not None:
+        # Give a dashboard a moment to drain the final events before the
+        # process exits and the socket dies under it.
+        time.sleep(0.4)
+        telemetry.stop()
 
     return 0 if (record.passed() and not record.aborted) else 1
 

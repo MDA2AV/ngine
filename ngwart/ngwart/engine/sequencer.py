@@ -59,6 +59,9 @@ class RunOptions:
     #: Directory for a debug bundle, or None. Costs disk and a little time per
     #: vision step, so it is opt-in.
     debug_dir: str | None = None
+    #: A live TelemetryServer, or None. Owned by the caller so it outlives
+    #: individual runs -- a dashboard stays connected between boards.
+    telemetry: object | None = None
 
 
 class Sequencer:
@@ -115,6 +118,18 @@ class Sequencer:
             ctx.debug = bundle
             bundle.write_program(program)
             ctx.log(f"Debug bundle: {bundle.dir}")
+
+        telemetry = self.options.telemetry
+        if telemetry is not None:
+            from .events import FanOut
+
+            telemetry.clear_backlog()
+            telemetry.set_snapshot(
+                program=program.meta.get("name", program.source),
+                station=self.options.station, operator=self.options.operator,
+                simulated=self.options.simulate,
+                started=record.started.isoformat(timespec="seconds"))
+            ctx.listener = FanOut(ctx.listener, telemetry)
 
         aborted, reason = False, ""
         try:
@@ -435,6 +450,9 @@ class Sequencer:
 
     def _emit(self, event) -> None:
         self.listener.emit(event)
+        telemetry = self.options.telemetry
+        if telemetry is not None:
+            telemetry.emit(event)
 
 
 class RunThread(threading.Thread):
