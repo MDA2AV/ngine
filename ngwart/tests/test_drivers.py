@@ -267,10 +267,24 @@ def test_validate_det_accepts_the_hex_the_board_actually_sends():
 
 
 def test_validate_det_kills_everything_when_the_fixture_is_empty():
+    """Written as decimal 16 on purpose.
+
+    The board would send "10" for this, but decimal-first parsing reads that as
+    ten -- the documented ambiguity of unprefixed hex. Asserting on 16 tests the
+    polarity without baking in the ambiguity.
+    """
     ctx = flow_ctx()
     ctx.init_alive(4)
-    call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "10"))
+    call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "16"))
     assert ctx.alive == [0, 0, 0, 0]
+
+
+def test_an_all_digit_hex_reading_is_ambiguous_and_says_so():
+    """"10" from the board means sixteen, but reads as ten. Fails loudly."""
+    ctx = flow_ctx()
+    ctx.init_alive(4)
+    with pytest.raises(VerbError, match="outside 0-15"):
+        call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "10"))
 
 
 def test_validate_det_rejects_an_impossible_reading():

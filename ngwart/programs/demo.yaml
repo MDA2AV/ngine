@@ -66,7 +66,9 @@ exec:
   - [TestData, LOG_FLAG, 'OFF', '', '', '', '', '', '', 'quiet the poll loop']
   - [Serial, EXCHANGELINE_LT_LV0, CONTROL, 'd/n', '', '', '*det.raw', SERIAL_EX]
   - [Flow, DELAY, '0.1', '', '', '', '', FLOW_EX]
-  - [Flow, JNE, DETECTION, '*det.raw', '16', '', '', FLOW_EX]
+  # The board answers in hex: "10" is empty, "1F" is all four seated. JL parses
+  # either, so this loops until every slot reports occupied.
+  - [Flow, JL, DETECTION, '*det.raw', '31', '', '', FLOW_EX]
   - [TestData, LOG_FLAG, 'ON']
   - [Product, VALIDATE_DET, '*det.raw', '', '', '', '', PRODUCT_EX]
 
