@@ -78,11 +78,13 @@ main{flex:1;display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;
 .warn{color:var(--warn)} .error,.fail{color:var(--fail);font-weight:600}
 .pass{color:var(--pass)}
 
-#units{display:grid;gap:var(--s-sm);grid-template-columns:1fr 1fr;
-       align-content:start;overflow:auto;min-height:0}
-@media (max-width:1200px){#units{grid-template-columns:1fr}}
+/* Panels tile and share the height. Each scrolls its own table, so a unit
+   with 21 results does not push the others off screen, and nothing nests one
+   scroll region inside another. */
+#units{display:grid;gap:var(--s-sm);min-height:0}
 .unit{background:var(--surface);border:1px solid var(--border);
-      border-radius:var(--r-panel);display:flex;flex-direction:column;overflow:hidden}
+      border-radius:var(--r-panel);display:flex;flex-direction:column;
+      overflow:hidden;min-height:0}
 .unit .head{display:flex;align-items:center;gap:var(--s-sm);
             padding:var(--s-sm) var(--s-md)}
 .unit .num{font:700 13px var(--mono);background:var(--elevated);
@@ -99,7 +101,7 @@ td{padding:4px 8px;color:var(--muted);font-variant-numeric:tabular-nums}
 tr:nth-child(even) td{background:var(--elevated)}
 td.n{text-align:right}
 td:last-child{font-weight:700}
-.tbody-wrap{overflow:auto;max-height:340px}
+.tbody-wrap{flex:1;overflow-y:auto;overflow-x:auto;min-height:0}
 .empty{padding:var(--s-xl);text-align:center;color:var(--faint);font-size:11px}
 
 /* --- footer --- */
@@ -150,7 +152,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);
 
 <script>
 const $ = id => document.getElementById(id);
-const state = {units: 0, points: 0, failed: 0, control: false, running: false};
+const state = {units: 0, points: 0, failed: 0, control: false, running: false,
+               tallies: {}};
 
 /* ---------- REST: commands ---------- */
 async function api(path, opts) {
@@ -216,15 +219,15 @@ function applyState(s) {
 }
 function buildUnits(n) {
   if (state.units === n) return;
-  state.units = n;
   const host = $("units");
-  if (!n) {
-    host.innerHTML = '<div class="empty">Panels appear once a program declares '
-                   + 'how many units the fixture holds.</div>';
-    return;
-  }
-  host.innerHTML = "";
-  for (let i = 0; i < n; i++) {
+
+  // Add or remove only the difference. Rebuilding wholesale threw away every
+  // result already collected, so a late event for a higher unit index wiped
+  // the panels that were already filling.
+  const placeholder = host.querySelector(".empty");
+  if (placeholder) placeholder.remove();
+
+  for (let i = state.units; i < n; i++) {
     const el = document.createElement("section");
     el.className = "unit"; el.id = `unit${i}`;
     el.innerHTML =
@@ -232,10 +235,28 @@ function buildUnits(n) {
       + `<span class="lbl">UNIT</span><span style="flex:1"></span>`
       + `<span class="tally" id="tally${i}"></span>`
       + `<span class="verdict" id="verdict${i}">--</span></div>`
-      + `<div class="tbody-wrap"><table><thead id="head${i}"></thead>`
+      + `<div class="tbody-wrap" id="wrap${i}"><table><thead id="head${i}"></thead>`
       + `<tbody id="rows${i}"></tbody></table></div>`;
     host.appendChild(el);
   }
+  for (let i = n; i < state.units; i++) {
+    const el = $(`unit${i}`);
+    if (el) el.remove();
+  }
+  state.units = n;
+
+  if (!n) {
+    host.innerHTML = '<div class="empty">Panels appear once a program declares '
+                   + 'how many units the fixture holds.</div>';
+    host.style.gridTemplateColumns = "1fr";
+    return;
+  }
+  // Tile so every panel gets a share of the height rather than the container
+  // scrolling: 1 unit full width, 2 side by side, 3-4 as a 2x2.
+  const wide = window.innerWidth > 1200;
+  const cols = (n === 1 || !wide) ? 1 : 2;
+  host.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  host.style.gridTemplateRows = `repeat(${Math.ceil(n / cols)}, minmax(0, 1fr))`;
 }
 function verdict(i, text, colour) {
   const el = $(`verdict${i}`); if (!el) return;
@@ -245,6 +266,7 @@ function verdict(i, text, colour) {
 }
 function clearRun() {
   $("log").innerHTML = ""; state.points = 0; state.failed = 0;
+  state.tallies = {};
   $("points").textContent = "0"; $("failed").textContent = "0";
   $("failed").style.color = ""; $("pct").textContent = "0%";
   $("bar").firstElementChild.style.width = "0";
@@ -326,7 +348,10 @@ function onGrid(d) {
     return;
   }
   if (d.op === "clear") {
-    $(`rows${i}`).innerHTML = ""; $(`tally${i}`).textContent = ""; verdict(i, "--");
+    $(`rows${i}`).innerHTML = "";
+    $(`tally${i}`).textContent = "";
+    state.tallies[i] = {rows: 0, fails: 0};
+    verdict(i, "--");
     return;
   }
   if (d.op !== "add") return;
@@ -346,7 +371,13 @@ function onGrid(d) {
   const last = tr.lastElementChild;
   if (last && colour) { last.style.color = colour; }
   $(`rows${i}`).appendChild(tr);
-  tr.scrollIntoView({block: "nearest"});
+  // Scroll this table only. scrollIntoView walks up to the nearest scrollable
+  // ancestor, which with panels inside a scrolling grid yanked the whole area.
+  const wrap = $(`wrap${i}`);
+  if (wrap) {
+    const stick = wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 40;
+    if (stick) wrap.scrollTop = wrap.scrollHeight;
+  }
 
   state.points++; $("points").textContent = state.points;
   if (tag === "FAIL") {
@@ -354,15 +385,18 @@ function onGrid(d) {
     $("failed").textContent = state.failed;
     $("failed").style.color = "var(--fail)";
   }
-  const box = $(`tally${i}`);
-  const rows = $(`rows${i}`).childElementCount;
-  const fails = $(`rows${i}`).querySelectorAll("td:last-child").length
-    && [...$(`rows${i}`).querySelectorAll("td:last-child")]
-        .filter(td => td.textContent.toUpperCase() === "FAIL").length;
-  box.textContent = fails ? `${fails} FAILED OF ${rows}` : `${rows} PASSED`;
+  const tally = (state.tallies[i] = state.tallies[i] || {rows: 0, fails: 0});
+  tally.rows++;
+  if (tag === "FAIL") tally.fails++;
+  $(`tally${i}`).textContent = tally.fails
+    ? `${tally.fails} FAILED OF ${tally.rows}`
+    : `${tally.rows} PASSED`;
 }
 
 /* ---------- go ---------- */
+addEventListener("resize", () => {
+  const n = state.units; state.units = -1; buildUnits(n);
+});
 refreshPrograms();
 api("/api/state").then(applyState).catch(() => {});
 connect();

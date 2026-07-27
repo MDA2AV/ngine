@@ -284,3 +284,49 @@ def test_empty_listing_reports_where_it_looked(tmp_path, server):
     assert payload["programs"] == []
     # The client shows this path, so "nothing found" is actionable.
     assert payload["dir"] == str(tmp_path)
+
+
+# --- front-end guards ---------------------------------------------------
+#
+# There is no JS runtime here, so these assert on the source. That is weaker
+# than executing it and is not pretended otherwise -- they exist to stop the
+# specific regressions below coming back, each of which lost results that had
+# already been collected.
+
+def _app_source():
+    from ngwart.web.server import HERE
+
+    with open(os.path.join(HERE, "app.html"), encoding="utf-8") as fh:
+        return fh.read()
+
+
+def test_result_tables_are_not_capped_at_a_fixed_height():
+    """cargo.ods puts ~21 results in each of 4 units.
+
+    A fixed max-height meant each table scrolled inside a scrolling grid, so
+    only the newest rows were visible and the rest looked missing.
+    """
+    source = _app_source()
+    assert "max-height:340px" not in source
+    assert ".tbody-wrap{flex:1" in source
+
+
+def test_panels_are_built_incrementally():
+    """Rebuilding wholesale discarded every result already collected."""
+    source = _app_source()
+    assert "for (let i = state.units; i < n; i++)" in source
+    assert 'host.innerHTML = ""' not in source
+
+
+def test_new_rows_scroll_only_their_own_table():
+    """scrollIntoView walks to the nearest scrollable ancestor, which with
+    panels inside a scrolling grid yanked the whole area."""
+    source = _app_source()
+    assert "wrap.scrollTop = wrap.scrollHeight" in source
+    assert "tr.scrollIntoView" not in source
+
+
+def test_panels_tile_rather_than_overflow():
+    source = _app_source()
+    assert "gridTemplateRows" in source
+    assert "minmax(0, 1fr)" in source
