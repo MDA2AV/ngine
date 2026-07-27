@@ -45,8 +45,10 @@ def _get(ctx, ident: str):
     raise HardwareError(f"VISA instrument '{ident}' was not opened (known: {known})")
 
 
-@verb(MODULE, "OPENALL", params=[p(2, "timeout_ms", required=False),
-                                 p(3, "verbose", required=False)],
+@verb(MODULE, "OPENALL",
+      params=[p(2, "timeout_ms", required=False),
+              p(3, "include_serial", required=False,
+                doc="ALL to also open ASRL (COM port) resources")],
       config_only=True)
 def openall(ctx, row):
     """Enumerate the VISA bus and open everything on it."""
@@ -63,6 +65,20 @@ def openall(ctx, row):
     else:
         from .backends.real import visa_resources
         resources = visa_resources()
+
+    # ASRL resources are the machine's COM ports. On this kind of station
+    # pyserial already owns them -- FINDPORT opens them by hardware id -- so
+    # opening them through VISA as well yields VI_ERROR_RSRC_BUSY at best and
+    # steals the port from the test at worst. v1 filtered them out with a
+    # `len(resource) < 40` heuristic; filtering on the interface type says what
+    # it means and does not depend on how long a serial number happens to be.
+    include_serial = ctx.text(row.raw(3)).strip().upper() in ("ALL", "SERIAL")
+    if not include_serial:
+        skipped = [r for r in resources if r.upper().startswith("ASRL")]
+        resources = [r for r in resources if not r.upper().startswith("ASRL")]
+        if skipped:
+            ctx.log(f"VISA: ignoring {len(skipped)} serial resource(s) "
+                    f"(pass ALL in column 3 to include them)")
 
     instruments = _instruments(ctx)
     for resource in resources:

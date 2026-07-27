@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 
@@ -159,10 +160,38 @@ def _start_telemetry(port):
     return server
 
 
+def _hint_legacy(path: str, legacy: str | None) -> None:
+    """Point at --legacy when the program clearly belongs to a v1 install.
+
+    A table sitting inside a tree that also holds *Manager.py files is a site
+    program, and those drivers are almost certainly the authority for its
+    hardware. This only advises -- enabling it automatically would silently
+    change which code drives an instrument, which is not a decision to make on
+    the operator's behalf.
+    """
+    if legacy:
+        return
+    import glob
+
+    directory = os.path.dirname(os.path.abspath(path))
+    for _ in range(3):                       # the table is usually a level down
+        managers = glob.glob(os.path.join(directory, "*Manager.py"))
+        if managers:
+            rel = os.path.relpath(directory, os.getcwd())
+            print(f"  note: {len(managers)} site driver(s) found in {rel}.")
+            print(f"        If this fixture needs them, add:  --legacy {rel}")
+            return
+        parent = os.path.dirname(directory)
+        if parent == directory:
+            return
+        directory = parent
+
+
 def _load(path: str, legacy: str | None = None, only: str | None = None):
     from . import drivers  # noqa: F401 - registers verbs
     from .engine.loaders import load
 
+    _hint_legacy(path, legacy)
     _use_legacy(legacy, only)
     return load(path)
 

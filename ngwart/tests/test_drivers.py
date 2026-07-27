@@ -588,3 +588,48 @@ def test_legacy_ui_frame_exposes_the_grid_attributes_v1_touches():
         widget["columns"] = ("A",)
         widget.insert(parent="", index="end", iid=0, values=("x",), tag="PASS")
     assert frame.DGRID1_iid == 0
+
+
+# --- VISA OPENALL must not fight pyserial for the COM ports -------------
+
+def test_openall_skips_serial_resources_by_default(monkeypatch):
+    """ASRL resources are COM ports that FINDPORT already owns.
+
+    Opening them through VISA as well gives VI_ERROR_RSRC_BUSY at best, and
+    steals the port from the running test at worst.
+    """
+    from ngwart.drivers import visa as visa_mod
+
+    seen = []
+    monkeypatch.setattr(visa_mod, "SIM_RESOURCES",
+                        ["USB0::0x1AB1::0xA4A8::DP2A::INSTR",
+                         "ASRL1::INSTR", "ASRL13::INSTR"])
+    real_make = visa_mod.make_visa
+
+    def spy(simulate, resource, timeout, **kw):
+        seen.append(resource)
+        return real_make(simulate, resource, timeout, **kw)
+
+    monkeypatch.setattr(visa_mod, "make_visa", spy)
+
+    ctx = flow_ctx()
+    ctx.simulate = True
+    call(ctx, "VISA", "OPENALL", row("VISA", "OPENALL", "10000"))
+    assert not any(r.startswith("ASRL") for r in seen), seen
+    assert any("DP2A" in r for r in seen)
+
+
+def test_openall_can_be_asked_for_serial_resources(monkeypatch):
+    from ngwart.drivers import visa as visa_mod
+
+    seen = []
+    monkeypatch.setattr(visa_mod, "SIM_RESOURCES",
+                        ["USB0::0x1AB1::0xA4A8::DP2A::INSTR", "ASRL1::INSTR"])
+    real_make = visa_mod.make_visa
+    monkeypatch.setattr(visa_mod, "make_visa",
+                        lambda s, r, t, **k: (seen.append(r), real_make(s, r, t, **k))[1])
+
+    ctx = flow_ctx()
+    ctx.simulate = True
+    call(ctx, "VISA", "OPENALL", row("VISA", "OPENALL", "10000", "ALL"))
+    assert any(r.startswith("ASRL") for r in seen), seen
