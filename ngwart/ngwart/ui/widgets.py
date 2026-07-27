@@ -44,8 +44,8 @@ class StatusBanner(QLabel):
         super().__init__("READY", parent)
         self.setObjectName("StatusBanner")
         self.setAlignment(Qt.AlignCenter)
-        self.setWordWrap(True)
-        self.setMinimumHeight(84)
+        self.setWordWrap(False)
+        self.setMinimumHeight(46)
         self._palette = theme.palette(True)
 
     def set_palette_colours(self, colours: dict) -> None:
@@ -57,7 +57,8 @@ class StatusBanner(QLabel):
         foreground = _readable_on(background)
         self.setStyleSheet(
             f"background: {background}; color: {foreground};"
-            f"border-radius: 10px; padding: 14px 20px;"
+            f"border-radius: 8px; padding: 7px 18px;"
+            f"font-size: 21pt; font-weight: 700; letter-spacing: 1.5px;"
         )
 
 
@@ -277,6 +278,8 @@ class Stat(QWidget):
 
     def __init__(self, caption: str, value: str = "--", parent=None) -> None:
         super().__init__(parent)
+        self.setAttribute(Qt.WA_StyledBackground, False)
+        self.setAutoFillBackground(False)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -297,8 +300,9 @@ class Stat(QWidget):
         self.value.setText(str(text))
         if tone and palette:
             self.value.setStyleSheet(
+                f"background: transparent;"
                 f"color: {palette.get(tone, palette['text'])};"
-                f"font-family: {theme.MONO}; font-size: 16pt; font-weight: 600;")
+                f"font-family: {theme.MONO}; font-size: 15pt; font-weight: 600;")
 
 
 class ScanField(QWidget):

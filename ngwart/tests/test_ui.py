@@ -197,16 +197,31 @@ def test_scanned_values_appear_only_once_a_program_sets_them(app):
     window.close()
 
 
-def test_header_stays_one_row(app):
-    """It is glanced at, not read. The screen belongs to the results."""
+def test_the_results_get_most_of_the_window(app):
+    """Chrome is glanced at; results are read. Budget the pixels accordingly."""
     from ngwart.ui.main_window import MainWindow
 
     window = MainWindow(program_path=DEMO, simulate=True)
     window.resize(1500, 880)
     window.show()
+    app.processEvents()
+
     header = window.centralWidget().layout().itemAt(0).widget()
-    assert header.sizeHint().height() < 90, header.sizeHint()
+    assert header.height() < 80, f"header {header.height()}px"
+    assert window.banner.height() < 60, f"banner {window.banner.height()}px"
+    assert window.tabs.height() / window.height() > 0.65, (
+        f"results only get {100 * window.tabs.height() / window.height():.0f}%")
     window.close()
+
+
+def test_header_children_do_not_paint_their_own_background(app):
+    """Child widgets inheriting the window colour made the strip look like a
+    row of boxes against its lighter surface."""
+    from ngwart.ui import theme
+
+    css = theme.stylesheet(True)
+    assert "QFrame#Identity > QWidget { background: transparent; }" in css
+    assert "QFrame#Identity QLabel { background: transparent; }" in css
 
 
 def test_identity_strip_shows_the_program_without_overflowing(app):

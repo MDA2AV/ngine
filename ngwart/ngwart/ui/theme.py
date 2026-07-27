@@ -98,13 +98,15 @@ QLabel#CardTitle {{
     padding: 2px 2px 6px 2px;
 }}
 
-/* --- status banner --- */
+/* --- status banner ---
+   Slimmer than it was. It still has to read from a metre away, which is a
+   function of type size and contrast, not of how much height it occupies. */
 QLabel#StatusBanner {{
-    font-size: 30pt;
+    font-size: 21pt;
     font-weight: 700;
-    letter-spacing: 1px;
-    padding: 14px 20px;
-    border-radius: 10px;
+    letter-spacing: 1.5px;
+    padding: 7px 18px;
+    border-radius: 8px;
     background: {c['elevated']};
     color: {c['text']};
 }}
@@ -248,6 +250,10 @@ QFrame#Identity {{
     border: none;
     border-bottom: 1px solid {c['border']};
 }}
+/* Children inherit the window background otherwise, which paints a darker
+   rectangle behind every group and makes the strip look like a row of boxes. */
+QFrame#Identity > QWidget {{ background: transparent; }}
+QFrame#Identity QLabel {{ background: transparent; }}
 QLabel#ProgramName {{
     font-size: 17pt; font-weight: 700; letter-spacing: -0.3px;
     color: {c['text']};

@@ -83,20 +83,26 @@ class MainWindow(QMainWindow):
 
         root = QWidget()
         layout = QVBoxLayout(root)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         layout.addWidget(self._build_header())
+
+        body = QWidget()
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(12, 8, 12, 8)
+        body_layout.setSpacing(8)
+
         self.banner = StatusBanner()
-        layout.addWidget(self.banner)
+        body_layout.addWidget(self.banner)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_operator_tab(), "Operator")
         self.tabs.addTab(self._build_program_tab(), "Program")
         self.tabs.addTab(self._build_verbs_tab(), "Verbs")
-        layout.addWidget(self.tabs, 1)
-
-        layout.addWidget(self._build_footer())
+        body_layout.addWidget(self.tabs, 1)
+        body_layout.addWidget(self._build_footer())
+        layout.addWidget(body, 1)
         self.setCentralWidget(root)
         if self.telemetry is not None:
             self.statusBar().showMessage(
@@ -189,7 +195,7 @@ class MainWindow(QMainWindow):
         frame = QFrame()
         frame.setObjectName("Identity")
         row = QHBoxLayout(frame)
-        row.setContentsMargins(18, 9, 18, 9)
+        row.setContentsMargins(16, 7, 16, 7)
         row.setSpacing(14)
 
         identity = QVBoxLayout()
@@ -403,8 +409,9 @@ class MainWindow(QMainWindow):
 
     def _build_footer(self) -> QWidget:
         card = Card()
+        card._layout.setContentsMargins(10, 7, 10, 7)
         row = QHBoxLayout()
-        row.setSpacing(14)
+        row.setSpacing(12)
 
         self.run_button = QPushButton("▶  RUN")
         self.run_button.setObjectName("Run")
