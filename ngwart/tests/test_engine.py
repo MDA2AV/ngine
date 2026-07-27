@@ -387,3 +387,59 @@ def test_result_event_reports_per_uut_verdicts():
     record, listener = run(program)
     results = listener.of_type(ResultEvent)
     assert results and results[-1].per_uut == {0: True, 1: False}
+
+
+# --- debug bundle -------------------------------------------------------
+
+def test_debug_bundle_captures_everything_needed_to_explain_a_run(tmp_path):
+    from ngwart.engine import RunOptions, Sequencer
+
+    program = build(
+        config=[["TestData", "initAlive", "1"]],
+        exec=[["TestData", "INITDATA", "4", "3", "2"],
+              ["Flow", "EVAFLOAT", "1.0,2.0", "9.9", "0,0,0;0,1,0;0,2,0",
+               "min", "0,VTEST"]],
+        teardown=[["Flow", "DISABLE_TIMER"]])
+    seq = Sequencer(REGISTRY, RecordingListener(),
+                    RunOptions(simulate=True, debug_dir=str(tmp_path)))
+    seq.run(program)
+
+    bundles = list(tmp_path.iterdir())
+    assert len(bundles) == 1
+    files = {f.name for f in bundles[0].iterdir()}
+    for expected in ("SUMMARY.txt", "log.txt", "run.json", "points.json",
+                     "datastore.json", "program.tsv", "validation.json",
+                     "environment.txt"):
+        assert expected in files, f"{expected} missing from the bundle"
+
+    summary = (bundles[0] / "SUMMARY.txt").read_text(encoding="utf-8")
+    assert "FAILED POINTS" in summary
+    assert "VTEST" in summary
+
+
+def test_debug_is_off_by_default():
+    program = build(exec=[["Flow", "LABEL", "A"]])
+    listener = RecordingListener()
+    seq = Sequencer(REGISTRY, listener, RunOptions(simulate=True))
+    seq.run(program)
+    assert not any("Debug bundle" in m for m in listener.messages())
+
+
+def test_a_diverted_run_does_not_report_pass():
+    """A run that jumps to an error handler skips tests -- it has not passed.
+
+    Without this a vision stage could raise, divert, skip every optical check,
+    and still report PASS on the measurements that ran before it.
+    """
+    program = build(
+        config=[["TestData", "initAlive", "1"]],
+        exec=[["TestData", "INITDATA", "4", "3", "2"],
+              ["Flow", "EVAFLOAT", "1.0,2.0", "1.5", "0,0,0;0,1,0;0,2,0",
+               "min", "0,GOOD"],
+              ["Flow", "DIV", "0,0,0", "1", "0", "", "", "OOPS"],
+              ["Flow", "J", "DONE"]],
+        ehandling=[["Flow", "LABEL", "OOPS"], ["Flow", "LABEL", "DONE"]])
+    record, _ = run(program)
+    assert record.diverted
+    assert not record.passed()          # overall verdict withheld
+    assert record.summary()["diverted_steps"] >= 1

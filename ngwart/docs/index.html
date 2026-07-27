@@ -302,6 +302,7 @@
       <li><a href="#validation">Validation</a></li>
       <li><a href="#serial">The serial matrix</a></li>
       <li><a href="#example">Worked example</a></li>
+      <li><a href="#debug">Debugging a failure</a></li>
       <li><a href="#sim">Simulation</a></li>
       <li><a href="#migrate">Migrating from v1</a></li>
       <li><a href="#arch">Architecture</a></li>
@@ -688,8 +689,39 @@ ok   85  UUT 0: PASS (4 point(s))
   UUT 1     PASS</code></pre>
     </section>
 
-    <section id="sim">
+    <section id="debug">
       <span class="sectionmark">§ 11</span>
+      <h2>Debugging a failure</h2>
+      <p>
+        Written for the question <em>"why did INTENSITY_A fail?"</em> — which a
+        log cannot answer and images can. The bundle holds the frame that was
+        captured, the binary it was thresholded to, the contours that came out,
+        and the search window the verb actually looked in.
+      </p>
+<pre><code>py run.py run TestTables/cargo.ods --debug   <span class="cm"># ./debug/&lt;name&gt;_&lt;stamp&gt;/</span></code></pre>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>File</th><th>Contains</th></tr></thead>
+          <tbody>
+            <tr><td><code>SUMMARY.txt</code></td><td>the verdict, and every failed point with its measured value and limits</td></tr>
+            <tr><td><code>images/</code></td><td>the capture, the thresholded binary, and contours drawn with the search window marked</td></tr>
+            <tr><td><code>evalcont_row&lt;N&gt;_&lt;TEST&gt;.json</code></td><td>the window searched, what was found, and every contour near it</td></tr>
+            <tr><td><code>contours_row&lt;N&gt;.json</code></td><td>centroid and area of every contour</td></tr>
+            <tr><td><code>datastore.json</code></td><td>every populated cell, with its variable name</td></tr>
+            <tr><td><code>log.txt</code>, <code>run.json</code></td><td>the full log; every step with timing and outcome</td></tr>
+            <tr><td><code>environment.txt</code></td><td>versions, and whether the vendor SDKs are present</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        In the UI, tick <strong>Debug bundle</strong> on the toolbar. Off by
+        default: it writes images, so it costs disk and a little time per vision
+        step.
+      </p>
+    </section>
+
+    <section id="sim">
+      <span class="sectionmark">§ 12</span>
       <h2>Simulation</h2>
       <p>
         <code>--simulate</code> swaps every backend for a model rather than a stub,
@@ -711,7 +743,7 @@ ok   85  UUT 0: PASS (4 point(s))
     </section>
 
     <section id="migrate">
-      <span class="sectionmark">§ 12</span>
+      <span class="sectionmark">§ 13</span>
       <h2>Migrating from v1</h2>
       <p>These steps are a sequence — each one depends on the last.</p>
       <ol>
@@ -774,7 +806,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
     </section>
 
     <section id="arch">
-      <span class="sectionmark">§ 13</span>
+      <span class="sectionmark">§ 14</span>
       <h2>Architecture</h2>
       <p>
         The engine never imports Qt, and the UI never touches the data store. That
@@ -828,7 +860,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
     </section>
 
     <section id="cli">
-      <span class="sectionmark">§ 14</span>
+      <span class="sectionmark">§ 15</span>
       <h2>Command reference</h2>
       <div class="scroller">
         <table>
@@ -852,6 +884,7 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
             <tr><td><code>--report path.xml</code></td><td>write XML, JSON or CSV by extension</td></tr>
             <tr><td><code>--no-strict</code></td><td>run despite validation errors — bench debugging only</td></tr>
             <tr><td><code>--warnings-as-errors</code></td><td>for <code>check</code> in CI</td></tr>
+            <tr><td><code>--debug [DIR]</code></td><td>write a debug bundle: captures, binaries, contour overlays, data store, full log</td></tr>
             <tr><td><code>--legacy DIR</code></td><td>use the site's own v1 hardware drivers instead of the bundled ones</td></tr>
             <tr><td><code>--legacy-only M1,M2</code></td><td>name exactly which modules <code>--legacy</code> takes</td></tr>
             <tr><td><code>--light</code></td><td>light theme for the UI</td></tr>

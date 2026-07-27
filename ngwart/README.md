@@ -145,6 +145,29 @@ exceptions are translated back into typed errors. Legacy verbs are opaque to the
 validator — it confirms they exist, not that their arguments are sane. Port the
 ones you touch most, in whatever order suits you.
 
+## Debugging a failed test
+
+```bash
+py run.py run TestTables/cargo.ods --debug          # writes ./debug/<name>_<stamp>/
+py run.py ui  TestTables/cargo.ods                  # or tick "Debug bundle"
+```
+
+Written for the question *"why did INTENSITY_A fail?"*, which a log cannot
+answer and images can:
+
+| File | |
+|---|---|
+| `SUMMARY.txt` | verdict, plus every failed point with its measured value and limits |
+| `images/` | the capture, the thresholded binary, and contours drawn with the search window marked |
+| `evalcont_row<N>_<TEST>.json` | the window searched, what was found, and every contour near it |
+| `contours_row<N>.json` | centroid and area of every contour |
+| `datastore.json` | every populated cell, with its variable name |
+| `log.txt`, `run.json` | the full log; every step with timing and outcome |
+| `validation.json`, `program.tsv`, `environment.txt` | diagnostics, the program as loaded, versions and SDK presence |
+
+Send the whole folder. Off by default -- it writes images, so it costs disk and
+a little time per vision step.
+
 ## Simulation
 
 `--simulate` swaps every backend for a model, not a stub: the supply tracks

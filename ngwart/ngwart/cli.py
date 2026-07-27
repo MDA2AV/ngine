@@ -30,6 +30,9 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--operator", default="")
     ui.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
     ui.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
+    ui.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
+                    help=_DEBUG_HELP)
+
 
     run = sub.add_parser("run", help="execute a program without a UI")
     run.add_argument("program")
@@ -40,6 +43,9 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--quiet", action="store_true")
     run.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
     run.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
+    run.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
+                    help=_DEBUG_HELP)
+
 
     check = sub.add_parser("check", help="validate a program")
     check.add_argument("program")
@@ -64,6 +70,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     return globals()[f"_cmd_{args.command}"](args)
 
+
+_DEBUG_HELP = (
+    "write a debug bundle: captures, binary images, contour overlays with the "
+    "search window drawn, every data cell, the full log and the run record. "
+    "Defaults to ./debug. This is what to send when a test fails unexpectedly."
+)
 
 _LEGACY_HELP = (
     "directory of v1 *Manager.py files whose HARDWARE drivers should replace the "
@@ -130,7 +142,7 @@ def _cmd_ui(args) -> int:
                 getattr(args, "legacy_only", None))
     return launch(program=args.program, simulate=args.simulate,
                   dark=not args.light, station=args.station,
-                  operator=args.operator)
+                  operator=args.operator, debug_dir=getattr(args, "debug", None))
 
 
 def _cmd_run(args) -> int:
@@ -151,7 +163,8 @@ def _cmd_run(args) -> int:
     recorder = RecordingListener()
     from .engine.events import FanOut
 
-    options = RunOptions(simulate=args.simulate, strict=not args.no_strict)
+    options = RunOptions(simulate=args.simulate, strict=not args.no_strict,
+                         debug_dir=getattr(args, "debug", None))
     sequencer = Sequencer(REGISTRY, FanOut(Printer(), recorder), options)
     record = sequencer.run(program)
 
@@ -165,6 +178,11 @@ def _cmd_run(args) -> int:
         print(f"  UUT {uut}     {'PASS' if ok else 'FAIL'}")
     if summary["aborted"]:
         print(f"  ABORTED   {summary['abort_reason']}")
+
+    if getattr(args, "debug", None):
+        print()
+        print("  Debug bundle written. Send the whole folder -- SUMMARY.txt "
+              "lists what is in it.")
 
     if args.report:
         from .reports import write_report

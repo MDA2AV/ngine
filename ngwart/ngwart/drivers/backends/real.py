@@ -218,9 +218,22 @@ class RealCamera:
             pass
         self._impl = None
 
-    def set_property(self, name: str, value) -> None:
-        if self._impl is None or self._kind != "opencv":
-            return
+    def set_property(self, name: str, value) -> bool:
+        """Apply a capture property. Returns False when it could not be.
+
+        Returning a status rather than silently ignoring the call is deliberate:
+        an unapplied AOI leaves the camera at its default geometry, which still
+        produces a perfectly good image -- of the wrong pixels. Every downstream
+        coordinate then misses, with nothing in the log to say why.
+
+        The mvIMPACT path reports False for everything: binning, centred-AOI
+        arithmetic and the User1 white-balance set are not expressible through
+        this generic interface. Use the site's BaluffManager via --legacy.
+        """
+        if self._impl is None:
+            return False
+        if self._kind != "opencv":
+            return False
         import cv2
 
         prop = {
@@ -234,8 +247,9 @@ class RealCamera:
             "wb_blue": cv2.CAP_PROP_WHITE_BALANCE_BLUE_U,
             "wb_red": cv2.CAP_PROP_WHITE_BALANCE_RED_V,
         }.get(name.lower())
-        if prop is not None:
-            self._impl.set(prop, float(value))
+        if prop is None:
+            return False
+        return bool(self._impl.set(prop, float(value)))
 
     def capture(self):
         if self._impl is None:

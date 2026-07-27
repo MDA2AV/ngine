@@ -104,6 +104,7 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
         _emit(ctx, row, grey)
         return
 
+    threshold = None
     if stage in ("bin", "cont"):
         if source == "bin":
             binary = grey
@@ -123,7 +124,16 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
 
     contours, _ = cv2.findContours(binary.astype(_np().uint8), cv2.RETR_TREE,
                                    cv2.CHAIN_APPROX_NONE)
-    ctx.log(f"{row.verb}: {len(contours)} contour(s) found")
+    ctx.log(f"{row.verb}: {len(contours)} contour(s) found "
+            f"(threshold {threshold}, frame {image.shape[1]}x{image.shape[0]})")
+    if ctx.debug:
+        ctx.debug.save_image(f"{row.verb}_source", image, row.index)
+        ctx.debug.save_image(f"{row.verb}_binary", binary, row.index)
+        ctx.debug.save_contours(f"{row.verb}_contours", image, contours, row.index)
+        ctx.debug.save_json(f"contours_row{row.index}.json",
+                            ctx.debug.describe_contours(contours))
+        ctx.debug.note(f"row {row.index} {row.verb}: threshold={threshold} "
+                       f"frame={image.shape} contours={len(contours)}")
     if not row.has(4):
         raise VerbError(f"{row.verb}: column 4 must name where to store the contours")
     ctx.set_data(row.raw(4), list(contours), stringify=False)
@@ -223,6 +233,22 @@ def evalcont(ctx, row):
 
     area, centroid = _find_at(cv2, contours, cx, cy, tol, cal)
     found = area is not None
+    if ctx.debug:
+        near = [d for d in ctx.debug.describe_contours(contours, cal)
+                if d["centroid"] and abs(d["centroid"][0] - cx) < tol * 8
+                and abs(d["centroid"][1] - cy) < tol * 8]
+        ctx.debug.save_json(f"evalcont_row{row.index}_{test_id}.json", {
+            "target": {"cx": cx, "cy": cy, "tol": tol,
+                       "minarea": minarea, "cal": cal},
+            "found": found, "area": area, "centroid": centroid,
+            "noise_floor": MIN_CONTOUR_PIXELS,
+            "contours_total": len(contours),
+            "contours_near_target": near,
+        })
+        ctx.debug.note(
+            f"row {row.index} {test_id}: window ({cx},{cy})+/-{tol} "
+            f"-> {'area ' + str(area) if found else 'NOT FOUND'}; "
+            f"{len(near)} contour(s) nearby")
     if found:
         ctx.log(f"{test_id}: contour at {centroid}, calibrated area {area}")
     else:

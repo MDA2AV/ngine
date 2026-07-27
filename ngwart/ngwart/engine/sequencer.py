@@ -56,6 +56,9 @@ class RunOptions:
     workdir: str = "."
     #: Emit a progress update at most this often, to keep the UI cheap.
     progress_interval_s: float = 0.1
+    #: Directory for a debug bundle, or None. Costs disk and a little time per
+    #: vision step, so it is opt-in.
+    debug_dir: str | None = None
 
 
 class Sequencer:
@@ -97,10 +100,28 @@ class Sequencer:
         )
         ctx.record = record
 
+        bundle, recorder = None, None
+        if self.options.debug_dir:
+            from .debug import DebugBundle
+            from .events import FanOut, RecordingListener
+
+            bundle = DebugBundle(self.options.debug_dir,
+                                 program.meta.get("name", "run"))
+            # The engine's own recorder, so log.txt is complete regardless of
+            # what the caller attached -- a FanOut or a Qt bridge cannot be
+            # replayed after the fact.
+            recorder = RecordingListener()
+            ctx.listener = FanOut(ctx.listener, recorder)
+            ctx.debug = bundle
+            bundle.write_program(program)
+            ctx.log(f"Debug bundle: {bundle.dir}")
+
         aborted, reason = False, ""
         try:
             self._emit(RunStateEvent("validating"))
             report = validate(program, self.registry)
+            if bundle:
+                bundle.write_diagnostics(report)
             for diag in report:
                 ctx.log(str(diag), "error" if diag.is_error else "warn")
             if self.options.strict and not report.ok:
@@ -127,6 +148,13 @@ class Sequencer:
         finally:
             self._run_teardown(ctx, program)
             record.finish(ctx.alive, aborted=aborted, reason=reason)
+            if bundle:
+                try:
+                    bundle.write_datastore(ctx)
+                    bundle.finish(record, recorder)
+                    ctx.log(f"Debug bundle written: {bundle.dir}")
+                except Exception as exc:  # noqa: BLE001 - never fail a run for this
+                    ctx.log(f"Debug bundle incomplete: {exc}", "warn")
             self._running.clear()
             self._emit(RunStateEvent("idle"))
             self._emit(ResultEvent(

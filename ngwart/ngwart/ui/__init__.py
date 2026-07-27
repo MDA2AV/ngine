@@ -7,7 +7,7 @@ from __future__ import annotations
 
 
 def launch(program: str | None = None, simulate: bool = False, dark: bool = True,
-           station: str = "", operator: str = "") -> int:
+           station: str = "", operator: str = "", debug_dir: str | None = None) -> int:
     """Start the operator station. Returns the Qt exit code."""
     try:
         from PySide6.QtWidgets import QApplication
@@ -26,6 +26,6 @@ def launch(program: str | None = None, simulate: bool = False, dark: bool = True
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("NGWART")
     window = MainWindow(program_path=program, simulate=simulate, dark=dark,
-                        station=station, operator=operator)
+                        station=station, operator=operator, debug_dir=debug_dir)
     window.show()
     return app.exec()

@@ -83,6 +83,10 @@ class Context:
         #: Structured record of everything that happened; feeds reports.
         self.record = None  # set by the sequencer
 
+        #: DebugBundle when --debug is on, else None. Drivers guard on it, so
+        #: the cost of the instrumentation is zero on a normal run.
+        self.debug = None
+
         self._lock = threading.RLock()
 
     # -- driver scratch ---------------------------------------------------

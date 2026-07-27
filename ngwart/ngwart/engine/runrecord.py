@@ -109,11 +109,28 @@ class RunRecord:
 
         Requiring a point to exist is deliberate: a run that fell over before
         testing anything must not be reported as a pass.
+
+        The overall verdict additionally requires that no step failed or was
+        diverted to an error handler. Without that, a run whose vision stage
+        raised and jumped to VISION_EX would skip every optical test and still
+        report PASS on the strength of the measurements that happened to run
+        before it -- which is precisely the failure a test station must never
+        make.
         """
         pts = self.points_for(uut) if uut is not None else list(self.points)
         if not pts:
             return False
-        return all(p.result != "FAIL" for p in pts)
+        if any(p.result == "FAIL" for p in pts):
+            return False
+        if uut is None and self.diverted:
+            return False
+        return True
+
+    @property
+    def diverted(self) -> bool:
+        """True when any step failed or was routed to an error handler."""
+        with self._lock:
+            return any(s.outcome in ("failed", "routed") for s in self.steps)
 
     def uuts(self) -> list[int]:
         with self._lock:
@@ -133,6 +150,8 @@ class RunRecord:
             "steps": len(self.steps),
             "points": len(self.points),
             "failed_points": sum(1 for p in self.points if p.result == "FAIL"),
+            "diverted_steps": sum(1 for s in self.steps
+                                  if s.outcome in ("failed", "routed")),
             "uuts": {str(u): self.passed(u) for u in self.uuts()},
             "barcodes": {str(k): v for k, v in self.barcodes.items()},
         }

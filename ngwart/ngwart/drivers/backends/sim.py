@@ -243,8 +243,13 @@ class SimCamera:
     def close(self) -> None:
         self._open = False
 
-    def set_property(self, name: str, value) -> None:
+    def set_property(self, name: str, value) -> bool:
         self.properties[name] = value
+        if name == "width":
+            self.width = max(1, int(value))
+        elif name == "height":
+            self.height = max(1, int(value))
+        return True
 
     def capture(self):
         try:

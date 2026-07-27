@@ -26,7 +26,8 @@ MAX_UUTS = 4
 
 class MainWindow(QMainWindow):
     def __init__(self, program_path: str | None = None, simulate: bool = False,
-                 dark: bool = True, station: str = "", operator: str = "") -> None:
+                 dark: bool = True, station: str = "", operator: str = "",
+                 debug_dir: str | None = None) -> None:
         super().__init__()
         self.setWindowTitle(f"NGWART {__version__} — Functional Test")
         self.resize(1500, 900)
@@ -38,6 +39,7 @@ class MainWindow(QMainWindow):
         self.dark = dark
         self.station = station
         self.operator = operator
+        self.debug_dir = debug_dir
         self._last_record = None
 
         self.bridge = QtBridge()
@@ -52,6 +54,7 @@ class MainWindow(QMainWindow):
         self._clock.timeout.connect(self._tick_clock)
 
         self.simulate_box.setChecked(simulate)
+        self.debug_box.setChecked(bool(debug_dir))
         if program_path:
             self.open_program(program_path)
 
@@ -94,11 +97,17 @@ class MainWindow(QMainWindow):
         bar.addAction(reload_action)
 
         bar.addSeparator()
+        self.debug_box = QCheckBox("Debug bundle")
+        self.debug_box.setToolTip(
+            "Write captures, binary images, contour overlays, the data store and "
+            "the full log to ./debug. Turn on when a test fails unexpectedly.")
+
         self.simulate_box = QCheckBox("Simulate hardware")
         self.simulate_box.setToolTip(
             "Run against simulated instruments. Reports produced in this mode "
             "are tagged, so they cannot be mistaken for a real run.")
         bar.addWidget(self.simulate_box)
+        bar.addWidget(self.debug_box)
 
         bar.addSeparator()
         theme_action = QAction("Toggle theme", self)
@@ -353,6 +362,7 @@ class MainWindow(QMainWindow):
             operator=self.operator,
             station=self.station,
             workdir=os.path.dirname(self.program.source or ".") or ".",
+            debug_dir=(self.debug_dir or "debug") if self.debug_box.isChecked() else None,
         )
         self.sequencer = Sequencer(REGISTRY, self.bridge, options)
         ctx = Context(self.program, self.bridge, simulate=options.simulate,

@@ -98,6 +98,7 @@ def _enumerate_real() -> list[str]:
 def setprops(ctx, row):
     """Apply capture properties."""
     cam = _get(ctx, ctx.text(row.raw(2)))
+    ignored: list[str] = []
     groups = {
         3: ("buffersize", "width", "height"),
         4: ("autofocus", "focus"),
@@ -112,10 +113,22 @@ def setprops(ctx, row):
             if value in ("", "-"):
                 continue
             try:
-                cam.set_property(name, float(value))
+                applied = cam.set_property(name, float(value))
             except ValueError:
                 raise VerbError(
                     f"SETPROPS: '{value}' is not a number for {name}") from None
+            if applied is False:
+                ignored.append(f"{name}={value}")
+    if ignored:
+        # A property the backend cannot apply must never pass silently. A camera
+        # left at its default geometry still captures a perfectly good image --
+        # of the wrong pixels -- so every downstream coordinate quietly misses.
+        raise VerbError(
+            f"SETPROPS: camera {ctx.text(row.raw(2))} ignored "
+            f"{', '.join(ignored)}. This backend cannot apply them, so the "
+            f"frame geometry would not match what the program expects. Run with "
+            f"--legacy <v1-src-dir> to use the site's own camera driver."
+        )
     ctx.log(f"Camera {ctx.text(row.raw(2))} configured.")
 
 
@@ -170,6 +183,11 @@ def capture(ctx, row):
     serial = ctx.text(row.raw(2))
     cam = _get(ctx, serial)
     frame = cam.capture()
+    shape = getattr(frame, "shape", None)
+    ctx.log(f"Camera {serial} captured {shape}")
+    if ctx.debug:
+        ctx.debug.save_image(f"capture_{serial}", frame, row.index)
+        ctx.debug.note(f"row {row.index} CAPTURE {serial}: shape={shape}")
 
     if row.has(3):
         path = ctx.text(row.raw(3))
