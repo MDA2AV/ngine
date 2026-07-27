@@ -211,6 +211,33 @@ Three properties it is built around:
 - **Telemetry failures are never test failures.** Every socket path swallows
   its own exceptions.
 
+## Statistics
+
+Every finished run is written to `ngwart-history.db` (SQLite, alongside the
+app; `--history PATH` to move it, `--history ""` to disable). The **Stats** tab
+then answers the questions a single run cannot.
+
+- **First-pass yield**, counted in *units*, not points. Counting points flatters
+  the figure: a board failing one test of twenty would read as 95% good rather
+  than as a reject.
+- **A Pareto of failures by test**, with the vital few marked. Click a bar to
+  drill into that test's history.
+- **Search** across every run by test id or barcode, filtered by result and
+  program.
+- **Scope** toggles between this session and all time.
+
+Simulated runs are excluded by default — folding dry runs into a yield figure
+would quietly corrupt the number that matters most.
+
+### About the Pareto
+
+The textbook Pareto puts counts on a left axis and cumulative percent on a
+right one. Two y-scales let the author place the crossover anywhere by choosing
+the scales, so the reader cannot trust the geometry. Here both share one
+0–100% axis: each bar is that test's *share of all failures*, the line is the
+running total, and the raw count sits on the bar. Bars therefore look shorter
+than in the classic form — that is the honest height, and nothing is lost.
+
 ## Debugging a failed test
 
 ```bash

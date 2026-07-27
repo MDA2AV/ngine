@@ -33,6 +33,9 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--operator", default="")
     ui.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
     ui.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
+    ui.add_argument("--history", metavar="DB",
+                    help="run-history database (default ngwart-history.db). "
+                         "Pass an empty string to disable.")
     ui.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
                     help=_DEBUG_HELP)
     ui.add_argument("--telemetry", nargs="?", const=DEFAULT_PORT, type=int,
@@ -227,7 +230,8 @@ def _cmd_ui(args) -> int:
                   dark=not args.light, station=args.station,
                   operator=args.operator, debug_dir=getattr(args, "debug", None),
                   telemetry_port=getattr(args, "telemetry", None),
-                  legacy_dir=getattr(args, "legacy", None))
+                  legacy_dir=getattr(args, "legacy", None),
+                  history_path=getattr(args, "history", None))
 
 
 def _cmd_run(args) -> int:

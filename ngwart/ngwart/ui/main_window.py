@@ -20,6 +20,7 @@ from ..engine.loaders import load
 from ..engine.program import Program
 from . import theme
 from .bridge import QtBridge
+from .stats import StatsTab
 from .widgets import (Badge, Card, LogView, ScanField, Stat,
                       StatusBanner, UutGrid)
 
@@ -31,7 +32,8 @@ class MainWindow(QMainWindow):
                  dark: bool = True, station: str = "", operator: str = "",
                  debug_dir: str | None = None,
                  telemetry_port: int | None = None,
-                 legacy_dir: str | None = None) -> None:
+                 legacy_dir: str | None = None,
+                 history_path: str | None = None) -> None:
         super().__init__()
         self.setWindowTitle(f"NGWART {__version__} — Functional Test")
         self.resize(1500, 900)
@@ -48,6 +50,14 @@ class MainWindow(QMainWindow):
         self._last_record = None
         self._points = 0
         self._failed = 0
+
+        # Yield, Pareto and "has this ever failed here" are questions about many
+        # runs, so they need a store that outlives the process.
+        self.history = None
+        if history_path != "":
+            from ..history import DEFAULT_PATH, History
+
+            self.history = History(history_path or DEFAULT_PATH)
 
         # Owned by the window, not by a run: a dashboard stays connected while
         # the operator swaps boards.
@@ -99,6 +109,8 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_operator_tab(), "Operator")
         self.tabs.addTab(self._build_program_tab(), "Program")
+        self.stats_tab = StatsTab(self.history)
+        self.tabs.addTab(self.stats_tab, "Stats")
         self.tabs.addTab(self._build_verbs_tab(), "Verbs")
         body_layout.addWidget(self.tabs, 1)
         body_layout.addWidget(self._build_footer())
@@ -152,7 +164,7 @@ class MainWindow(QMainWindow):
         view_menu = bar.addMenu("&View")
         for index, (name, key) in enumerate(
                 (("&Operator", "Ctrl+1"), ("&Program", "Ctrl+2"),
-                 ("&Verbs", "Ctrl+3"))):
+                 ("&Statistics", "Ctrl+3"), ("&Verbs", "Ctrl+4"))):
             self._action(view_menu, name,
                          lambda _=False, i=index: self.tabs.setCurrentIndex(i),
                          key)
@@ -464,6 +476,8 @@ class MainWindow(QMainWindow):
             if chip.isVisible():
                 self._set_scan(name, chip.text().split("  ", 1)[-1])
         self.uut_placeholder.setStyleSheet(f"color: {palette['muted']};")
+        if hasattr(self, "stats_tab"):
+            self.stats_tab.apply_palette(palette)
         self.banner.repaint_status()
         self._refresh_badges()
 
@@ -699,6 +713,13 @@ class MainWindow(QMainWindow):
         self._last_record = self.thread.record if self.thread else None
         self.save_report_action.setEnabled(self._last_record is not None)
 
+        if self.history is not None and self._last_record is not None:
+            run_id = self.history.add_run(self._last_record)
+            if run_id is None and self.history.error:
+                self.log.append(f"History not written: {self.history.error}",
+                                "warn")
+            self.stats_tab.note_run(run_id)
+
         for index, panel in enumerate(self.uut_grids):
             if index in per_uut:
                 panel.set_verdict("PASS" if per_uut[index] else "FAIL")
@@ -751,4 +772,6 @@ class MainWindow(QMainWindow):
             if self.sequencer:
                 self.sequencer.stop()
             self.thread.join(timeout=20)
+        if self.history is not None:
+            self.history.close()
         event.accept()
