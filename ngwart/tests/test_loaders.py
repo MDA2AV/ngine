@@ -136,16 +136,18 @@ def test_every_verb_used_by_cargo_resolves():
 
 
 @needs_cargo
-def test_module_less_rows_in_cargo_warn_but_do_not_block_loading():
-    """cargo.ods has rows whose module cell is blank.
+def test_module_less_rows_never_block_loading():
+    """A blank module cell is reported, skipped, and never fatal.
 
-    They are reported and skipped, not fatal -- the table still loads.
+    No count is asserted: cargo.ods is a live file the test engineer edits, so
+    pinning a number here would fail every time a row is fixed.
     """
     program = load(CARGO)
     report = validate(program)
-    blanks = [d for d in report.warnings if "has no module" in d.message]
-    assert len(blanks) >= 5
     assert not [d for d in report.errors if "has no module" in d.message]
+    for diag in report.warnings:
+        if "has no module" in diag.message:
+            assert "skipped" in diag.message
 
 
 # --- reports ------------------------------------------------------------

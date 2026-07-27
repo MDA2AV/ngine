@@ -343,3 +343,154 @@ def test_ui_and_engine_modules_are_excluded_from_legacy_override():
     from ngwart.cli import LEGACY_EXCLUDED
 
     assert {"UIManager", "FlowManager", "TestData"} <= LEGACY_EXCLUDED
+
+
+# --- EVALLEDS: faithful port of v1's K-means colour check ----------------
+
+def _led_ctx():
+    program = from_dict({"modules": {"Vision": "ImageProcessManager"},
+                         "exec": [["Flow", "LABEL", "A"]]}).finalize()
+    ctx = Context(program, simulate=True)
+    ctx.init_data(8, 3, 2)
+    ctx.init_alive(2)
+    ctx.record = RunRecord()
+    return ctx
+
+
+def _solid_frame(bgr, size=80):
+    np = pytest.importorskip("numpy")
+    frame = np.zeros((size, size, 3), dtype=np.uint8)
+    frame[:, :] = bgr
+    return frame
+
+
+def test_evalleds_passes_when_the_dominant_colour_matches_the_target():
+    pytest.importorskip("cv2")
+    ctx = _led_ctx()
+    ctx.set_data("0,0,0", _solid_frame((75, 221, 243)), stringify=False)
+    call(ctx, "Vision", "EVALLEDS",
+         row("Vision", "EVALLEDS", "*0,0,0", "40,40,20,4000",
+             "1,0,0;1,1,0;1,2,0", "75,221,243", "0,COLOR_A"))
+    assert ctx.get_data("1,1,0") == "PASS"
+    assert ctx.alive[0] == 1
+
+
+def test_evalleds_fails_and_kills_when_the_colour_is_wrong():
+    pytest.importorskip("cv2")
+    ctx = _led_ctx()
+    ctx.set_data("0,0,0", _solid_frame((10, 10, 200)), stringify=False)
+    call(ctx, "Vision", "EVALLEDS",
+         row("Vision", "EVALLEDS", "*0,0,0", "40,40,20,4000",
+             "1,0,0;1,1,0;1,2,0", "75,221,243", "0,COLOR_A"))
+    assert ctx.get_data("1,1,0") == "FAIL"
+    assert ctx.alive[0] == 0
+
+
+def test_evalleds_reads_a_path_from_the_data_cell(tmp_path):
+    """v1 stores a file path there and cv2.imread's it -- both forms must work."""
+    cv2 = pytest.importorskip("cv2")
+    ctx = _led_ctx()
+    path = str(tmp_path / "led.png")
+    cv2.imwrite(path, _solid_frame((75, 221, 243)))
+    ctx.set_data("0,0,0", path)
+    call(ctx, "Vision", "EVALLEDS",
+         row("Vision", "EVALLEDS", "*0,0,0", "40,40,20,4000",
+             "1,0,0;1,1,0;1,2,0", "75,221,243", "0,COLOR_A"))
+    assert ctx.get_data("1,1,0") == "PASS"
+
+
+def test_evalleds_uses_the_four_part_coordinate_form():
+    """x,y,crop_radius,threshold -- a 2-part form is a program error, not silent."""
+    pytest.importorskip("cv2")
+    ctx = _led_ctx()
+    ctx.set_data("0,0,0", _solid_frame((75, 221, 243)), stringify=False)
+    call(ctx, "Vision", "EVALLEDS",
+         row("Vision", "EVALLEDS", "*0,0,0", "40,40",
+             "1,0,0;1,1,0;1,2,0", "75,221,243", "0,COLOR_A"))
+    assert ctx.get_data("1,1,0") == "FAIL"
+
+
+def test_evalleds_tolerance_matches_v1():
+    from ngwart.drivers.imageproc import LED_CLUSTERS, LED_TOLERANCE
+
+    assert (LED_CLUSTERS, LED_TOLERANCE) == (3, 30)
+
+
+# --- EVALCONT: contour selection must match v1 ---------------------------
+
+def _contour_ctx():
+    program = from_dict({"modules": {"Vision": "ImageProcessManager"},
+                         "exec": [["Flow", "LABEL", "A"]]}).finalize()
+    ctx = Context(program, simulate=True)
+    ctx.init_data(8, 3, 2)
+    ctx.init_alive(2)
+    ctx.record = RunRecord()
+    return ctx
+
+
+def _blobs(*specs, size=400):
+    """Render filled circles and return their external contours."""
+    cv2 = pytest.importorskip("cv2")
+    np = pytest.importorskip("numpy")
+    img = np.zeros((size, size), dtype=np.uint8)
+    for cx, cy, r in specs:
+        cv2.circle(img, (cx, cy), r, 255, -1)
+    contours, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    return list(contours)
+
+
+def test_evalcont_picks_the_largest_in_window_contour_not_the_nearest():
+    """The bug that failed INTENSITY_A..F on the real fixture.
+
+    A small speck sits nearer the nominal centre than the blob being measured.
+    Selecting by proximity picks the speck and fails the area limit; v1 selects
+    by area and passes.
+    """
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 5), (208, 200, 30)), stringify=False)
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,40,500,1",
+             "1,0,0;1,1,0;1,2,0", "min", "0,INTENSITY_A"))
+    assert ctx.get_data("1,1,0") == "PASS"
+    assert ctx.alive[0] == 1
+
+
+def test_evalcont_ignores_contours_below_the_noise_floor():
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 3)), stringify=False)   # ~28 px
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,40,10,1",
+             "1,0,0;1,1,0;1,2,0", "min", "0,INTENSITY_A"))
+    assert ctx.get_data("1,1,0") == "FAIL"
+    assert ctx.get_data("1,0,0") == "NOT_FOUND"
+
+
+def test_evalcont_reports_not_found_rather_than_zero_area():
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((50, 50, 30)), stringify=False)
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "300,300,20,100,1",
+             "1,0,0;1,1,0;1,2,0", "min", "0,INTENSITY_B"))
+    assert ctx.get_data("1,0,0") == "NOT_FOUND"
+    assert ctx.alive[0] == 0
+
+
+def test_evalcont_applies_the_calibration_factor():
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 20)), stringify=False)  # ~1250 px
+    # raw area ~1250; x0.1 -> ~125, which clears a limit of 100.
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,30,100,0.1",
+             "1,0,0;1,1,0;1,2,0", "min", "0,CAL"))
+    assert ctx.get_data("1,1,0") == "PASS"
+    assert 100 < float(ctx.get_data("1,0,0")) < 200
+
+
+def test_test_id_ignores_a_trailing_grid_hint():
+    """cargo.ods writes '0,COLOR_A,min' -- the id is COLOR_A, not 'COLOR_A,min'."""
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 25)), stringify=False)
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,30,100,1",
+             "1,0,0;1,1,0;1,2,0", "min", "0,COLOR_A,min"))
+    assert ctx.record.points[0].name == "COLOR_A"

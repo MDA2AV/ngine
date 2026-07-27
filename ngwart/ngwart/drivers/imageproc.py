@@ -21,6 +21,14 @@ from ..engine.runrecord import TestPoint
 
 MODULE = "ImageProcessManager"
 
+#: EVALLEDS clustering parameters, carried over from v1 unchanged. They were
+#: tuned against real boards; changing them silently shifts every LED limit.
+LED_CLUSTERS = 3
+LED_TOLERANCE = 30
+
+#: Contours smaller than this are noise and never considered. v1's value.
+MIN_CONTOUR_PIXELS = 50
+
 
 def _cv2():
     try:
@@ -113,8 +121,8 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
         _emit(ctx, row, binary)
         return
 
-    contours, _ = cv2.findContours(binary.astype(_np().uint8), cv2.RETR_EXTERNAL,
-                                   cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(binary.astype(_np().uint8), cv2.RETR_TREE,
+                                   cv2.CHAIN_APPROX_NONE)
     ctx.log(f"{row.verb}: {len(contours)} contour(s) found")
     if not row.has(4):
         raise VerbError(f"{row.verb}: column 4 must name where to store the contours")
@@ -152,17 +160,41 @@ def _centroid(cv2, contour):
     return m["m10"] / m["m00"], m["m01"] / m["m00"]
 
 
-def _find_at(cv2, contours, cx: float, cy: float, tol: float):
-    """Nearest contour whose centroid sits within `tol` of (cx, cy)."""
-    best, best_d = None, None
+def _find_at(cv2, contours, cx: float, cy: float, tol: float, cal: float = 1.0):
+    """Largest in-window contour above the noise floor.
+
+    Matches v1's ``_detect_contour_at``. Two details matter and are not
+    interchangeable with "nearest":
+
+    * Selection is by **area**, not proximity. An area test wants the blob it is
+      measuring, and a stray speck closer to the nominal centre would otherwise
+      win and fail the limit.
+    * Contours smaller than MIN_CONTOUR_PIXELS are noise and never considered.
+
+    Returns (area_calibrated, centroid) or (None, None).
+    """
+    if contours is None:
+        contours = []
+
+    min_cx, min_cy = max(0, cx - tol), max(0, cy - tol)
+    max_cx, max_cy = cx + tol, cy + tol
+
+    best_area, best_centroid = None, None
     for contour in contours:
-        centre = _centroid(cv2, contour)
-        if centre is None:
+        raw = cv2.contourArea(contour)
+        if raw < MIN_CONTOUR_PIXELS:
             continue
-        distance = max(abs(centre[0] - cx), abs(centre[1] - cy))
-        if distance <= tol and (best_d is None or distance < best_d):
-            best, best_d = contour, distance
-    return best
+        moments = cv2.moments(contour)
+        if moments["m00"] == 0:
+            continue
+        _cx = int(moments["m10"] / moments["m00"])
+        _cy = int(moments["m01"] / moments["m00"])
+        if not (min_cx <= _cx <= max_cx and min_cy <= _cy <= max_cy):
+            continue
+        area = raw * cal
+        if best_area is None or area > best_area:
+            best_area, best_centroid = area, (_cx, _cy)
+    return best_area, best_centroid
 
 
 @verb(MODULE, "MEASCONT", params=[p(2, "contours"), p(3, "target", doc="cx,cy,tol"),
@@ -172,8 +204,8 @@ def meascont(ctx, row):
     cv2 = _cv2()
     contours = ctx.content(row.raw(2)) or []
     cx, cy, tol = _floats(ctx, row.raw(3), 3, "MEASCONT")
-    found = _find_at(cv2, contours, cx, cy, tol)
-    area = cv2.contourArea(found) if found is not None else 0.0
+    area, _ = _find_at(cv2, contours, cx, cy, tol)
+    area = area if area is not None else 0.0
     ctx.log(f"MEASCONT at ({cx}, {cy}): area {area}")
     ctx.set_data(row.raw(4), area)
 
@@ -189,12 +221,17 @@ def evalcont(ctx, row):
     cx, cy, tol, minarea, cal = _floats(ctx, row.raw(3), 5, "EVALCONT")
     kill_index, test_id = _kill_and_id(ctx, row)
 
-    found = _find_at(cv2, contours, cx, cy, tol)
-    area = cv2.contourArea(found) * cal if found is not None else 0.0
-    result = "PASS" if found is not None and area > minarea else "FAIL"
-    _publish(ctx, row, kill_index, test_id, result, area, minarea)
-    if row.has(4):
-        ctx.set_data(row.raw(4), result)
+    area, centroid = _find_at(cv2, contours, cx, cy, tol, cal)
+    found = area is not None
+    if found:
+        ctx.log(f"{test_id}: contour at {centroid}, calibrated area {area}")
+    else:
+        ctx.log(f"{test_id}: no contour within {tol}px of ({cx}, {cy})", "warn")
+
+    result = "PASS" if found and area > minarea else "FAIL"
+    measured = area if found else "NOT_FOUND"
+    _publish(ctx, row, kill_index, test_id, result, measured, minarea)
+    _store_triplet(ctx, row, measured, result, test_id)
 
 
 @verb(MODULE, "EVALCONTN",
@@ -208,12 +245,11 @@ def evalcontn(ctx, row):
     cx, cy, tol, minarea, cal = _floats(ctx, row.raw(3), 5, "EVALCONTN")
     kill_index, test_id = _kill_and_id(ctx, row)
 
-    found = _find_at(cv2, contours, cx, cy, tol)
-    area = cv2.contourArea(found) * cal if found is not None else 0.0
-    result = "PASS" if found is None or area <= minarea else "FAIL"
-    _publish(ctx, row, kill_index, test_id, result, area, minarea)
-    if row.has(4):
-        ctx.set_data(row.raw(4), result)
+    area, _ = _find_at(cv2, contours, cx, cy, tol, cal)
+    result = "PASS" if area is None or area <= minarea else "FAIL"
+    measured = area if area is not None else "NOT_FOUND"
+    _publish(ctx, row, kill_index, test_id, result, measured, minarea)
+    _store_triplet(ctx, row, measured, result, test_id)
 
 
 @verb(MODULE, "EVALCONTS",
@@ -234,9 +270,9 @@ def evalconts(ctx, row):
 
     results = []
     for i, (cx, cy, minarea) in enumerate(zip(xs, ys, areas)):
-        found = _find_at(cv2, contours, cx, cy, tol)
-        area = cv2.contourArea(found) if found is not None else 0.0
-        ok = found is not None and area > minarea
+        area, _ = _find_at(cv2, contours, cx, cy, tol)
+        ok = area is not None and area > minarea
+        area = area if area is not None else 0.0
         results.append("PASS" if ok else "FAIL")
         ctx.log(f"EVALCONTS[{i}] at ({cx}, {cy}): area {area} -> {results[-1]}",
                 "pass" if ok else "fail")
@@ -244,52 +280,137 @@ def evalconts(ctx, row):
 
 
 @verb(MODULE, "EVALLEDS",
-      params=[p(2, "image"), p(3, "coords", doc="'cx,cy;cx,cy;...' or an index"),
-              p(4, "dest"), p(5, "extra", required=False),
-              p(6, "kill_and_id")])
+      params=[p(2, "image", doc="path or image held in the data store"),
+              p(3, "leds", doc="'x,y,crop_radius,threshold;...' one group per LED"),
+              p(4, "result_indexes", doc="value;result;id"),
+              p(5, "target_bgr", doc="blue,green,red"),
+              p(6, "kill_and_id", doc="kill_index,test_id")])
 def evalleds(ctx, row):
-    """Check that each named site is lit.
+    """Judge LED colour by K-means dominant-colour clustering.
 
-    Brightness is sampled in a small patch and compared against the frame's own
-    median, so the check survives a change in ambient light -- v1 used a fixed
-    threshold and had to be re-tuned per fixture.
+    A faithful port of v1's ImageProcessManager.EVALLEDS. Each LED site is
+    cropped, K-means (K=3) finds its dominant colours, and the LED passes when a
+    cluster centre lands within TOLERANCE of the target BGR.
+
+    Two v1 behaviours are reproduced deliberately rather than "improved":
+
+    * The colour comparison runs on ``center`` from the **last** LED in the list,
+      because v1 tests it after the loop rather than inside it. With one LED per
+      row -- which is how cargo.ods calls it -- this makes no difference.
+    * ``overall_pass`` only goes false on malformed coordinates or an empty crop,
+      not on colour; the colour verdict is the post-loop check.
+
+    Changing either would silently shift limits that were tuned against real
+    boards, so they stay until someone re-qualifies them against real images.
     """
+    cv2 = _cv2()
     np = _np()
-    image = _load(ctx, row, data_col=2, path_col=2)
+
+    frame = _load_frame(ctx, row.raw(2), row.verb)
+    coords = [c.strip() for c in str(ctx.text(row.raw(3))).split(";") if c.strip()]
+    if not coords:
+        raise VerbError("EVALLEDS: no LED coordinates given")
+
+    target = [t.strip() for t in str(ctx.text(row.raw(5))).split(",")]
+    if len(target) < 3:
+        raise VerbError(
+            f"EVALLEDS: column 5 must be 'blue,green,red', got '{row.raw(5)}'")
+    try:
+        target_bgr = [int(float(t)) for t in target[:3]]
+    except ValueError:
+        raise VerbError(f"EVALLEDS: target colour '{row.raw(5)}' is not numeric") from None
+
     kill_index, test_id = _kill_and_id(ctx, row)
+    cells = [c.strip() for c in ctx.text(row.raw(4)).split(";") if c.strip()]
 
-    grey = image if image.ndim == 2 else _cv2().cvtColor(image, _cv2().COLOR_BGR2GRAY)
-    baseline = float(np.median(grey))
+    overall_pass = True
+    centres = None
+    height, width = frame.shape[:2]
 
-    sites = []
-    for pair in str(ctx.text(row.raw(3))).split(";"):
-        pair = pair.strip()
-        if not pair:
+    for index, item in enumerate(coords):
+        parts = [x.strip() for x in item.split(",")]
+        if len(parts) < 4:
+            ctx.log(f"EVALLEDS: LED {index} needs 'x,y,crop_radius,threshold', "
+                    f"got '{item}'", "warn")
+            overall_pass = False
             continue
-        parts = [x.strip() for x in pair.split(",")]
-        if len(parts) < 2:
-            raise VerbError(f"EVALLEDS: '{pair}' is not 'cx,cy'")
-        sites.append((float(parts[0]), float(parts[1])))
-    if not sites:
-        raise VerbError("EVALLEDS: no coordinates given")
+        try:
+            x, y, crop_radius = (int(float(parts[0])), int(float(parts[1])),
+                                 int(float(parts[2])))
+        except ValueError:
+            ctx.log(f"EVALLEDS: LED {index} has non-numeric coordinates '{item}'",
+                    "warn")
+            overall_pass = False
+            continue
 
-    results, half = [], 6
-    for i, (cx, cy) in enumerate(sites):
-        x0, x1 = max(int(cx) - half, 0), min(int(cx) + half, grey.shape[1])
-        y0, y1 = max(int(cy) - half, 0), min(int(cy) + half, grey.shape[0])
-        if x0 >= x1 or y0 >= y1:
-            raise VerbError(f"EVALLEDS: site ({cx}, {cy}) is outside the image")
-        patch = float(grey[y0:y1, x0:x1].mean())
-        lit = patch > baseline * 1.5
-        results.append("PASS" if lit else "FAIL")
-        ctx.log(f"LED {i} at ({cx}, {cy}): {patch:.1f} vs baseline {baseline:.1f} "
-                f"-> {results[-1]}", "pass" if lit else "fail")
+        x1, y1 = max(x - crop_radius, 0), max(y - crop_radius, 0)
+        x2, y2 = min(x + crop_radius, width), min(y + crop_radius, height)
+        cropped = frame[y1:y2, x1:x2]
+        if cropped.size == 0:
+            ctx.log(f"EVALLEDS: LED {index} crop at ({x}, {y}) is empty -- "
+                    f"outside the {width}x{height} image", "warn")
+            overall_pass = False
+            continue
 
-    overall = "PASS" if all(r == "PASS" for r in results) else "FAIL"
-    if row.has(4):
-        ctx.set_data(row.raw(4), overall)
-    _publish(ctx, row, kill_index, test_id, overall,
-             results.count("PASS"), len(results))
+        samples = cropped.reshape((-1, 3)).astype(np.float32)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        _, labels, centre = cv2.kmeans(samples, LED_CLUSTERS, None, criteria, 10,
+                                       cv2.KMEANS_RANDOM_CENTERS)
+        centres = centre.astype(np.uint8)
+        counts = np.bincount(labels.flatten(), minlength=LED_CLUSTERS)
+        dominant = centres[int(counts.argmax())]
+        ctx.log(f"EVALLEDS: LED {index} at ({x}, {y}) dominant BGR "
+                f"{list(int(v) for v in dominant)}")
+
+    colour = ""
+    matched = False
+    if overall_pass and centres is not None:
+        for centre in centres:
+            if all(target_bgr[i] - LED_TOLERANCE <= int(centre[i])
+                   <= target_bgr[i] + LED_TOLERANCE for i in range(3)):
+                colour = "-".join(str(int(centre[i])) for i in range(3)) + "-"
+                matched = True
+                break
+
+    result = "PASS" if matched else "FAIL"
+    ctx.log(f"{test_id}: target BGR {target_bgr} +/-{LED_TOLERANCE} -> {result}"
+            + (f" (matched {colour})" if matched else ""),
+            "pass" if matched else "fail")
+
+    for cell, value in zip(cells, [colour, result, test_id]):
+        ctx.set_data(cell, value)
+
+    low = "-".join(str(v - LED_TOLERANCE) for v in target_bgr)
+    high = "-".join(str(v + LED_TOLERANCE) for v in target_bgr)
+    ctx.record.add_point(TestPoint(
+        name=test_id, uut=kill_index, result=result,
+        measured=colour or "no match", low=low, high=high, row=row.index))
+    if kill_index is not None:
+        ctx.emit(GridEvent(
+            grid=kill_index + 1, op="add", tag=result,
+            values=[test_id, str(kill_index + 1), low, high,
+                    colour or "no match", result]))
+        if result == "FAIL":
+            ctx.kill(kill_index, reason=test_id)
+
+
+def _load_frame(ctx, cell: str, what: str):
+    """Resolve an image cell that may hold either a path or an array.
+
+    v1's EVALLEDS calls getImage("-", content, UI), which falls through to
+    cv2.imread -- so the data cell holds a *path*. Other verbs store the frame
+    itself. Accepting both means a table works either way.
+    """
+    value = ctx.content(cell)
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise VerbError(f"{what}: {cell} holds no image")
+    if isinstance(value, str):
+        cv2 = _cv2()
+        frame = cv2.imread(value)
+        if frame is None:
+            raise VerbError(f"{what}: cannot read image '{value}'")
+        return frame
+    return value
 
 
 @verb(MODULE, "MASSCROP",
@@ -354,9 +475,16 @@ def _kill_and_id(ctx, row) -> tuple[int | None, str]:
     if len(parts) < 2:
         raise VerbError(f"{row.verb}: column 6 must be 'kill_index,test_id'")
     try:
-        return int(parts[0]), ",".join(parts[1:])
+        return int(parts[0]), parts[1]
     except ValueError:
         raise VerbError(f"{row.verb}: '{parts[0]}' is not a UUT index") from None
+
+
+def _store_triplet(ctx, row, measured, result, test_id) -> None:
+    """Write value/result/id into the ';'-separated destinations of column 4."""
+    cells = [c.strip() for c in ctx.text(row.raw(4)).split(";") if c.strip()]
+    for cell, value in zip(cells, [measured, result, test_id]):
+        ctx.set_data(cell, value)
 
 
 def _publish(ctx, row, kill_index, test_id, result, measured, limit) -> None:
