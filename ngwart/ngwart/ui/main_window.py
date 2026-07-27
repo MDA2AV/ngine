@@ -303,6 +303,7 @@ class MainWindow(QMainWindow):
             "No units yet.\n\n"
             "Panels appear once a program declares how many units the "
             "fixture holds.")
+        self.uut_placeholder.setObjectName("Placeholder")
         self.uut_placeholder.setAlignment(Qt.AlignCenter)
         self.uut_placeholder.setWordWrap(True)
         self.grid_layout.addWidget(self.uut_placeholder, 0, 0)
@@ -429,12 +430,21 @@ class MainWindow(QMainWindow):
         self.progress.setRange(0, 1000)
         self.progress.setValue(0)
 
+        self.progress_label = QLabel("0%")
+        self.progress_label.setObjectName("StatValue")
+        self.progress_label.setMinimumWidth(56)
+        self.progress_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
         self.step_label = QLabel("—")
+        self.step_label.setObjectName("ProgramMeta")
         self.step_label.setFont(QFont(theme.MONO.split(",")[0], 9))
 
         row.addWidget(self.run_button)
         row.addWidget(self.stop_button)
+        row.addSpacing(theme.SPACE["sm"])
         row.addWidget(self.progress, 1)
+        row.addWidget(self.progress_label)
+        row.addSpacing(theme.SPACE["md"])
         row.addWidget(self.step_label, 2)
         card.add_layout(row)
         return card
@@ -454,7 +464,7 @@ class MainWindow(QMainWindow):
             if chip.isVisible():
                 self._set_scan(name, chip.text().split("  ", 1)[-1])
         self.uut_placeholder.setStyleSheet(f"color: {palette['muted']};")
-        self.banner.show_status(self.banner.text())
+        self.banner.repaint_status()
         self._refresh_badges()
 
     def _toggle_theme(self) -> None:
@@ -495,6 +505,9 @@ class MainWindow(QMainWindow):
             bits.append(f"operator {self.operator}")
         self.program_meta.setText("  ·  ".join(bits))
         self.program_meta.setToolTip(os.path.abspath(path))
+        self.setWindowTitle(
+            f"{program.meta.get('name', os.path.basename(path))} — "
+            f"NGWART {__version__}")
 
         from ..engine.validator import _declared_alive_size
 
@@ -630,9 +643,12 @@ class MainWindow(QMainWindow):
     def _on_progress(self, value: float) -> None:
         if value < 0:
             self.progress.setRange(0, 0)          # indeterminate
+            self.progress_label.setText("··")
         else:
+            fraction = max(0.0, min(value, 1.0))
             self.progress.setRange(0, 1000)
-            self.progress.setValue(int(max(0.0, min(value, 1.0)) * 1000))
+            self.progress.setValue(int(fraction * 1000))
+            self.progress_label.setText(f"{fraction * 100:.0f}%")
 
     def _on_grid(self, grid: int, op: str, values: list, tag: str, config: dict) -> None:
         index = grid - 1
@@ -668,6 +684,13 @@ class MainWindow(QMainWindow):
 
     def _on_finished(self, passed: bool, per_uut: dict, detail: str) -> None:
         palette = theme.palette(self.dark)
+        record = self.thread.record if self.thread else None
+        if record is not None:
+            summary = record.summary()
+            self.statusBar().showMessage(
+                f"{summary['points']} points · {summary['failed_points']} failed"
+                f" · {summary['duration_s']}s"
+                + (f" · {summary['abort_reason']}" if summary["aborted"] else ""))
         self.run_button.setEnabled(True)
         self.stop_button.setEnabled(False)
         self.start_action.setEnabled(True)

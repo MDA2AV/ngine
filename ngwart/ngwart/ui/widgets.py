@@ -5,10 +5,18 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel,
-                               QPlainTextEdit, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+                               QHeaderView, QPlainTextEdit, QTableWidget,
+                               QTableWidgetItem, QVBoxLayout, QWidget)
 
 from . import theme
+
+
+def _looks_numeric(text: str) -> bool:
+    try:
+        float(text)
+        return True
+    except (TypeError, ValueError):
+        return False
 
 #: Cap the log so a long production shift cannot grow it without bound. v1's
 #: Tk text widget accumulated every line until the process was restarted.
@@ -47,12 +55,21 @@ class StatusBanner(QLabel):
         self.setWordWrap(False)
         self.setMinimumHeight(46)
         self._palette = theme.palette(True)
+        # Remembered so a theme change can repaint without being told the
+        # colour again -- otherwise toggling the theme mid-run silently drops a
+        # PASS or FAIL back to neutral grey.
+        self._colour: str | None = None
 
     def set_palette_colours(self, colours: dict) -> None:
         self._palette = colours
 
+    def repaint_status(self) -> None:
+        """Re-apply the current state under a new palette."""
+        self.show_status(self.text(), self._colour)
+
     def show_status(self, text: str, colour: str | None = None) -> None:
         self.setText(text or "")
+        self._colour = colour
         background = colour or self._palette["elevated"]
         foreground = _readable_on(background)
         self.setStyleSheet(
@@ -100,12 +117,23 @@ class UutGrid(Card):
         self._tag_colours: dict[str, str] = {}
         self._columns: list[str] = ["Test", "Device", "Min", "Max", "Value", "Result"]
 
+        self.passed = 0
+        self.failed = 0
+
         header = QHBoxLayout()
-        self.title = QLabel(f"UUT {index}")
-        self.title.setFont(QFont(theme.SANS.split(",")[0], 12, QFont.Bold))
+        header.setSpacing(theme.SPACE["sm"])
+        self.number = QLabel(f"{index + 1:02d}")
+        self.number.setObjectName("UnitNumber")
+        self.title = QLabel("UNIT")
+        self.title.setObjectName("CardTitle")
+        self.count = QLabel("")
+        self.count.setObjectName("UnitCount")
         self.verdict = VerdictChip()
+
+        header.addWidget(self.number)
         header.addWidget(self.title)
         header.addStretch(1)
+        header.addWidget(self.count)
         header.addWidget(self.verdict)
         self.add_layout(header)
 
@@ -115,7 +143,13 @@ class UutGrid(Card):
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QAbstractItemView.NoSelection)
-        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setShowGrid(False)
+        self.table.setFocusPolicy(Qt.NoFocus)
+        self.table.verticalHeader().setDefaultSectionSize(24)
+        head = self.table.horizontalHeader()
+        head.setStretchLastSection(True)
+        head.setSectionResizeMode(0, QHeaderView.Stretch)
+        head.setHighlightSections(False)
         self.add(self.table, 1)
 
     # -- engine operations ------------------------------------------------
@@ -125,6 +159,8 @@ class UutGrid(Card):
             self._add(values, tag)
         elif op == "clear":
             self.table.setRowCount(0)
+            self.passed = self.failed = 0
+            self._update_count()
             self.verdict.set_state("--")
         elif op == "config":
             self._configure(config)
@@ -146,16 +182,54 @@ class UutGrid(Card):
     def _add(self, values: list[str], tag: str) -> None:
         row = self.table.rowCount()
         self.table.insertRow(row)
+        self.table.setRowHeight(row, 24)
+
+        key = (tag or "").strip().upper()
         colour = self._colour_for(tag)
+        last = self.table.columnCount() - 1
+
         for column in range(self.table.columnCount()):
-            text = values[column] if column < len(values) else ""
-            item = QTableWidgetItem(str(text))
-            if colour:
-                item.setForeground(QColor(colour))
-            if column >= len(self._columns) - 1:
-                item.setFont(QFont(theme.MONO.split(",")[0], 10, QFont.Bold))
+            text = str(values[column]) if column < len(values) else ""
+            item = QTableWidgetItem(text)
+
+            # Numbers right-align on the decimal so a column of measurements
+            # can be scanned down; names stay left.
+            if column and _looks_numeric(text):
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            else:
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+            if column == last:
+                # Only the verdict is coloured. Tinting the whole row makes a
+                # table of mostly-passing results into a wall of green, and the
+                # one failure stops standing out.
+                font = QFont(theme.MONO.split(",")[0], 10)
+                font.setBold(True)
+                item.setFont(font)
+                if colour:
+                    item.setForeground(QColor(colour))
+            elif key == "FAIL":
+                item.setForeground(QColor(self._palette["text"]))
+            else:
+                item.setForeground(QColor(self._palette["muted"]))
+
             self.table.setItem(row, column, item)
+
+        if key == "PASS":
+            self.passed += 1
+        elif key == "FAIL":
+            self.failed += 1
+        self._update_count()
         self.table.scrollToBottom()
+
+    def _update_count(self) -> None:
+        total = self.passed + self.failed
+        if not total:
+            self.count.setText("")
+        elif self.failed:
+            self.count.setText(f"{self.failed} FAILED OF {total}")
+        else:
+            self.count.setText(f"{total} PASSED")
 
     def _colour_for(self, tag: str) -> str | None:
         key = (tag or "").strip().upper()

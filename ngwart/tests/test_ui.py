@@ -247,3 +247,55 @@ def test_report_action_is_disabled_until_a_run_has_happened(app):
     assert window.start_action.isEnabled()
     assert not window.stop_action.isEnabled()
     window.close()
+
+
+def test_theme_toggle_keeps_the_verdict_colour(app):
+    """Toggling the theme mid-run must not drop a PASS back to neutral grey."""
+    from ngwart.ui import theme
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    green = theme.palette(window.dark)["pass"]
+    window.banner.show_status("PASS", green)
+    assert green.lower() in window.banner.styleSheet().lower()
+
+    window._toggle_theme()
+    assert window.banner._colour == green
+    assert green.lower() in window.banner.styleSheet().lower()
+    window.close()
+
+
+def test_design_tokens_are_a_single_scale():
+    """Values outside the scale are how a dense UI drifts out of alignment."""
+    from ngwart.ui import theme
+
+    assert set(theme.SPACE) == {"xs", "sm", "md", "lg", "xl"}
+    assert sorted(theme.SPACE.values()) == [4, 8, 12, 16, 24]
+    assert set(theme.RADIUS) == {"control", "panel", "pill"}
+    for role in ("display", "title", "body", "data", "figure", "caption"):
+        assert role in theme.TYPE
+
+
+def test_semantic_colours_are_not_the_accent():
+    """A verdict must never read as branding."""
+    from ngwart.ui import theme
+
+    for dark in (True, False):
+        c = theme.palette(dark)
+        assert c["pass"] != c["accent"]
+        assert c["fail"] != c["accent"]
+        assert c["warn"] != c["accent"]
+
+
+def test_unit_panel_summarises_its_own_results(app):
+    from ngwart.ui.widgets import UutGrid
+
+    panel = UutGrid(0)
+    panel.apply("config", [], "", {"columns": ["Test", "Value", "Result"]})
+    panel.apply("add", ["VBAT", "13.5", "PASS"], "PASS", {})
+    panel.apply("add", ["ILOAD", "9.9", "FAIL"], "FAIL", {})
+    assert panel.passed == 1 and panel.failed == 1
+    assert "1 FAILED OF 2" in panel.count.text()
+
+    panel.apply("clear", [], "", {})
+    assert panel.count.text() == ""
