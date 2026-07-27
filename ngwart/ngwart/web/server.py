@@ -51,8 +51,14 @@ class WebServer:
         self.program_dir = program_dir
 
         # The event fan-out is the telemetry server's job; it already handles
-        # client queues, backlog replay and dropping clients that fall behind.
-        self.events = TelemetryServer(port=0, host=host, backlog=BACKLOG)
+        # client queues and dropping clients that fall behind. Its raw-event
+        # backlog is switched off here: a new client gets the accumulated model
+        # instead, which is complete rather than merely recent.
+        self.events = TelemetryServer(port=0, host=host, backlog=0)
+
+        from .live import LiveModel
+
+        self.live = LiveModel()
 
         self._server: socket.socket | None = None
         self._thread: threading.Thread | None = None
@@ -100,7 +106,8 @@ class WebServer:
             self._thread.join(timeout=2)
 
     def emit(self, event) -> None:
-        """Listener protocol -- forward engine events to connected clients."""
+        """Listener protocol -- fold into the model, then forward."""
+        self.live.observe(event)
         self.events.emit(event)
 
     # -- accept -----------------------------------------------------------
@@ -188,13 +195,15 @@ class WebServer:
         client = _Client(conn, websocket=True)
         with self.events._lock:                      # noqa: SLF001
             self.events._clients.append(client)      # noqa: SLF001
-            snapshot = dict(self.events._snapshot)   # noqa: SLF001
-            backlog = list(self.events._backlog)     # noqa: SLF001
         client.start()
-        client.send(json.dumps({**snapshot, "type": "snapshot",
-                                "state": self.station.state()}, default=str))
-        for payload in backlog:
-            client.send(json.dumps(payload, default=str))
+
+        # One frame with the whole picture: station state plus everything the
+        # run has accumulated. The client renders that, then follows the live
+        # stream. Replaying raw events instead meant a browser opened partway
+        # through a long program saw only its most recent results.
+        client.send(json.dumps({"type": "snapshot",
+                                "state": self.station.state(),
+                                "live": self.live.snapshot()}, default=str))
         return True
 
     # -- routing ----------------------------------------------------------

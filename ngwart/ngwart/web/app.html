@@ -251,10 +251,16 @@ function buildUnits(n) {
     host.style.gridTemplateColumns = "1fr";
     return;
   }
-  // Tile so every panel gets a share of the height rather than the container
-  // scrolling: 1 unit full width, 2 side by side, 3-4 as a 2x2.
-  const wide = window.innerWidth > 1200;
-  const cols = (n === 1 || !wide) ? 1 : 2;
+  relayout(n);
+}
+
+/* Tile so every panel gets a share of the height rather than the container
+   scrolling: 1 unit full width, 2 side by side, 3-4 as a 2x2. Kept separate
+   from buildUnits so a resize never touches the panel list. */
+function relayout(n) {
+  if (!n) return;
+  const host = $("units");
+  const cols = (n === 1 || window.innerWidth <= 1200) ? 1 : 2;
   host.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   host.style.gridTemplateRows = `repeat(${Math.ceil(n / cols)}, minmax(0, 1fr))`;
 }
@@ -293,6 +299,84 @@ function log(msg, level, row) {
   if (stick) box.scrollTop = box.scrollHeight;
 }
 
+
+/* Render the accumulated run. Called on every (re)connect, so a browser opened
+   halfway through -- or one that dropped and came back -- shows the whole run
+   rather than whatever happened to sit in a recent-events window. */
+function restore(live) {
+  const grids = live.grids || {};
+  const highest = Object.keys(grids).map(Number)
+                        .reduce((a, b) => Math.max(a, b), 0);
+  buildUnits(Math.max(live.alive ? live.alive.length : 0, highest));
+
+  state.points = live.points || 0;
+  state.failed = live.failed || 0;
+  $("points").textContent = state.points;
+  $("failed").textContent = state.failed;
+  $("failed").style.color = state.failed ? "var(--fail)" : "";
+  $("elapsed").textContent = (live.elapsed || 0).toFixed(1) + "s";
+
+  for (const key of Object.keys(grids)) {
+    const grid = grids[key];
+    const i = Number(key) - 1;
+    if (i < 0) continue;
+    if (grid.columns && grid.columns.length && $("head" + i)) {
+      $("head" + i).innerHTML = "<tr>"
+        + grid.columns.map(c => "<th>" + c + "</th>").join("") + "</tr>";
+    }
+    const body = $("rows" + i);
+    if (!body) continue;
+    body.innerHTML = "";
+    (grid.rows || []).forEach(r => body.appendChild(buildRow(r.values, r.tag)));
+    const rows = (grid.rows || []).length;
+    state.tallies[i] = {rows: rows, fails: grid.failed || 0};
+    $("tally" + i).textContent = grid.failed
+      ? grid.failed + " FAILED OF " + rows
+      : (rows ? rows + " PASSED" : "");
+    const wrap = $("wrap" + i);
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  (live.alive || []).forEach((a, i) => {
+    if (!a) verdict(i, "DEAD", "var(--fail)");
+  });
+
+  $("log").innerHTML = "";
+  (live.log || []).forEach(l => log(l.message, l.level, l.row));
+
+  if (live.banner) banner(live.banner.text || "READY", live.banner.colour);
+  if (live.step) $("step").textContent = live.step;
+  const f = Math.max(0, Math.min(1, live.progress || 0));
+  $("bar").firstElementChild.style.width = (f * 100) + "%";
+  $("pct").textContent = Math.round(f * 100) + "%";
+  if (live.result) {
+    banner(live.result.passed ? "PASS" : "FAIL",
+           live.result.passed ? "var(--pass)" : "var(--fail)");
+    Object.entries(live.result.per_uut || {}).forEach(function (e) {
+      verdict(+e[0], e[1] ? "PASS" : "FAIL",
+              e[1] ? "var(--pass)" : "var(--fail)");
+    });
+  }
+}
+
+/* One place that turns a result into a row, so a live event and a restored
+   snapshot cannot render differently. */
+function buildRow(values, tag) {
+  const t = (tag || "").toUpperCase();
+  const colour = t === "PASS" ? "var(--pass)"
+               : t === "FAIL" ? "var(--fail)"
+               : t === "RETRY" ? "var(--warn)" : "";
+  const tr = document.createElement("tr");
+  (values || []).forEach(function (v, col) {
+    const td = document.createElement("td");
+    td.textContent = v;
+    if (col && v !== "" && !isNaN(Number(v))) td.className = "n";
+    tr.appendChild(td);
+  });
+  if (tr.lastElementChild && colour) tr.lastElementChild.style.color = colour;
+  return tr;
+}
+
 /* ---------- WebSocket: the live stream ---------- */
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -308,7 +392,10 @@ function connect() {
 }
 function handle(d) {
   switch (d.type) {
-    case "snapshot": applyState(d.state); break;
+    case "snapshot":
+      applyState(d.state);
+      if (d.live) restore(d.live);   // everything collected so far
+      break;
     case "log": log(d.message, d.level, d.row); break;
     case "step": $("step").textContent = `${d.text || ""} ${d.comment || ""}`.trim(); break;
     case "status": banner(d.text || "", d.color); break;
@@ -357,20 +444,7 @@ function onGrid(d) {
   if (d.op !== "add") return;
 
   const tag = (d.tag || "").toUpperCase();
-  const colour = tag === "PASS" ? "var(--pass)"
-               : tag === "FAIL" ? "var(--fail)"
-               : tag === "RETRY" ? "var(--warn)" : "";
-  const tr = document.createElement("tr");
-  (d.values || []).forEach((v, col) => {
-    const td = document.createElement("td");
-    td.textContent = v;
-    // Numbers right-align so a column of measurements can be scanned down.
-    if (col && v !== "" && !isNaN(Number(v))) td.className = "n";
-    tr.appendChild(td);
-  });
-  const last = tr.lastElementChild;
-  if (last && colour) { last.style.color = colour; }
-  $(`rows${i}`).appendChild(tr);
+  $(`rows${i}`).appendChild(buildRow(d.values, d.tag));
   // Scroll this table only. scrollIntoView walks up to the nearest scrollable
   // ancestor, which with panels inside a scrolling grid yanked the whole area.
   const wrap = $(`wrap${i}`);
@@ -394,8 +468,10 @@ function onGrid(d) {
 }
 
 /* ---------- go ---------- */
+let resizeTimer;
 addEventListener("resize", () => {
-  const n = state.units; state.units = -1; buildUnits(n);
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => relayout(state.units), 150);
 });
 refreshPrograms();
 api("/api/state").then(applyState).catch(() => {});

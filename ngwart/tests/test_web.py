@@ -330,3 +330,75 @@ def test_panels_tile_rather_than_overflow():
     source = _app_source()
     assert "gridTemplateRows" in source
     assert "minmax(0, 1fr)" in source
+
+
+def test_a_late_client_receives_the_whole_run_not_just_recent_events(server):
+    """The cargo.ods bug.
+
+    A long program emits hundreds of log lines, so replaying a bounded window
+    of raw events showed a browser only its most recent results -- three rows
+    per unit where the desktop, attached from the start, showed twenty. The
+    snapshot now carries the accumulated model instead.
+    """
+    srv, station = server(allow_control=True)
+    post(srv, "/api/load", {"path": DEMO})
+    post(srv, "/api/start")
+    time.sleep(4)
+    station.collect()
+
+    # Flood the stream so any bounded event window would have rolled over.
+    from ngwart.engine.events import LogEvent
+    for i in range(3000):
+        srv.emit(LogEvent(f"filler {i}", "info", i))
+
+    events = collect_events(srv.bound_port, stop_after=1.5)
+    assert events and events[0]["type"] == "snapshot"
+
+    live = events[0]["live"]
+    rows = sum(len(g["rows"]) for g in live["grids"].values())
+    assert rows == 8, f"snapshot carried {rows} result rows, expected 8"
+    assert live["points"] == 8
+    assert live["result"] and live["result"]["passed"] is True
+
+
+def test_the_model_survives_a_reconnect(server):
+    """Dropping and reconnecting must not lose what was already collected."""
+    srv, station = server(allow_control=True)
+    post(srv, "/api/load", {"path": DEMO})
+    post(srv, "/api/start")
+    time.sleep(4)
+    station.collect()
+
+    first = collect_events(srv.bound_port, stop_after=1.0)[0]["live"]
+    second = collect_events(srv.bound_port, stop_after=1.0)[0]["live"]
+    assert first["grids"] == second["grids"]
+    assert first["points"] == second["points"] == 8
+
+
+def test_a_new_run_clears_the_previous_results(server):
+    """Two runs must not interleave in a client that stayed connected."""
+    from ngwart.engine.events import GridEvent, RunStateEvent
+    from ngwart.web.live import LiveModel
+
+    model = LiveModel()
+    model.observe(GridEvent(grid=1, op="add", values=["A"], tag="PASS"))
+    model.observe(GridEvent(grid=1, op="add", values=["B"], tag="FAIL"))
+    assert model.snapshot()["points"] == 2
+    assert model.snapshot()["failed"] == 1
+
+    model.observe(RunStateEvent("validating"))       # a new run begins
+    snap = model.snapshot()
+    assert snap["points"] == 0 and snap["failed"] == 0
+    assert snap["grids"]["1"]["rows"] == []
+
+
+def test_the_model_keeps_the_log_bounded():
+    from ngwart.engine.events import LogEvent
+    from ngwart.web.live import LOG_TAIL, LiveModel
+
+    model = LiveModel()
+    for i in range(LOG_TAIL * 3):
+        model.observe(LogEvent(f"line {i}", "info", i))
+    log = model.snapshot()["log"]
+    assert len(log) == LOG_TAIL
+    assert log[-1]["message"] == f"line {LOG_TAIL * 3 - 1}"
