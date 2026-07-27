@@ -251,6 +251,30 @@ class SimCamera:
             self.height = max(1, int(value))
         return True
 
+    def configure(self, props: dict) -> dict:
+        """Accept everything, and honour the geometry.
+
+        Honouring width/height matters: a program that asks for 1296x972 and
+        then evaluates a contour at (895, 659) must get a frame those
+        coordinates fall inside, or the simulation tests nothing useful.
+        """
+        for name, value in props.items():
+            self.set_property(name, value)
+        return {"applied": dict(props), "ignored": [], "notes": []}
+
+    def set_exposure(self, microseconds: float) -> float:
+        self.properties["exposure"] = float(microseconds)
+        return float(microseconds)
+
+    def calibrate_white_balance(self, exposure_us: float = 20000.0,
+                                warmup: int = 5) -> tuple:
+        self.set_exposure(exposure_us)
+        self._wb = (2.0, 1.0, 1.9)
+        return self._wb
+
+    def white_balance_gains(self):
+        return getattr(self, "_wb", None)
+
     def capture(self):
         try:
             import numpy as np

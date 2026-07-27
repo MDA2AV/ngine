@@ -1,12 +1,14 @@
 """Camera verbs -- registered as ``BaluffManager`` with ``CameraManager`` aliased.
 
 v1 kept two near-identical modules, one per camera family, and a table chose
-between them by editing its <Modules> line. That still works -- both names
-resolve here -- but there is one implementation, and the backend picks the SDK
-at open time.
+between them by editing its <Modules> line. Both names still resolve here, and
+the backend picks the SDK at open time.
 
-Captured frames are stored in the data array as live numpy objects rather than
-stringified, which is what the image-processing verbs then consume.
+The verbs talk to the backend through ``configure`` / ``calibrate_white_balance``
+/ ``set_exposure`` rather than a generic ``set_property(name, value)``. That
+distinction matters: binning, a centred AOI and the User1 white-balance set
+cannot be expressed as independent scalar properties, and pretending otherwise
+is how a camera ends up capturing a perfectly good image of the wrong pixels.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from __future__ import annotations
 import os
 
 from ..engine.errors import HardwareError, VerbError
-from ..engine.registry import p, verb
+from ..engine.registry import REGISTRY, p, verb
 from .backends import make_camera
 
 MODULE = "BaluffManager"
@@ -22,6 +24,14 @@ STATE = "camera"
 
 #: Cameras the simulator pretends are attached.
 SIM_CAMERAS = ["UB101256", "GX002467"]
+
+#: SETPROPS packs its values into four comma-separated groups.
+_PROP_GROUPS = {
+    3: ("buffersize", "width", "height"),
+    4: ("autofocus", "focus"),
+    5: ("autoexposure", "exposure"),
+    6: ("hue", "saturation", "brightness", "temperature"),
+}
 
 
 def _cameras(ctx) -> dict:
@@ -45,13 +55,20 @@ def _get(ctx, serial: str):
     raise HardwareError(f"camera '{serial}' is not open (known: {known})")
 
 
+def _open(ctx, serial: str):
+    """Open a camera, tolerating a backend that opened it during construction."""
+    cam = make_camera(ctx.simulate, serial)
+    if not getattr(cam, "is_open", False):
+        cam.open()
+    _cameras(ctx)[serial] = cam
+    return cam
+
+
 @verb(MODULE, "OPEN", params=[p(2, "serial")], config_only=True)
 def open_camera(ctx, row):
     """Open one camera by serial (or serial substring)."""
     serial = ctx.text(row.raw(2))
-    cam = make_camera(ctx.simulate, serial)
-    cam.open()
-    _cameras(ctx)[serial] = cam
+    _open(ctx, serial)
     ctx.log(f"Camera {serial} opened.")
 
 
@@ -64,9 +81,7 @@ def open_all(ctx, row):
         return
     for serial in serials:
         try:
-            cam = make_camera(ctx.simulate, serial)
-            cam.open()
-            _cameras(ctx)[serial] = cam
+            _open(ctx, serial)
             ctx.log(f"Camera {serial} opened.")
         except HardwareError as exc:
             ctx.log(f"Camera {serial}: {exc}", "warn")
@@ -75,9 +90,8 @@ def open_all(ctx, row):
 def _enumerate_real() -> list[str]:
     """List attached Balluff serials.
 
-    Uses the shared, module-scope DeviceManager. Creating a local one here would
-    unload the driver stack when it went out of scope, invalidating handles that
-    OPEN had already returned.
+    Uses the shared, module-scope DeviceManager. A local one would unload the
+    driver stack when it went out of scope, invalidating handles OPEN returned.
     """
     try:
         from .backends.real import _device_manager
@@ -94,18 +108,24 @@ def _enumerate_real() -> list[str]:
               p(3, "buffer_wh", doc="buffersize,width,height"),
               p(4, "focus", required=False, doc="autofocus,focus"),
               p(5, "exposure", required=False, doc="autoexposure,exposure_us"),
-              p(6, "image", required=False, doc="hue,saturation,brightness,temperature")])
+              p(6, "image", required=False,
+                doc="hue,saturation,brightness,temperature")])
 def setprops(ctx, row):
-    """Apply capture properties."""
-    cam = _get(ctx, ctx.text(row.raw(2)))
-    ignored: list[str] = []
-    groups = {
-        3: ("buffersize", "width", "height"),
-        4: ("autofocus", "focus"),
-        5: ("autoexposure", "exposure"),
-        6: ("hue", "saturation", "brightness", "temperature"),
-    }
-    for column, names in groups.items():
+    """Apply capture properties.
+
+    Fails if the backend could not apply something it was asked for. A property
+    that silently does not stick leaves the camera at its default geometry,
+    which still produces a good-looking image of the wrong pixels -- and then
+    every coordinate in the program misses, with nothing in the log to say why.
+
+    Properties the sensor genuinely does not have (focus and hue on a BlueFOX)
+    are reported as notes rather than failures, because v1 ignores them too.
+    """
+    serial = ctx.text(row.raw(2))
+    cam = _get(ctx, serial)
+
+    props: dict = {}
+    for column, names in _PROP_GROUPS.items():
         if not row.has(column):
             continue
         values = [v.strip() for v in ctx.text(row.raw(column)).split(",")]
@@ -113,33 +133,40 @@ def setprops(ctx, row):
             if value in ("", "-"):
                 continue
             try:
-                applied = cam.set_property(name, float(value))
+                props[name] = float(value)
             except ValueError:
                 raise VerbError(
                     f"SETPROPS: '{value}' is not a number for {name}") from None
-            if applied is False:
-                ignored.append(f"{name}={value}")
-    if ignored:
-        # A property the backend cannot apply must never pass silently. A camera
-        # left at its default geometry still captures a perfectly good image --
-        # of the wrong pixels -- so every downstream coordinate quietly misses.
+
+    result = cam.configure(props)
+    for note in result.get("notes", []):
+        ctx.log(f"Camera {serial}: {note}")
+    if result.get("ignored"):
         raise VerbError(
-            f"SETPROPS: camera {ctx.text(row.raw(2))} ignored "
-            f"{', '.join(ignored)}. This backend cannot apply them, so the "
-            f"frame geometry would not match what the program expects. Run with "
-            f"--legacy <v1-src-dir> to use the site's own camera driver."
+            f"SETPROPS: camera {serial} could not apply "
+            f"{', '.join(result['ignored'])}. The frame geometry would not match "
+            f"what the program expects."
         )
-    ctx.log(f"Camera {ctx.text(row.raw(2))} configured.")
+
+    summary = ", ".join(f"{k}={v}" for k, v in result.get("applied", {}).items())
+    ctx.log(f"Camera {serial} configured: {summary or 'nothing to do'}")
 
 
 @verb(MODULE, "SETEXPOSURE", params=[p(2, "serial"), p(3, "exposure_us")])
 def set_exposure(ctx, row):
-    """Set manual exposure in microseconds."""
-    cam = _get(ctx, ctx.text(row.raw(2)))
+    """Set manual exposure in microseconds, clamped to the sensor's range."""
+    serial = ctx.text(row.raw(2))
+    cam = _get(ctx, serial)
     try:
-        cam.set_property("exposure", float(ctx.text(row.raw(3))))
+        wanted = float(ctx.text(row.raw(3)))
     except ValueError:
         raise VerbError(f"SETEXPOSURE: '{row.raw(3)}' is not a number") from None
+    applied = cam.set_exposure(wanted)
+    if applied != wanted:
+        ctx.log(f"Camera {serial}: exposure {wanted}us clamped to {applied}us",
+                "warn")
+    else:
+        ctx.log(f"Camera {serial}: exposure {applied}us")
 
 
 @verb(MODULE, "CALIBRATEWB",
@@ -147,32 +174,27 @@ def set_exposure(ctx, row):
               p(4, "warmup_frames", required=False)],
       config_only=True)
 def calibrate_wb(ctx, row):
-    """Grey-world white balance from a few warm-up frames."""
+    """Calibrate white balance once and lock the gains.
+
+    Run against a well-lit neutral reference. CAPTURE then reuses these gains on
+    every frame instead of recalibrating -- grey-world auto-WB on a mostly-black
+    inspection frame computes gains of ~1.0, i.e. no correction at all.
+    """
     serial = ctx.text(row.raw(2))
     cam = _get(ctx, serial)
     exposure = _opt_float(ctx, row.raw(3), 20000.0)
     warmup = int(_opt_float(ctx, row.raw(4), 5.0))
-    cam.set_property("exposure", exposure)
 
-    try:
-        import numpy as np
-    except ImportError as exc:
-        raise VerbError("CALIBRATEWB needs numpy") from exc
+    red, green, blue = cam.calibrate_white_balance(exposure, warmup)
+    ctx.driver_state(STATE).setdefault("wb", {})[serial] = (red, green, blue)
+    ctx.log(f"Camera {serial} WB calibrated: "
+            f"R={red:.2f} G={green:.2f} B={blue:.2f}")
 
-    means = []
-    for _ in range(max(warmup, 1)):
-        frame = cam.capture()
-        means.append(np.asarray(frame, dtype=float).reshape(-1, 3).mean(axis=0))
-    mean = np.mean(means, axis=0)
-    grey = float(mean.mean())
-    if grey <= 0:
-        raise VerbError(f"CALIBRATEWB: camera {serial} returned a black image")
-    gains = [grey / m if m > 0 else 1.0 for m in mean]
-    cam.set_property("wb_blue", gains[0])
-    cam.set_property("wb_red", gains[2])
-    ctx.driver_state(STATE).setdefault("wb", {})[serial] = gains
-    ctx.log(f"Camera {serial} white balance: "
-            f"B={gains[0]:.3f} G={gains[1]:.3f} R={gains[2]:.3f}")
+    # Neutral gains mean the reference was too dark to measure anything, so the
+    # calibration was a no-op and any colour cast is still there.
+    if abs(red - 1.0) < 0.02 and abs(blue - 1.0) < 0.02:
+        ctx.log(f"Camera {serial}: WB gains are ~1.0 -- the reference was too "
+                f"dark to measure. Calibrate on a brighter white target.", "warn")
 
 
 @verb(MODULE, "CAPTURE",
@@ -185,6 +207,12 @@ def capture(ctx, row):
     frame = cam.capture()
     shape = getattr(frame, "shape", None)
     ctx.log(f"Camera {serial} captured {shape}")
+
+    gains = cam.white_balance_gains()
+    if gains:
+        ctx.log(f"Camera {serial} WB gains: "
+                f"R={gains[0]:.2f} G={gains[1]:.2f} B={gains[2]:.2f}")
+
     if ctx.debug:
         ctx.debug.save_image(f"capture_{serial}", frame, row.index)
         ctx.debug.note(f"row {row.index} CAPTURE {serial}: shape={shape}")
@@ -198,8 +226,8 @@ def capture(ctx, row):
         ctx.log(f"Capture saved to {path}")
 
     if row.has(4):
-        # Frames stay live objects; stringifying them (v1's default path) would
-        # turn a megabyte image into the text "[[[18 18 18] ...".
+        # Frames stay live objects; stringifying them would turn a megabyte
+        # image into the text "[[[18 18 18] ...".
         ctx.set_data(row.raw(4), frame, stringify=False)
 
     if not row.has(3) and not row.has(4):
@@ -210,7 +238,8 @@ def _imwrite(path: str, frame) -> None:
     try:
         import cv2
     except ImportError as exc:
-        raise VerbError("saving images needs OpenCV -- pip install opencv-python") from exc
+        raise VerbError(
+            "saving images needs OpenCV -- pip install opencv-python") from exc
     if not cv2.imwrite(path, frame):
         raise VerbError(f"could not write image to '{path}'")
 
@@ -224,8 +253,6 @@ def _opt_float(ctx, cell: str, default: float) -> float:
     except ValueError:
         raise VerbError(f"'{text}' is not a number") from None
 
-
-from ..engine.registry import REGISTRY  # noqa: E402
 
 REGISTRY.alias_module("CameraManager", MODULE)
 REGISTRY.alias_module("Camera", MODULE)

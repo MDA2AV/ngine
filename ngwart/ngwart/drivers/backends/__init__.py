@@ -38,11 +38,30 @@ class VisaInstrument(Protocol):
 
 @runtime_checkable
 class Camera(Protocol):
+    """What the camera verbs need.
+
+    Deliberately richer than get/set of scalar properties. Binning, a centred
+    AOI and a white-balance parameter set are not independent scalars, and a
+    property interface that cannot say "I could not apply that" lets a camera
+    stay at its default geometry while every downstream coordinate misses.
+    """
+
     def open(self) -> None: ...
     def close(self) -> None: ...
-    def set_property(self, name: str, value) -> bool: ...
     def capture(self):
-        """Return an HxWx3 BGR array."""
+        """Return an HxWx3 BGR array (or HxW for mono)."""
+
+    def configure(self, props: dict) -> dict:
+        """Apply properties; return {applied, ignored, notes}."""
+
+    def set_exposure(self, microseconds: float) -> float:
+        """Set manual exposure; return the value actually applied."""
+
+    def calibrate_white_balance(self, exposure_us: float, warmup: int) -> tuple:
+        """Calibrate and lock gains; return (red, green, blue)."""
+
+    def white_balance_gains(self):
+        """Current (red, green, blue) gains, or None."""
 
 
 def make_serial(simulate: bool, port: str, baudrate: int, timeout: float, **kw):

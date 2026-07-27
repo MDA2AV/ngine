@@ -661,3 +661,84 @@ def test_explicit_triplet_still_works():
              "1,0,0;2,0,0;3,0,0", "min", "0,X"))
     assert ctx.get_data("2,0,0") == "PASS"
     assert ctx.get_data("3,0,0") == "X"
+
+
+# --- camera backend contract --------------------------------------------
+
+def test_every_camera_backend_implements_the_same_interface():
+    """set_property(name, value) was the wrong abstraction.
+
+    Binning, a centred AOI and the User1 white-balance set are not independent
+    scalars, and an interface that cannot report "I could not apply that" lets a
+    camera sit at its default geometry while every coordinate downstream misses.
+    """
+    from ngwart.drivers.backends.real import OpenCvCamera
+    from ngwart.drivers.backends.sim import SimCamera
+
+    required = ("open", "close", "capture", "configure", "set_exposure",
+                "calibrate_white_balance", "white_balance_gains")
+    backends = [SimCamera, OpenCvCamera]
+    try:
+        from ngwart.drivers.backends.mvimpact import MvImpactCamera
+        backends.append(MvImpactCamera)
+    except ImportError:
+        pass
+
+    for backend in backends:
+        missing = [n for n in required if not hasattr(backend, n)]
+        assert missing == [], f"{backend.__name__} is missing {missing}"
+
+
+def test_configure_reports_what_it_could_not_apply():
+    from ngwart.drivers.backends.sim import SimCamera
+
+    cam = SimCamera("SIM"); cam.open()
+    result = cam.configure({"width": 1296, "height": 972, "buffersize": 4})
+    assert result["ignored"] == []
+    assert cam.width == 1296 and cam.height == 972
+    assert cam.capture().shape[:2] == (972, 1296)
+
+
+def test_setprops_fails_when_geometry_cannot_be_applied():
+    """A silently-dropped AOI is the bug this guard exists for."""
+    ctx = flow_ctx()
+    ctx.simulate = False
+
+    class Deaf:
+        is_open = True
+        def configure(self, props):
+            return {"applied": {}, "ignored": ["width=1296", "height=972"],
+                    "notes": []}
+
+    ctx.driver_state("camera").setdefault("cameras", {})["CAM"] = Deaf()
+    with pytest.raises(VerbError, match="could not apply"):
+        call(ctx, "Camera", "SETPROPS",
+             row("Camera", "SETPROPS", "CAM", "4,1296,972"))
+
+
+def test_setprops_tolerates_properties_the_sensor_lacks():
+    """Focus and hue do not exist on a BlueFOX; v1 ignores them, so must we."""
+    ctx = flow_ctx()
+    ctx.simulate = True
+    call(ctx, "Camera", "SETPROPS",
+         row("Camera", "SETPROPS", "UB101256", "4,640,480", "0,0",
+             "0,120", "0,100,0,0"))
+    cam = ctx.driver_state("camera")["cameras"]["UB101256"]
+    assert (cam.width, cam.height) == (640, 480)
+
+
+def test_calibratewb_warns_when_the_reference_was_too_dark():
+    ctx = flow_ctx()
+    ctx.simulate = True
+    cam = ctx.driver_state("camera").setdefault("cameras", {})
+    class Neutral:
+        is_open = True
+        def calibrate_white_balance(self, exposure_us, warmup):
+            return (1.0, 1.0, 1.0)          # no correction computed
+    cam["CAM"] = Neutral()
+
+    logs = []
+    ctx.listener = type("L", (), {"emit": lambda _s, e: logs.append(
+        getattr(e, "message", ""))})()
+    call(ctx, "Camera", "CALIBRATEWB", row("Camera", "CALIBRATEWB", "CAM"))
+    assert any("too" in m and "dark" in m for m in logs), logs

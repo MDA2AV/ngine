@@ -148,136 +148,112 @@ def _device_manager():
     return _DEVICE_MANAGER
 
 
-class RealCamera:
-    """Balluff / GenICam camera via mvIMPACT, falling back to OpenCV.
+class OpenCvCamera:
+    """Plain UVC camera through OpenCV -- the CameraManager fixtures."""
 
-    The fallback matters in practice: several v1 fixtures used a plain UVC
-    camera through OpenCV (CameraManager.py) while others used the Balluff SDK
-    (BaluffManager.py). One class covers both, chosen at open time.
+    _PROPS = {
+        "width": "CAP_PROP_FRAME_WIDTH", "height": "CAP_PROP_FRAME_HEIGHT",
+        "exposure": "CAP_PROP_EXPOSURE", "brightness": "CAP_PROP_BRIGHTNESS",
+        "saturation": "CAP_PROP_SATURATION", "contrast": "CAP_PROP_CONTRAST",
+        "focus": "CAP_PROP_FOCUS", "autofocus": "CAP_PROP_AUTOFOCUS",
+        "hue": "CAP_PROP_HUE",
+    }
 
-    For a Balluff fixture, prefer the site's own BaluffManager via
-    ``--legacy <v1-src-dir>``: the vendor code there encodes buffer geometry,
-    binning/AOI arithmetic and white-balance parameter-set handling that this
-    generic wrapper does not model.
-    """
-
-    def __init__(self, serial: str, index: int | None = None, **_kw) -> None:
+    def __init__(self, serial: str, index=None, **_kw) -> None:
         self.serial = serial
-        self.index = index
-        self._impl = None
-        self._kind = ""
+        self.index = index if index is not None else 0
+        self._cap = None
 
     def open(self) -> None:
-        try:
-            from mvIMPACT import acquire  # type: ignore
-        except ImportError:
-            acquire = None
-
-        if acquire is not None:
-            try:
-                mgr = _device_manager()
-                dev = None
-                # Match on a substring, as v1 does: tables address cameras by a
-                # fragment of the serial ("UB101256"), not the full string.
-                for i in range(mgr.deviceCount()):
-                    candidate = mgr.getDevice(i)
-                    if not self.serial or self.serial in candidate.serial.read():
-                        dev = candidate
-                        break
-                if dev is not None:
-                    if not dev.isOpen:
-                        dev.open()
-                    self._impl = (acquire, dev, acquire.FunctionInterface(dev))
-                    self._kind = "mvimpact"
-                    return
-            except Exception:  # noqa: BLE001 - fall through to OpenCV
-                self._impl = None
-
-        try:
-            import cv2
-        except ImportError as exc:
-            raise HardwareError(
-                f"camera {self.serial}: neither mvIMPACT nor OpenCV is available"
-            ) from exc
-        idx = self.index if self.index is not None else 0
-        cap = cv2.VideoCapture(idx)
-        if not cap.isOpened():
-            raise HardwareError(f"cannot open camera {self.serial} (OpenCV index {idx})")
-        self._impl = cap
-        self._kind = "opencv"
-
-    def close(self) -> None:
-        if self._impl is None:
-            return
-        try:
-            if self._kind == "opencv":
-                self._impl.release()
-            else:
-                self._impl[1].close()
-        except Exception:  # noqa: BLE001
-            pass
-        self._impl = None
-
-    def set_property(self, name: str, value) -> bool:
-        """Apply a capture property. Returns False when it could not be.
-
-        Returning a status rather than silently ignoring the call is deliberate:
-        an unapplied AOI leaves the camera at its default geometry, which still
-        produces a perfectly good image -- of the wrong pixels. Every downstream
-        coordinate then misses, with nothing in the log to say why.
-
-        The mvIMPACT path reports False for everything: binning, centred-AOI
-        arithmetic and the User1 white-balance set are not expressible through
-        this generic interface. Use the site's BaluffManager via --legacy.
-        """
-        if self._impl is None:
-            return False
-        if self._kind != "opencv":
-            return False
         import cv2
 
-        prop = {
-            "width": cv2.CAP_PROP_FRAME_WIDTH,
-            "height": cv2.CAP_PROP_FRAME_HEIGHT,
-            "exposure": cv2.CAP_PROP_EXPOSURE,
-            "gain": cv2.CAP_PROP_GAIN,
-            "brightness": cv2.CAP_PROP_BRIGHTNESS,
-            "contrast": cv2.CAP_PROP_CONTRAST,
-            "saturation": cv2.CAP_PROP_SATURATION,
-            "wb_blue": cv2.CAP_PROP_WHITE_BALANCE_BLUE_U,
-            "wb_red": cv2.CAP_PROP_WHITE_BALANCE_RED_V,
-        }.get(name.lower())
-        if prop is None:
+        cap = cv2.VideoCapture(self.index)
+        if not cap.isOpened():
+            raise HardwareError(
+                f"cannot open camera {self.serial} (OpenCV index {self.index})")
+        self._cap = cap
+
+    def close(self) -> None:
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+    @property
+    def is_open(self) -> bool:
+        return self._cap is not None
+
+    def set_property(self, name: str, value) -> bool:
+        import cv2
+
+        if self._cap is None:
             return False
-        return bool(self._impl.set(prop, float(value)))
+        attr = self._PROPS.get(name.lower())
+        if attr is None:
+            return False
+        return bool(self._cap.set(getattr(cv2, attr), float(value)))
+
+    def configure(self, props: dict) -> dict:
+        applied, ignored = {}, []
+        for name, value in props.items():
+            if name == "buffersize":
+                continue
+            if self.set_property(name, value):
+                applied[name] = value
+            elif float(value or 0) != 0:
+                ignored.append(f"{name}={value}")
+        return {"applied": applied, "ignored": ignored, "notes": []}
+
+    def set_exposure(self, microseconds: float) -> float:
+        self.set_property("exposure", microseconds)
+        return float(microseconds)
+
+    def calibrate_white_balance(self, exposure_us: float = 20000.0,
+                                warmup: int = 5) -> tuple:
+        """Grey-world estimate -- OpenCV exposes no calibration primitive."""
+        import numpy as np
+
+        self.set_exposure(exposure_us)
+        means = []
+        for _ in range(max(1, int(warmup))):
+            means.append(np.asarray(self.capture(), dtype=float)
+                         .reshape(-1, 3).mean(axis=0))
+        mean = np.mean(means, axis=0)
+        grey = float(mean.mean())
+        if grey <= 0:
+            raise HardwareError(f"camera {self.serial} returned a black image")
+        blue, green, red = (grey / m if m > 0 else 1.0 for m in mean)
+        return (red, green, blue)
+
+    def white_balance_gains(self):
+        return None
 
     def capture(self):
-        if self._impl is None:
+        if self._cap is None:
             raise HardwareError(f"camera {self.serial} is not open")
-        if self._kind == "opencv":
-            ok, frame = self._impl.read()
-            if not ok or frame is None:
-                raise HardwareError(f"camera {self.serial}: capture failed")
-            return frame
+        ok, frame = self._cap.read()
+        if not ok or frame is None:
+            raise HardwareError(f"camera {self.serial}: capture failed")
+        return frame
 
-        acquire, dev, fi = self._impl
-        try:
-            fi.imageRequestSingle()
-            req_nr = fi.imageRequestWaitFor(10000)
-            if not fi.isRequestNrValid(req_nr):
-                raise HardwareError(f"camera {self.serial}: capture timed out")
-            req = fi.getRequest(req_nr)
-            import ctypes
 
-            import numpy as np
+def RealCamera(serial: str, index=None, **kw):  # noqa: N802 - factory, not a class
+    """Pick the SDK that can actually drive this camera.
 
-            buf = (ctypes.c_char * req.imageSize.read()).from_address(
-                int(req.imageData.read()))
-            frame = np.frombuffer(buf, dtype=np.uint8).copy()
-            frame = frame.reshape(req.imageHeight.read(), req.imageWidth.read(), -1)
-            fi.imageRequestUnlock(req_nr)
-            return frame
-        except HardwareError:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            raise HardwareError(f"camera {self.serial}: capture failed: {exc}") from exc
+    mvIMPACT first: a Balluff device needs binning, AOI and User1 white balance,
+    which only that path can express. OpenCV otherwise, for the UVC fixtures the
+    old CameraManager served.
+    """
+    try:
+        from mvIMPACT import acquire  # noqa: F401
+        from mvIMPACT.Common import exampleHelper  # noqa: F401
+    except ImportError:
+        return OpenCvCamera(serial, index, **kw)
+
+    from .mvimpact import MvImpactCamera
+
+    camera = MvImpactCamera(serial, device_manager=_device_manager(), **kw)
+    try:
+        camera.open()
+        return camera
+    except Exception:  # noqa: BLE001 - no such Balluff device; try OpenCV
+        return OpenCvCamera(serial, index, **kw)
