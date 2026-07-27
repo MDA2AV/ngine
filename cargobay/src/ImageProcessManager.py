@@ -826,6 +826,10 @@ def add2GRID(grid_message, kill_index, UI):
 
         UIManager.SYNCGRID3(["UI","GRID3","Add","const",grid_message,"-","-","UI_EX","-","-","-"],UI)
 
+    elif(kill_index == '3'):
+    
+        UIManager.SYNCGRID4(["UI","GRID4","Add","const",grid_message,"-","-","UI_EX","-","-","-"],UI)
+
 def getImage(data_info, dir_info, UI):
 
     if(data_info != '-'):

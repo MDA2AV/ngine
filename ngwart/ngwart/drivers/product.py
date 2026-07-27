@@ -41,28 +41,44 @@ def _store(ctx, cells, value, result, name) -> None:
 def validate_det(ctx, row):
     """Kill whichever UUTs the fixture reports as absent.
 
-    The control board answers the detection poll with ``16 + mask``, where each
-    set bit marks a *missing* board. v1 subtracted 16 and killed the set bits.
+    The control board answers the detection poll with ``16 + mask`` and does so
+    in **hex**: "1F" on the cargo fixture. A set bit means the slot is
+    **occupied**, so the units to kill are the ones whose bit is clear --
+    ``0x1F`` -> mask ``0b1111`` -> all four present, nothing killed.
+
+    That polarity is worth stating because it is the opposite of what an earlier
+    revision of the site driver did, and reading it backwards kills every good
+    board on the fixture while looking like it worked.
     """
-    raw = ctx.text(row.raw(2))
-    try:
-        value = int(float(raw)) - 16
-    except (TypeError, ValueError):
-        raise VerbError(f"VALIDATE_DET: '{raw}' is not a detection value") from None
+    raw = str(ctx.text(row.raw(2))).strip()
+    value = _to_int(raw, "VALIDATE_DET") - 16
     if not 0 <= value <= 15:
         raise VerbError(
             f"VALIDATE_DET: detection value {value} is outside 0-15 "
-            f"(raw reading was '{raw}')"
+            f"(raw reading was {raw!r})"
         )
 
-    missing = [bit for bit in range(4) if value & (1 << bit)]
-    if not missing:
+    absent = [bit for bit in range(4) if not value & (1 << bit)]
+    if not absent:
         ctx.log("Detection: all units present.")
         return
-    for bit in missing:
+    for bit in absent:
         if bit < len(ctx.alive):
             ctx.kill(bit, reason="not detected")
-    ctx.log(f"Detection: unit(s) {', '.join(str(b) for b in missing)} absent.", "warn")
+    ctx.log(f"Detection: unit(s) {', '.join(str(b) for b in absent)} absent.", "warn")
+
+
+def _to_int(raw: str, what: str) -> int:
+    """Decimal, falling back to hex -- the site driver's ``to_int``."""
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return int(raw, 16)
+    except (TypeError, ValueError):
+        raise VerbError(
+            f"{what}: {raw!r} is neither a decimal nor a hex value") from None
 
 
 @verb(MODULE, "VALIDATE_BCODE",

@@ -121,10 +121,36 @@ def jg(ctx, row):
     _jump_if(ctx, row, _num(ctx, row.raw(3), "JG") > _num(ctx, row.raw(4), "JG"))
 
 
+def _num_hex(ctx, cell: str, what: str) -> float:
+    """Decimal, falling back to hexadecimal -- v1's ``to_float``.
+
+    Only JL uses this, and only because it has to: the cargo fixture's control
+    board answers its detection poll in hex ("1F" = 31 = 16 + all four slots
+    empty), and a plain float() raises on it.
+
+    The decimal-first order is v1's and is kept deliberately, but note what it
+    implies: a reply of "10" parses as ten, not as sixteen. Any reply whose
+    digits are all 0-9 is read as decimal. Only replies containing A-F are read
+    as hex. That ambiguity is inherent to an unprefixed hex value and cannot be
+    resolved here -- if the board can answer "10", the table needs an explicit
+    radix, not a cleverer parser.
+    """
+    raw = str(ctx.text(cell)).strip()
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        pass
+    try:
+        return float(int(raw, 16))
+    except (TypeError, ValueError):
+        raise VerbError(f"{what}: '{raw}' is neither a decimal nor a hex number") from None
+
+
 @verb(MODULE, "JL", params=[p(2, "label"), p(3, "a"), p(4, "b")])
 def jl(ctx, row):
-    """Jump if 3 < 4."""
-    _jump_if(ctx, row, _num(ctx, row.raw(3), "JL") < _num(ctx, row.raw(4), "JL"))
+    """Jump if 3 < 4. Accepts hex, which the detection poll returns."""
+    _jump_if(ctx, row,
+             _num_hex(ctx, row.raw(3), "JL") < _num_hex(ctx, row.raw(4), "JL"))
 
 
 @verb(MODULE, "JGE", params=[p(2, "label"), p(3, "a"), p(4, "b")])

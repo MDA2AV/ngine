@@ -12,37 +12,19 @@ async def VALIDATE_DET(line, UI):
 
     # Cargo     VALIDATE_DET    value_read
 
-
-    print("CHECKPOINT")
-    UI.addToLbox("CHECKPOINT")
-
     try:
 
-        print("CHECKPOINT")
-        print(line[2])
-        UI.addToLbox("CHECKPOINT")
-        UI.addToLbox(line[2])
-
         input = TestData.getContent(line[2])
-
-        print("chk0")
-        print(input)
-
         value = to_int(input) - 16  # Result should be 0-15 (4-bit hex digit)
-
-        print(value)
 
         if value < 0 or value > 15:
             print(f"Error: {value} is out of range (0-15)")
             raise Exception("Invalid detection")
-        
-        print("chk1")
 
         for bit in range(4):
-            if value & (1 << bit):
+            if not (value & (1 << bit)):
+                UI.addToLbox("Killing " + str(bit))
                 TestData.kill(str(bit))
-
-        print("chk2")
 
     except Exception as e:
 

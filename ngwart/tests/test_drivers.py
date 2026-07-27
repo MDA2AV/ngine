@@ -248,13 +248,29 @@ def test_uninitialised_array_is_reported():
 
 # --- product verbs ------------------------------------------------------
 
-def test_validate_det_kills_the_absent_units():
+def test_validate_det_kills_the_units_whose_bit_is_clear():
+    """A set bit means the slot is OCCUPIED, so clear bits are killed."""
     ctx = flow_ctx()
     ctx.init_alive(4)
-    # 16 + 0b0101 -> units 0 and 2 missing
+    # 16 + 0b0101 -> slots 0 and 2 occupied, 1 and 3 empty
     call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "21"))
-    assert ctx.alive[0] == 0 and ctx.alive[2] == 0
-    assert ctx.alive[1] == 1 and ctx.alive[3] == 1
+    assert ctx.alive[0] == 1 and ctx.alive[2] == 1
+    assert ctx.alive[1] == 0 and ctx.alive[3] == 0
+
+
+def test_validate_det_accepts_the_hex_the_board_actually_sends():
+    """The cargo control board answers "1F" -- all four present, kill none."""
+    ctx = flow_ctx()
+    ctx.init_alive(4)
+    call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "1F"))
+    assert ctx.alive == [1, 1, 1, 1]
+
+
+def test_validate_det_kills_everything_when_the_fixture_is_empty():
+    ctx = flow_ctx()
+    ctx.init_alive(4)
+    call(ctx, "Cargo", "VALIDATE_DET", row("Cargo", "VALIDATE_DET", "10"))
+    assert ctx.alive == [0, 0, 0, 0]
 
 
 def test_validate_det_rejects_an_impossible_reading():
@@ -494,3 +510,31 @@ def test_test_id_ignores_a_trailing_grid_hint():
          row("Vision", "EVALCONT", "*0,0,0", "200,200,30,100,1",
              "1,0,0;1,1,0;1,2,0", "min", "0,COLOR_A,min"))
     assert ctx.record.points[0].name == "COLOR_A"
+
+
+# --- JL hex tolerance (the cargo control board answers in hex) ----------
+
+def test_jl_accepts_a_hex_reading():
+    """The detection poll returns "1F"; a plain float() raises on it."""
+    ctx = flow_ctx()
+    ctx.program.labels["DETECTION"] = 0
+    ctx.set_data("0,0,0", "1F")
+    call(ctx, "Flow", "JL", row("Flow", "JL", "DETECTION", "*0,0,0", "16"))
+    assert ctx.pending_jump is None          # 31 >= 16, so no jump
+
+
+def test_jl_still_prefers_decimal():
+    """v1's order: "10" is ten, not sixteen. Kept deliberately."""
+    ctx = flow_ctx()
+    ctx.program.labels["DETECTION"] = 0
+    ctx.set_data("0,0,0", "10")
+    call(ctx, "Flow", "JL", row("Flow", "JL", "DETECTION", "*0,0,0", "16"))
+    assert ctx.pending_jump == "DETECTION"   # 10 < 16 -> jumps
+
+
+def test_jl_reports_a_value_that_is_neither():
+    ctx = flow_ctx()
+    ctx.program.labels["DETECTION"] = 0
+    ctx.set_data("0,0,0", "ZZZ")
+    with pytest.raises(VerbError, match="neither a decimal nor a hex"):
+        call(ctx, "Flow", "JL", row("Flow", "JL", "DETECTION", "*0,0,0", "16"))
