@@ -79,8 +79,10 @@ def main(argv: list[str] | None = None) -> int:
                      help="let a browser load programs and start/stop tests. "
                           "Off by default: this energises real hardware.")
     web.add_argument("--token", help="shared secret required on control routes")
-    web.add_argument("--programs", default=".", metavar="DIR",
-                     help="directory the program picker lists")
+    web.add_argument("--programs", metavar="DIR",
+                     help="directory the program picker lists. Defaults to the "
+                          "folder of the program given, else ./programs, else "
+                          "the current directory.")
     web.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
                      help=_DEBUG_HELP)
     web.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)

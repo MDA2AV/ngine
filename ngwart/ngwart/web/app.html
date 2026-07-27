@@ -162,9 +162,14 @@ async function api(path, opts) {
 async function refreshPrograms() {
   try {
     const d = await api("/api/programs");
-    $("picker").innerHTML = d.programs.length
-      ? d.programs.map(p => `<option value="${p.path}">${p.name}</option>`).join("")
-      : '<option value="">no programs found</option>';
+    if (d.programs.length) {
+      $("picker").innerHTML =
+        d.programs.map(p => `<option value="${p.path}">${p.name}</option>`).join("");
+    } else {
+      // Saying where it looked turns "it is broken" into "point it elsewhere".
+      $("picker").innerHTML = `<option value="">no programs in ${d.dir}</option>`;
+      log(`No programs found in ${d.dir}. Restart with --programs <dir>.`, "warn");
+    }
   } catch (e) { log(`could not list programs: ${e.message}`, "error"); }
 }
 $("load").onclick = async () => {

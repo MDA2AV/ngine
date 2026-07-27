@@ -252,3 +252,35 @@ def test_report_is_downloadable_after_a_run(server):
     status, body = get(srv, "/api/report?format=csv")
     assert status == 200 and b"uut,test,result" in body
     assert get(srv, "/api/report?format=bogus")[0] == 400
+
+
+def test_program_directory_defaults_sensibly(tmp_path, monkeypatch):
+    """The cwd is a poor default: a station is launched from the package root
+    while its programs live a level down, so the picker came up empty and
+    looked broken."""
+    from ngwart.web import _pick_program_dir
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "programs").mkdir()
+    (tmp_path / "elsewhere").mkdir()
+    (tmp_path / "elsewhere" / "p.yaml").write_text("exec: []")
+
+    # No hints at all -> the conventional folder, if it exists.
+    assert _pick_program_dir(None, None) == "programs"
+    # A program was opened -> list the folder it came from.
+    assert _pick_program_dir(None, str(tmp_path / "elsewhere" / "p.yaml")) \
+        == str(tmp_path / "elsewhere")
+    # An explicit choice always wins.
+    assert _pick_program_dir("chosen", str(tmp_path / "elsewhere" / "p.yaml")) \
+        == "chosen"
+
+
+def test_empty_listing_reports_where_it_looked(tmp_path, server):
+    srv, station = server()
+    srv.program_dir = str(tmp_path)
+    status, body = get(srv, "/api/programs")
+    payload = json.loads(body)
+    assert status == 200
+    assert payload["programs"] == []
+    # The client shows this path, so "nothing found" is actionable.
+    assert payload["dir"] == str(tmp_path)

@@ -10,21 +10,45 @@ should be pushed, not polled.
 
 from __future__ import annotations
 
+import os
+
 from .server import DEFAULT_PORT, WebServer
 from .station import Station
 
 __all__ = ["WebServer", "Station", "DEFAULT_PORT", "serve"]
 
 
+def _pick_program_dir(explicit: str | None, program: str | None) -> str:
+    """Where the picker looks, when nobody said.
+
+    The cwd is a poor default: a station is usually launched from the package
+    root while its programs sit in a subdirectory, so the picker came up empty
+    and looked broken. Prefer the folder of the program actually opened, then a
+    conventional ./programs, and only then the cwd.
+    """
+    if explicit:
+        return explicit
+    if program:
+        directory = os.path.dirname(os.path.abspath(program))
+        if os.path.isdir(directory):
+            return directory
+    for candidate in ("programs", "TestTables"):
+        if os.path.isdir(candidate):
+            return candidate
+    return "."
+
+
 def serve(program: str | None = None, host: str = "127.0.0.1",
           port: int = DEFAULT_PORT, simulate: bool = False,
           allow_control: bool = False, token: str | None = None,
-          debug_dir: str | None = None, program_dir: str = ".",
+          debug_dir: str | None = None, program_dir: str | None = None,
           station: str = "", operator: str = "") -> int:
     """Run the web station until interrupted."""
     import time
 
     from .. import drivers  # noqa: F401 - registers verbs
+
+    program_dir = _pick_program_dir(program_dir, program)
 
     controller = Station(simulate=simulate, debug_dir=debug_dir,
                          station=station, operator=operator,
@@ -34,6 +58,7 @@ def serve(program: str | None = None, host: str = "127.0.0.1",
     controller.listener = server
     server.start()
 
+    print(f"  programs from {os.path.abspath(program_dir)}")
     where = f"http://{'localhost' if host in ('127.0.0.1', '0.0.0.0') else host}:{server.bound_port}"
     print(f"  NGWART web station on {where}")
     print(f"  control: {'ENABLED' if allow_control else 'read-only'}"
