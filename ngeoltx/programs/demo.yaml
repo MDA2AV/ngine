@@ -1,0 +1,202 @@
+# A complete, runnable program in the native format.
+#
+#   ngeoltx-cli check programs/demo.yaml
+#   ngeoltx-cli run   programs/demo.yaml --simulate
+#   ngeoltx           programs/demo.yaml --simulate      (the desktop station)
+#
+# It exercises the whole path against simulated hardware: find a port, poll the
+# control board for which slots are occupied, energise a supply, measure it,
+# capture a frame, judge a lit region, and power everything down in Teardown.
+#
+# The same table in the legacy layout is one row per line with ten columns; this
+# is the same model, written so it diffs.
+
+meta:
+  name: demo
+  product: cargo
+
+modules:
+  Flow: FlowManager
+  Serial: WinSerialManager
+  VISA: GlobalVISAManager
+  Camera: BaluffManager
+  Vision: ImageProcessManager
+  Cargo: CargoManager
+  UI: UIManager
+
+# Names for data-store coordinates. The store is still v1's data[line][col][page]
+# and *l,c,p still works, but a table that says *detect reads like something a
+# person wrote.
+vars:
+  detect: 0,0,0
+  vbat: 1,0,0
+  vbat_result: 1,1,0
+  frame: 2,0,0
+  regions: 2,1,0
+  led_area: 3,0,0
+
+config:
+  - module: TestData
+    verb: INITDATA
+    args: [20, 20, 4]
+  - module: TestData
+    verb: initAlive
+    args: [4]
+  - module: Serial
+    verb: RESETPORTLIST
+  - module: Serial
+    verb: FINDPORT
+    args: ["115200,1", "066CFF3833554B3043165348", CTRL]
+  - module: Serial
+    verb: OPEN
+    args: [CTRL]
+  - module: VISA
+    verb: OPENALL
+    args: [5000]
+  - module: Camera
+    verb: OPEN
+    args: [UB101256]
+  - module: Camera
+    verb: SETPROPS
+    args: [UB101256, "1,640,480"]
+
+exec:
+  - module: Flow
+    verb: LABEL
+    args: [START, "Detecting units…"]
+
+  # Poll the control board until something is on the fixture. It answers
+  # 16 + a 4-bit mask in hex, and a SET bit means the slot is occupied, so "10"
+  # is an empty fixture and "1F" is all four present.
+  #
+  # The wait compares the reply as a string rather than as a number on purpose:
+  # "10" is a valid decimal and a valid hex value, and only the board knows
+  # which it meant. VALIDATE_DET below is told the radix outright.
+  - module: Flow
+    verb: LABEL
+    args: [WAIT_DET]
+  - module: Serial
+    verb: EXCHANGELINE_LV0
+    args: [CTRL, "d", "", "", "*detect"]
+  - module: Flow
+    verb: DELAY
+    args: ["0.1"]
+  - module: Flow
+    verb: JE
+    args: [WAIT_DET, "*detect", "10"]
+
+  - module: Cargo
+    verb: VALIDATE_DET
+    args: ["*detect", hex]
+
+  - module: Flow
+    verb: LABEL
+    args: [POWER, "Powering up"]
+  - module: VISA
+    verb: WRITE
+    args: [DP2A243200206, "INST 1"]
+  - module: VISA
+    verb: WRITE
+    args: [DP2A243200206, "VOLT 13.5"]
+  - module: VISA
+    verb: WRITE
+    args: [DP2A243200206, "CURR 1.0"]
+  - module: VISA
+    verb: WRITE
+    args: [DP2A243200206, "OUTP ON"]
+  - module: Flow
+    verb: DELAY
+    args: ["0.2"]
+
+  # Measure once per unit. Column 6 is "tries,kill_index,test_id", so a failure
+  # fails exactly one board and leaves the others testing, and the alive mask in
+  # column 8 skips the row entirely once that board is dead.
+  - module: VISA
+    verb: MEASURE_FEVAL
+    args: [DP2A243200206, "MEAS:VOLT?", "13.0,14.0", "*vbat", "3,0,VBAT_0"]
+    on_error: STD_EX
+    alive: "0"
+  - module: VISA
+    verb: MEASURE_FEVAL
+    args: [DP2A243200206, "MEAS:VOLT?", "13.0,14.0", "*vbat", "3,1,VBAT_1"]
+    on_error: STD_EX
+    alive: "1"
+  - module: VISA
+    verb: MEASURE_FEVAL
+    args: [DP2A243200206, "MEAS:VOLT?", "13.0,14.0", "*vbat", "3,2,VBAT_2"]
+    on_error: STD_EX
+    alive: "2"
+  - module: VISA
+    verb: MEASURE_FEVAL
+    args: [DP2A243200206, "MEAS:VOLT?", "13.0,14.0", "*vbat", "3,3,VBAT_3"]
+    on_error: STD_EX
+    alive: "3"
+
+  - module: Flow
+    verb: LABEL
+    args: [OPTICAL, "Optical inspection"]
+  - module: Camera
+    verb: CAPTURE
+    args: [UB101256, "", "*frame"]
+  - module: Vision
+    verb: BGR2CONT
+    args: ["*frame", "", "*regions", "", "60"]
+
+  # The simulated scene puts four lit discs across the middle of a 640x480
+  # frame, one per unit. The spec is (x, y, tolerance, area_limit, calibration):
+  # the search window, the smallest area that counts as lit, and the factor that
+  # turns pixels into whatever the limit is expressed in.
+  - module: Vision
+    verb: EVALCONT
+    args: ["*regions", "128,240,60,500,1", "*led_area", min, "0,LED_0"]
+    on_error: STD_EX
+    alive: "0"
+  - module: Vision
+    verb: EVALCONT
+    args: ["*regions", "256,240,60,500,1", "*led_area", min, "1,LED_1"]
+    on_error: STD_EX
+    alive: "1"
+  - module: Vision
+    verb: EVALCONT
+    args: ["*regions", "384,240,60,500,1", "*led_area", min, "2,LED_2"]
+    on_error: STD_EX
+    alive: "2"
+  - module: Vision
+    verb: EVALCONT
+    args: ["*regions", "512,240,60,500,1", "*led_area", min, "3,LED_3"]
+    on_error: STD_EX
+    alive: "3"
+
+  - module: Cargo
+    verb: VALIDATE
+  - module: Flow
+    verb: LABEL
+    args: [END, Finished]
+  - module: Flow
+    verb: J
+    args: [DONE]
+
+ehandling:
+  # The default route. Every row that leaves column 7 blank lands here.
+  - module: Flow
+    verb: LABEL
+    args: [STD_EX, "A step failed — see the log"]
+  - module: Flow
+    verb: J
+    args: [DONE]
+  - module: Flow
+    verb: LABEL
+    args: [DONE]
+
+teardown:
+  # Runs whether the program finished, failed, or was stopped. This is the block
+  # that makes it safe to press Stop.
+  - module: VISA
+    verb: WRITE
+    args: [DP2A243200206, "OUTP OFF"]
+  - module: Serial
+    verb: WRITE
+    args: [CTRL, "r/n"]
+  - module: Serial
+    verb: CLOSE
+    args: [CTRL]

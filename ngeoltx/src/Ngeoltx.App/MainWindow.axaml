@@ -1,0 +1,357 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:Ngeoltx.App"
+        x:Class="Ngeoltx.App.MainWindow"
+        Width="1400" Height="900" MinWidth="900" MinHeight="600"
+        Background="{DynamicResource Surface}"
+        Title="NGEOLTX">
+
+  <Window.Resources>
+    <app:VerdictBrush x:Key="Verdict" />
+    <app:VerdictWash x:Key="Wash" />
+    <app:AliveBrush x:Key="AliveColour" />
+    <app:NotEmpty x:Key="NotEmpty" />
+  </Window.Resources>
+
+  <DockPanel LastChildFill="True">
+
+    <!-- Menu bar. Everything the station does is reachable from here, so the
+         header underneath can stay a status strip rather than a toolbar. -->
+    <Menu DockPanel.Dock="Top" Background="{DynamicResource Chrome}">
+      <MenuItem Header="_Program">
+        <MenuItem Header="_Open…" Click="OnOpen" InputGesture="Ctrl+O" />
+        <MenuItem Header="_Reload" Click="OnReload" InputGesture="F5" />
+        <Separator />
+        <MenuItem Header="E_xit" Click="OnExit" />
+      </MenuItem>
+      <MenuItem Header="_Run">
+        <MenuItem Header="_Start" Click="OnStart" InputGesture="F9"
+                  IsEnabled="{Binding CanRun}" />
+        <MenuItem Header="S_top" Click="OnStop" InputGesture="Escape"
+                  IsEnabled="{Binding CanStop}" />
+      </MenuItem>
+      <MenuItem Header="_View">
+        <MenuItem Header="_Station" Click="OnShowStation" />
+        <MenuItem Header="S_tatistics" Click="OnShowStats" />
+        <Separator />
+        <MenuItem Header="_Clear log" Click="OnClearLog" />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="Registered _verbs…" Click="OnShowVerbs" />
+        <MenuItem Header="_About" Click="OnAbout" />
+      </MenuItem>
+    </Menu>
+
+    <!-- Status strip: one row of chrome. The grids are what the operator needs
+         space for, so this stays a strip and never grows into a panel. -->
+    <Border DockPanel.Dock="Top" Background="{DynamicResource Chrome}"
+            BorderBrush="{DynamicResource Border}" BorderThickness="0,0,0,1"
+            Padding="14,8">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                    VerticalAlignment="Center">
+          <Button Classes="primary" Click="OnStart" IsEnabled="{Binding CanRun}"
+                  Content="Start" />
+          <Button Classes="ghost" Click="OnStop" IsEnabled="{Binding CanStop}"
+                  Content="Stop" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="18,0" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="14"
+                     TextTrimming="CharacterEllipsis"
+                     Foreground="{Binding StatusKind, Converter={StaticResource Verdict}}" />
+          <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4"
+                       Foreground="{DynamicResource Accent}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Margin="8,0" VerticalAlignment="Center">
+          <TextBlock Classes="eyebrow" Text="ELAPSED" />
+          <TextBlock Classes="value" Text="{Binding Elapsed}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" Margin="18,0,8,0" VerticalAlignment="Center">
+          <TextBlock Classes="eyebrow" Text="POINTS" />
+          <TextBlock Classes="value" Text="{Binding Points}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="4" Margin="18,0,8,0" VerticalAlignment="Center">
+          <TextBlock Classes="eyebrow" Text="FAILED" />
+          <TextBlock Classes="value" Text="{Binding Failed}"
+                     Foreground="{DynamicResource Fail}" />
+        </StackPanel>
+
+        <TextBlock Grid.Column="5" Margin="18,0,0,0" VerticalAlignment="Center"
+                   Classes="muted" FontSize="12"
+                   Text="{Binding ProgramName}" />
+      </Grid>
+    </Border>
+
+    <!-- Station / Statistics. A TabControl rather than two windows: an operator
+         should never have to hunt for the window that has the results in it. -->
+    <TabControl x:Name="Pages" Padding="0" Background="Transparent">
+
+      <TabItem Header="Station">
+        <Grid RowDefinitions="*,Auto,180" Margin="12">
+
+          <!-- One panel per unit under test, sized from the program. No panels
+               appear before a program declares how many units exist. -->
+          <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Units}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Rows="1" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Classes="panel" Margin="0,0,10,0">
+                    <DockPanel>
+
+                      <Border DockPanel.Dock="Top" Padding="12,10"
+                              Background="{DynamicResource Chrome}"
+                              BorderBrush="{DynamicResource Border}"
+                              BorderThickness="0,0,0,1"
+                              CornerRadius="6,6,0,0">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Spacing="1">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                       FontSize="15" />
+                            <TextBlock Classes="muted" FontSize="11"
+                                       Text="{Binding Summary}" />
+                            <TextBlock Classes="muted" FontSize="11"
+                                       Text="{Binding Barcode}"
+                                       IsVisible="{Binding Barcode,
+                                                   Converter={StaticResource NotEmpty}}" />
+                          </StackPanel>
+                          <Border Grid.Column="1" VerticalAlignment="Center"
+                                  CornerRadius="10" Padding="10,3"
+                                  Background="{Binding Alive,
+                                              Converter={StaticResource AliveColour}}">
+                            <TextBlock Text="{Binding State}" Foreground="White"
+                                       FontSize="11" FontWeight="Bold" />
+                          </Border>
+                        </Grid>
+                      </Border>
+
+                      <!-- Column headings, once per panel. -->
+                      <Grid DockPanel.Dock="Top" Margin="12,8,12,4"
+                            ColumnDefinitions="*,100,90,60">
+                        <TextBlock Grid.Column="0" Classes="eyebrow" Text="TEST" />
+                        <TextBlock Grid.Column="1" Classes="eyebrow" Text="LIMITS"
+                                   TextAlignment="Right" />
+                        <TextBlock Grid.Column="2" Classes="eyebrow" Text="MEASURED"
+                                   TextAlignment="Right" />
+                        <TextBlock Grid.Column="3" Classes="eyebrow" Text="RESULT"
+                                   TextAlignment="Right" />
+                      </Grid>
+
+                      <ScrollViewer x:Name="Results" Padding="0,0,4,8">
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                              <Border Padding="12,4" Margin="0,1"
+                                      Background="{Binding IsFail,
+                                                  Converter={StaticResource Wash}}">
+                                <Grid ColumnDefinitions="*,100,90,60">
+                                  <TextBlock Grid.Column="0" Text="{Binding Name}"
+                                             TextTrimming="CharacterEllipsis"
+                                             FontSize="12" />
+                                  <TextBlock Grid.Column="1" Classes="num muted"
+                                             FontSize="11" Text="{Binding Limits}" />
+                                  <TextBlock Grid.Column="2" Classes="num"
+                                             FontSize="12" Text="{Binding Measured}" />
+                                  <TextBlock Grid.Column="3" FontSize="12"
+                                             FontWeight="Bold" TextAlignment="Right"
+                                             Text="{Binding Result}"
+                                             Foreground="{Binding Result,
+                                                         Converter={StaticResource Verdict}}" />
+                                </Grid>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </ScrollViewer>
+
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <TextBlock Grid.Row="0" Classes="muted" HorizontalAlignment="Center"
+                     VerticalAlignment="Center" FontSize="13"
+                     Text="No program loaded. Program ▸ Open to choose one."
+                     IsVisible="{Binding !HasUnits}" />
+
+          <TextBlock Grid.Row="1" Classes="eyebrow" Text="LOG" Margin="2,12,0,4" />
+
+          <Border Grid.Row="2" Classes="panel">
+            <ScrollViewer x:Name="LogScroll" Padding="10,6">
+              <ItemsControl ItemsSource="{Binding LogLines}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="64,*">
+                      <TextBlock Grid.Column="0" Classes="num muted" FontSize="11"
+                                 TextAlignment="Left" Text="{Binding Time}" />
+                      <TextBlock Grid.Column="1" FontSize="12" TextWrapping="Wrap"
+                                 Text="{Binding Text}"
+                                 Foreground="{Binding Level,
+                                             Converter={StaticResource Verdict}}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Statistics">
+        <ScrollViewer>
+          <!-- The statistics page has its own view model; everything else on
+               the window reads the station. -->
+          <StackPanel Margin="12" Spacing="12" x:Name="StatsRoot"
+                      DataContext="{Binding Statistics}">
+
+            <Border Classes="panel" Padding="12" IsVisible="{Binding HistoryUnavailable}">
+              <TextBlock Text="{Binding Availability}" TextWrapping="Wrap"
+                         Foreground="{DynamicResource Warn}" />
+            </Border>
+
+            <!-- Scope controls, in one row above everything they filter. -->
+            <Border Classes="tile">
+              <StackPanel Orientation="Horizontal" Spacing="16">
+                <!-- Only the first is bound. Group exclusivity unchecks it when
+                     the second is picked, and the two-way binding carries that
+                     through. Binding both would have them fight. -->
+                <RadioButton GroupName="Scope" Content="This session"
+                             IsChecked="{Binding SessionOnly, Mode=TwoWay}" />
+                <RadioButton GroupName="Scope" Content="All stored runs" />
+                <Rectangle Width="1" Fill="{DynamicResource Border}" Margin="6,2" />
+                <CheckBox Content="Include simulated runs"
+                          IsChecked="{Binding IncludeSimulated}" />
+                <Button Classes="ghost" Content="Refresh" Click="OnRefreshStats" />
+              </StackPanel>
+            </Border>
+
+            <UniformGrid Rows="1" x:Name="Tiles">
+              <Border Classes="tile" Margin="0,0,8,0">
+                <StackPanel>
+                  <TextBlock Classes="eyebrow" Text="FIRST-PASS YIELD" />
+                  <TextBlock Classes="value" Text="{Binding Yield}" />
+                  <TextBlock Classes="muted" FontSize="11" Text="units, not points" />
+                </StackPanel>
+              </Border>
+              <Border Classes="tile" Margin="0,0,8,0">
+                <StackPanel>
+                  <TextBlock Classes="eyebrow" Text="UNITS TESTED" />
+                  <TextBlock Classes="value" Text="{Binding Units}" />
+                  <TextBlock Classes="muted" FontSize="11" Text="{Binding ScopeLabel}" />
+                </StackPanel>
+              </Border>
+              <Border Classes="tile" Margin="0,0,8,0">
+                <StackPanel>
+                  <TextBlock Classes="eyebrow" Text="TEST POINTS" />
+                  <TextBlock Classes="value" Text="{Binding PointCount}" />
+                  <TextBlock Classes="muted" FontSize="11" Text="{Binding PointPass}" />
+                </StackPanel>
+              </Border>
+              <Border Classes="tile" Margin="0,0,8,0">
+                <StackPanel>
+                  <TextBlock Classes="eyebrow" Text="FAILED POINTS" />
+                  <TextBlock Classes="value" Text="{Binding FailedCount}"
+                             Foreground="{DynamicResource Fail}" />
+                  <TextBlock Classes="muted" FontSize="11" Text="{Binding AbortedCount}" />
+                </StackPanel>
+              </Border>
+              <Border Classes="tile">
+                <StackPanel>
+                  <TextBlock Classes="eyebrow" Text="RUNS" />
+                  <TextBlock Classes="value" Text="{Binding Runs}" />
+                  <TextBlock Classes="muted" FontSize="11"
+                             Text="{Binding AverageDuration}" />
+                </StackPanel>
+              </Border>
+            </UniformGrid>
+
+            <Border Classes="panel" Padding="12">
+              <StackPanel Spacing="6">
+                <TextBlock Classes="eyebrow" Text="FAILURES BY TEST" />
+                <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                           Text="Bars are each test's share of all failures; the line is the running total. Both are percentages of the same total, so they share one axis. The dashed line marks 80%." />
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                  <app:ParetoChart Entries="{Binding Pareto}" Margin="0,8,0,0" />
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+
+            <Border Classes="panel" Padding="12">
+              <StackPanel Spacing="8">
+                <TextBlock Classes="eyebrow" Text="SEARCH RESULTS" />
+                <Grid ColumnDefinitions="*,140,200">
+                  <TextBox Grid.Column="0" Margin="0,0,8,0"
+                           Watermark="Test id or barcode"
+                           Text="{Binding Search}" />
+                  <ComboBox Grid.Column="1" Margin="0,0,8,0" HorizontalAlignment="Stretch"
+                            ItemsSource="{Binding ResultFilters}"
+                            SelectedItem="{Binding ResultFilter}" />
+                  <ComboBox Grid.Column="2" HorizontalAlignment="Stretch"
+                            ItemsSource="{Binding Programs}"
+                            SelectedItem="{Binding ProgramFilter}" />
+                </Grid>
+                <TextBlock Classes="muted" FontSize="11" Text="{Binding PointsSummary}" />
+
+                <Grid ColumnDefinitions="*,60,120,110,90,150"
+                      Margin="4,4,4,0">
+                  <TextBlock Grid.Column="0" Classes="eyebrow" Text="TEST" />
+                  <TextBlock Grid.Column="1" Classes="eyebrow" Text="UUT" />
+                  <TextBlock Grid.Column="2" Classes="eyebrow" Text="MEASURED"
+                             TextAlignment="Right" />
+                  <TextBlock Grid.Column="3" Classes="eyebrow" Text="RESULT"
+                             TextAlignment="Right" />
+                  <TextBlock Grid.Column="4" Classes="eyebrow" Text="BARCODE"
+                             TextAlignment="Right" />
+                  <TextBlock Grid.Column="5" Classes="eyebrow" Text="WHEN"
+                             TextAlignment="Right" />
+                </Grid>
+
+                <Border Height="320" BorderBrush="{DynamicResource Border}"
+                        BorderThickness="0,1,0,0">
+                  <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Points}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid ColumnDefinitions="*,60,120,110,90,150" Margin="4,3">
+                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="1" Text="{Binding Uut}" FontSize="12"
+                                       Classes="muted" />
+                            <TextBlock Grid.Column="2" Text="{Binding Measured}"
+                                       Classes="num" FontSize="12" />
+                            <TextBlock Grid.Column="3" Text="{Binding Result}" FontSize="12"
+                                       FontWeight="Bold" TextAlignment="Right"
+                                       Foreground="{Binding Result,
+                                                   Converter={StaticResource Verdict}}" />
+                            <TextBlock Grid.Column="4" Text="{Binding Barcode}"
+                                       Classes="num muted" FontSize="11" />
+                            <TextBlock Grid.Column="5" Text="{Binding Started}"
+                                       Classes="num muted" FontSize="11" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Border>
+              </StackPanel>
+            </Border>
+
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+    </TabControl>
+  </DockPanel>
+</Window>

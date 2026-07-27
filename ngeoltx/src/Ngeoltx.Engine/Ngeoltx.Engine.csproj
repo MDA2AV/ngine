@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(NgeoltxFramework)</TargetFramework>
+    <!-- No UI, no vendor SDKs: the engine must run headless, in CI, and in
+         tests. Everything hardware-shaped lives behind an interface in
+         Ngeoltx.Drivers. -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="YamlDotNet" Version="16.2.1" />
+  </ItemGroup>
+</Project>

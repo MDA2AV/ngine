@@ -1,0 +1,67 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Colour tokens, defined once per theme variant and referenced everywhere
+    else. Nothing in a view names a hex value: a station gets used under bench
+    lighting and under a factory ceiling, and both variants have to be legible
+    without editing twenty files.
+
+    Pass and fail are the only saturated colours in the palette. That is
+    deliberate: on an end-of-line station the verdict is the one thing an
+    operator reads from two metres away, and it cannot compete with decoration.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="SurfaceColor">#FBFCFD</Color>
+      <Color x:Key="PanelColor">#FFFFFF</Color>
+      <Color x:Key="ChromeColor">#F1F4F7</Color>
+      <Color x:Key="BorderColor">#DCE3EA</Color>
+      <Color x:Key="InkColor">#16202B</Color>
+      <Color x:Key="MutedColor">#5D6E7E</Color>
+      <Color x:Key="FaintColor">#8A98A6</Color>
+      <Color x:Key="AccentColor">#2A62C8</Color>
+      <Color x:Key="PassColor">#177C4E</Color>
+      <Color x:Key="FailColor">#C02532</Color>
+      <Color x:Key="WarnColor">#9C6300</Color>
+      <Color x:Key="PassWashColor">#E7F5ED</Color>
+      <Color x:Key="FailWashColor">#FCEBEC</Color>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="SurfaceColor">#12161B</Color>
+      <Color x:Key="PanelColor">#1A1F26</Color>
+      <Color x:Key="ChromeColor">#161B21</Color>
+      <Color x:Key="BorderColor">#2B333C</Color>
+      <Color x:Key="InkColor">#E9EEF3</Color>
+      <Color x:Key="MutedColor">#9AA8B6</Color>
+      <Color x:Key="FaintColor">#6C7B89</Color>
+      <Color x:Key="AccentColor">#5E9BFF</Color>
+      <Color x:Key="PassColor">#3FBE86</Color>
+      <Color x:Key="FailColor">#FF5F66</Color>
+      <Color x:Key="WarnColor">#E8AB3C</Color>
+      <Color x:Key="PassWashColor">#12301F</Color>
+      <Color x:Key="FailWashColor">#331519</Color>
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+
+  <SolidColorBrush x:Key="Surface" Color="{DynamicResource SurfaceColor}" />
+  <SolidColorBrush x:Key="Panel" Color="{DynamicResource PanelColor}" />
+  <SolidColorBrush x:Key="Chrome" Color="{DynamicResource ChromeColor}" />
+  <SolidColorBrush x:Key="Border" Color="{DynamicResource BorderColor}" />
+  <SolidColorBrush x:Key="Ink" Color="{DynamicResource InkColor}" />
+  <SolidColorBrush x:Key="Muted" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="Faint" Color="{DynamicResource FaintColor}" />
+  <SolidColorBrush x:Key="Accent" Color="{DynamicResource AccentColor}" />
+  <SolidColorBrush x:Key="Pass" Color="{DynamicResource PassColor}" />
+  <SolidColorBrush x:Key="Fail" Color="{DynamicResource FailColor}" />
+  <SolidColorBrush x:Key="Warn" Color="{DynamicResource WarnColor}" />
+  <SolidColorBrush x:Key="PassWash" Color="{DynamicResource PassWashColor}" />
+  <SolidColorBrush x:Key="FailWash" Color="{DynamicResource FailWashColor}" />
+
+  <!-- One spacing step, so panels line up without anyone eyeballing margins. -->
+  <x:Double x:Key="Gap">10</x:Double>
+
+</ResourceDictionary>

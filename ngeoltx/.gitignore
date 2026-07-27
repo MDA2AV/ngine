@@ -1,0 +1,8 @@
+# .NET build output
+bin/
+obj/
+*.user
+
+# Run history written by the station and the CLI
+*-history.db
+*-history.db-journal
