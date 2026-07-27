@@ -1,0 +1,72 @@
+{
+  "source": "programs/demo.yaml",
+  "modules": {
+    "Flow": "FlowManager",
+    "UI": "UIManager",
+    "Serial": "WinSerialManager",
+    "VISA": "GlobalVISAManager",
+    "Camera": "BaluffManager",
+    "Vision": "ImageProcessManager",
+    "Product": "CargoManager"
+  },
+  "vars": {
+    "det.raw": "0,0,0",
+    "run.datecode": "1,0,0",
+    "run.timestamp": "1,1,0",
+    "run.started": "1,2,0",
+    "uut0.vbat": "2,0,0",
+    "uut1.vbat": "2,1,0",
+    "uut0.iload": "3,0,0",
+    "uut1.iload": "3,1,0",
+    "img.raw": "4,0,0",
+    "img.grey": "4,1,0",
+    "img.binary": "4,2,0",
+    "img.contours": "5,0,0",
+    "led.result": "5,1,0",
+    "verdicts": "6,0,0"
+  },
+  "labels": {
+    "TOP": 44,
+    "DETECTION": 50,
+    "START": 57,
+    "POWER": 62,
+    "MEASURE": 70,
+    "OPTICAL": 75,
+    "END": 84,
+    "FLOW_EX": 89,
+    "SERIAL_EX": 91,
+    "VISA_EX": 93,
+    "CAM_EX": 95,
+    "VISION_EX": 97,
+    "PRODUCT_EX": 99,
+    "UI_EX": 101,
+    "STD_EX": 103,
+    "DONE": 105
+  },
+  "sections": {
+    "Modules": [
+      0,
+      8
+    ],
+    "Vars": [
+      9,
+      24
+    ],
+    "Config": [
+      25,
+      42
+    ],
+    "Exec": [
+      43,
+      87
+    ],
+    "Ehandling": [
+      88,
+      106
+    ],
+    "Teardown": [
+      107,
+      113
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "VBAT",
+    "uut": 0,
+    "result": "PASS",
+    "measured": "13.50917",
+    "low": "13.0",
+    "high": "14.0",
+    "row": 71,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "ILOAD",
+    "uut": 0,
+    "result": "PASS",
+    "measured": "0.660475",
+    "low": "0.1",
+    "high": "1.0",
+    "row": 72,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "VBAT",
+    "uut": 1,
+    "result": "PASS",
+    "measured": "13.490326",
+    "low": "13.0",
+    "high": "14.0",
+    "row": 73,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "ILOAD",
+    "uut": 1,
+    "result": "PASS",
+    "measured": "0.660655",
+    "low": "0.1",
+    "high": "1.0",
+    "row": 74,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "LED_A",
+    "uut": 0,
+    "result": "PASS",
+    "measured": "1890.0",
+    "low": "50.0",
+    "high": "",
+    "row": 80,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "LED_B",
+    "uut": 0,
+    "result": "PASS",
+    "measured": "1890.0",
+    "low": "50.0",
+    "high": "",
+    "row": 81,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "LED_A",
+    "uut": 1,
+    "result": "PASS",
+    "measured": "1890.0",
+    "low": "50.0",
+    "high": "",
+    "row": 82,
+    "at": "2026-07-27T18:55:26"
+  },
+  {
+    "name": "LED_B",
+    "uut": 1,
+    "result": "PASS",
+    "measured": "1890.0",
+    "low": "50.0",
+    "high": "",
+    "row": 83,
+    "at": "2026-07-27T18:55:26"
+  }
+]

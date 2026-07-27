@@ -1,0 +1,114 @@
+<Modules>									
+Flow	FlowManager								
+UI	UIManager								
+Serial	WinSerialManager								
+VISA	GlobalVISAManager								
+Camera	BaluffManager								
+Vision	ImageProcessManager								
+Product	CargoManager								
+<Modules/>									
+<Vars>									
+det.raw	0,0,0								
+run.datecode	1,0,0								
+run.timestamp	1,1,0								
+run.started	1,2,0								
+uut0.vbat	2,0,0								
+uut1.vbat	2,1,0								
+uut0.iload	3,0,0								
+uut1.iload	3,1,0								
+img.raw	4,0,0								
+img.grey	4,1,0								
+img.binary	4,2,0								
+img.contours	5,0,0								
+led.result	5,1,0								
+verdicts	6,0,0								
+<Vars/>									
+<Config>									
+TestData	initAlive	2							gray
+TestData	updateLabels								
+Serial	FINDPORT	115200,1	066CFF3833554B3043165348 LOCATION=1-1:x.2	CONTROL					
+Serial	FINDPORT	9600,1	DAE006GCA	D1					
+Serial	OPEN	CONTROL							
+Serial	OPEN	D1							
+VISA	OPENALL	10000							
+Camera	OPENALL								
+UI	GRID1_CONFIG	Add_Columns	Test,Device,Min,Max,Value,Result						
+UI	GRID1_CONFIG	Edit_Column	Test,150,0						
+UI	GRID1_CONFIG	Tag_Config	PASS,#35B26B						
+UI	GRID1_CONFIG	Tag_Config	FAIL,#E5484D						
+UI	GRID2_CONFIG	Add_Columns	Test,Device,Min,Max,Value,Result						
+UI	GRID2_CONFIG	Edit_Column	Test,150,0						
+UI	GRID2_CONFIG	Tag_Config	PASS,#35B26B						
+UI	GRID2_CONFIG	Tag_Config	FAIL,#E5484D						
+<Config/>									
+<Exec>									
+Flow	LABEL	TOP	INSERT BOARDS		#4C9AFF				yellow
+UI	GRID1	Clear					UI_EX		
+UI	GRID2	Clear					UI_EX		
+UI	LBOX	Clear					UI_EX		
+TestData	STARTALIVE								
+TestData	INITDATA	40	3	30					
+Flow	LABEL	DETECTION	WAITING FOR BOARDS		#4C9AFF				yellow
+TestData	LOG_FLAG	OFF							quiet the poll loop
+Serial	EXCHANGELINE_LT_LV0	CONTROL	d/n			*det.raw	SERIAL_EX		
+Flow	DELAY	0.1					FLOW_EX		
+Flow	JL	DETECTION	*det.raw	31			FLOW_EX		
+TestData	LOG_FLAG	ON							
+Product	VALIDATE_DET	*det.raw					PRODUCT_EX		
+Flow	LABEL	START	TEST RUNNING		#4C9AFF				yellow
+Flow	RESET_TIMER								
+Flow	ENABLE_TIMER								
+Flow	START_TIME	*run.started							
+TestData	SETDATACODES	*run.datecode	*run.timestamp						
+Flow	LABEL	POWER	POWERING UNITS		#4C9AFF				yellow
+Serial	EXCHANGEBYTES_LVS	D1	48,49,43,47,47	48,49,43,47,47	5,5		SERIAL_EX		UUT1 supply relay
+Serial	EXCHANGEBYTES_LVS	D1	48,50,43,47,47	48,50,43,47,47	5,5		SERIAL_EX		UUT2 supply relay
+VISA	WRITE	DP2A243200206	INST:NSEL 1				VISA_EX		
+VISA	WRITE	DP2A243200206	VOLT 13.5				VISA_EX		
+VISA	WRITE	DP2A243200206	CURR 2.0				VISA_EX		
+VISA	WRITE	DP2A243200206	OUTP ON				VISA_EX		
+Flow	DELAY	0.2					FLOW_EX		
+Flow	LABEL	MEASURE	MEASURING		#4C9AFF				yellow
+VISA	MEASURE_FEVAL	DP2A243200206	MEAS:VOLT?	13.0,14.0	*uut0.vbat	3,0,VBAT	VISA_EX	0	
+VISA	MEASURE_FEVAL	DP2A243200206	MEAS:CURR?	0.10,1.00	*uut0.iload	3,0,ILOAD	VISA_EX	0	
+VISA	MEASURE_FEVAL	DP2A243200206	MEAS:VOLT?	13.0,14.0	*uut1.vbat	3,1,VBAT	VISA_EX	1	
+VISA	MEASURE_FEVAL	DP2A243200206	MEAS:CURR?	0.10,1.00	*uut1.iload	3,1,ILOAD	VISA_EX	1	
+Flow	LABEL	OPTICAL	OPTICAL CHECK		#4C9AFF				yellow
+Camera	CAPTURE	UB101256		*img.raw			CAM_EX		
+Vision	BGR2GRAY	*img.raw		*img.grey			VISION_EX		
+Vision	GRAY2BIN	*img.grey		*img.binary		100	VISION_EX		
+Vision	BIN2CONT	*img.binary		*img.contours			VISION_EX		
+Vision	EVALCONT	*img.contours	128,240,40,50,1	*led.result	min	0,LED_A	VISION_EX		
+Vision	EVALCONT	*img.contours	256,240,40,50,1	*led.result	min	0,LED_B	VISION_EX		
+Vision	EVALCONT	*img.contours	384,240,40,50,1	*led.result	min	1,LED_A	VISION_EX		
+Vision	EVALCONT	*img.contours	512,240,40,50,1	*led.result	min	1,LED_B	VISION_EX		
+Flow	LABEL	END	SCORING		#4C9AFF				yellow
+Product	VALIDATE		*verdicts				PRODUCT_EX		
+Flow	J	DONE							
+<Exec/>									
+<Ehandling>									
+Flow	LABEL	FLOW_EX	FLOW FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	SERIAL_EX	SERIAL FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	VISA_EX	INSTRUMENT FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	CAM_EX	CAMERA FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	VISION_EX	VISION FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	PRODUCT_EX	VALIDATION FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	UI_EX	UI FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	STD_EX	SYSTEM FAILURE		#E5484D				red
+Flow	J	DONE							
+Flow	LABEL	DONE							gray
+<Ehandling/>									
+<Teardown>									
+VISA	WRITE	DP2A243200206	INST:NSEL 1						select channel 1
+VISA	WRITE	DP2A243200206	OUTP OFF						de-energise supply
+VISA	WRITE	DP2A243200206	VOLT 0						zero the setpoint
+Serial	EXCHANGEBYTES_LVS	D1	111,102,102,47,47	111,102,102,47,47	5,5				open all relays
+Flow	DISABLE_TIMER								
+<Teardown/>									

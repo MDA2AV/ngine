@@ -1,0 +1,55 @@
+{
+  "target": {
+    "cx": 256.0,
+    "cy": 240.0,
+    "tol": 40.0,
+    "minarea": 50.0,
+    "cal": 1.0
+  },
+  "found": true,
+  "area": 1890.0,
+  "centroid": [
+    256,
+    240
+  ],
+  "noise_floor": 50,
+  "contours_total": 4,
+  "contours_near_target": [
+    {
+      "index": 0,
+      "centroid": [
+        512,
+        240
+      ],
+      "area_raw": 1890.0,
+      "area_calibrated": 1890.0
+    },
+    {
+      "index": 1,
+      "centroid": [
+        384,
+        240
+      ],
+      "area_raw": 1890.0,
+      "area_calibrated": 1890.0
+    },
+    {
+      "index": 2,
+      "centroid": [
+        256,
+        240
+      ],
+      "area_raw": 1890.0,
+      "area_calibrated": 1890.0
+    },
+    {
+      "index": 3,
+      "centroid": [
+        128,
+        240
+      ],
+      "area_raw": 1890.0,
+      "area_calibrated": 1890.0
+    }
+  ]
+}

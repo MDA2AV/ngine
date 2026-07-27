@@ -1,0 +1,10 @@
+18:56:11  image 001_row76_capture_UB101256.png  shape=(480, 640, 3)
+18:56:11  row 76 CAPTURE UB101256: shape=(480, 640, 3)
+18:56:11  image 002_row79_BIN2CONT_source.png  shape=(480, 640)
+18:56:11  image 003_row79_BIN2CONT_binary.png  shape=(480, 640)
+18:56:11  image 004_row79_BIN2CONT_contours.png  shape=(480, 640, 3)
+18:56:11  row 79 BIN2CONT: threshold=None frame=(480, 640) contours=4
+18:56:11  row 80 LED_A: window (128.0,240.0)+/-40.0 -> area 1890.0; 3 contour(s) nearby
+18:56:11  row 81 LED_B: window (256.0,240.0)+/-40.0 -> area 1890.0; 4 contour(s) nearby
+18:56:11  row 82 LED_A: window (384.0,240.0)+/-40.0 -> area 1890.0; 4 contour(s) nearby
+18:56:11  row 83 LED_B: window (512.0,240.0)+/-40.0 -> area 1890.0; 3 contour(s) nearby

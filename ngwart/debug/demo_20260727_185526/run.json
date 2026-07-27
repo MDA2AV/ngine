@@ -1,0 +1,1533 @@
+{
+  "summary": {
+    "program": "demo",
+    "station": "ST-01",
+    "operator": "dm",
+    "simulated": true,
+    "started": "2026-07-27T18:55:26",
+    "ended": "2026-07-27T18:55:26",
+    "duration_s": 0.825,
+    "aborted": false,
+    "abort_reason": "",
+    "steps": 65,
+    "points": 8,
+    "failed_points": 0,
+    "diverted_steps": 0,
+    "uuts": {
+      "0": true,
+      "1": true
+    },
+    "barcodes": {}
+  },
+  "points": [
+    {
+      "name": "VBAT",
+      "uut": 0,
+      "result": "PASS",
+      "measured": "13.50917",
+      "low": "13.0",
+      "high": "14.0",
+      "row": 71,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "ILOAD",
+      "uut": 0,
+      "result": "PASS",
+      "measured": "0.660475",
+      "low": "0.1",
+      "high": "1.0",
+      "row": 72,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "VBAT",
+      "uut": 1,
+      "result": "PASS",
+      "measured": "13.490326",
+      "low": "13.0",
+      "high": "14.0",
+      "row": 73,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "ILOAD",
+      "uut": 1,
+      "result": "PASS",
+      "measured": "0.660655",
+      "low": "0.1",
+      "high": "1.0",
+      "row": 74,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "LED_A",
+      "uut": 0,
+      "result": "PASS",
+      "measured": "1890.0",
+      "low": "50.0",
+      "high": "",
+      "row": 80,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "LED_B",
+      "uut": 0,
+      "result": "PASS",
+      "measured": "1890.0",
+      "low": "50.0",
+      "high": "",
+      "row": 81,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "LED_A",
+      "uut": 1,
+      "result": "PASS",
+      "measured": "1890.0",
+      "low": "50.0",
+      "high": "",
+      "row": 82,
+      "at": "2026-07-27T18:55:26"
+    },
+    {
+      "name": "LED_B",
+      "uut": 1,
+      "result": "PASS",
+      "measured": "1890.0",
+      "low": "50.0",
+      "high": "",
+      "row": 83,
+      "at": "2026-07-27T18:55:26"
+    }
+  ],
+  "steps": [
+    {
+      "row": 26,
+      "module": "TestData",
+      "verb": "initAlive",
+      "args": [
+        "2",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "gray",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [],
+      "measurement": null
+    },
+    {
+      "row": 27,
+      "module": "TestData",
+      "verb": "updateLabels",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 28,
+      "module": "Serial",
+      "verb": "FINDPORT",
+      "args": [
+        "115200,1",
+        "066CFF3833554B3043165348 LOCATION=1-1:x.2",
+        "CONTROL",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.003,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 29,
+      "module": "Serial",
+      "verb": "FINDPORT",
+      "args": [
+        "9600,1",
+        "DAE006GCA",
+        "D1",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 30,
+      "module": "Serial",
+      "verb": "OPEN",
+      "args": [
+        "CONTROL",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 31,
+      "module": "Serial",
+      "verb": "OPEN",
+      "args": [
+        "D1",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 32,
+      "module": "VISA",
+      "verb": "OPENALL",
+      "args": [
+        "10000",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 33,
+      "module": "Camera",
+      "verb": "OPENALL",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.002,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 34,
+      "module": "UI",
+      "verb": "GRID1_CONFIG",
+      "args": [
+        "Add_Columns",
+        "Test,Device,Min,Max,Value,Result",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 35,
+      "module": "UI",
+      "verb": "GRID1_CONFIG",
+      "args": [
+        "Edit_Column",
+        "Test,150,0",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 36,
+      "module": "UI",
+      "verb": "GRID1_CONFIG",
+      "args": [
+        "Tag_Config",
+        "PASS,#35B26B",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 37,
+      "module": "UI",
+      "verb": "GRID1_CONFIG",
+      "args": [
+        "Tag_Config",
+        "FAIL,#E5484D",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 38,
+      "module": "UI",
+      "verb": "GRID2_CONFIG",
+      "args": [
+        "Add_Columns",
+        "Test,Device,Min,Max,Value,Result",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 39,
+      "module": "UI",
+      "verb": "GRID2_CONFIG",
+      "args": [
+        "Edit_Column",
+        "Test,150,0",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 40,
+      "module": "UI",
+      "verb": "GRID2_CONFIG",
+      "args": [
+        "Tag_Config",
+        "PASS,#35B26B",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 41,
+      "module": "UI",
+      "verb": "GRID2_CONFIG",
+      "args": [
+        "Tag_Config",
+        "FAIL,#E5484D",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 44,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "TOP",
+        "INSERT BOARDS",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 45,
+      "module": "UI",
+      "verb": "GRID1",
+      "args": [
+        "Clear",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 46,
+      "module": "UI",
+      "verb": "GRID2",
+      "args": [
+        "Clear",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 47,
+      "module": "UI",
+      "verb": "LBOX",
+      "args": [
+        "Clear",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 48,
+      "module": "TestData",
+      "verb": "STARTALIVE",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 49,
+      "module": "TestData",
+      "verb": "INITDATA",
+      "args": [
+        "40",
+        "3",
+        "30",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 50,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "DETECTION",
+        "WAITING FOR BOARDS",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 51,
+      "module": "TestData",
+      "verb": "LOG_FLAG",
+      "args": [
+        "OFF",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "quiet the poll loop",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 52,
+      "module": "Serial",
+      "verb": "EXCHANGELINE_LT_LV0",
+      "args": [
+        "CONTROL",
+        "d/n",
+        "",
+        "",
+        "*det.raw"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.002,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 53,
+      "module": "Flow",
+      "verb": "DELAY",
+      "args": [
+        "0.1",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.1079,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 54,
+      "module": "Flow",
+      "verb": "JL",
+      "args": [
+        "DETECTION",
+        "*det.raw",
+        "31",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 55,
+      "module": "TestData",
+      "verb": "LOG_FLAG",
+      "args": [
+        "ON",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 56,
+      "module": "Product",
+      "verb": "VALIDATE_DET",
+      "args": [
+        "*det.raw",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 57,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "START",
+        "TEST RUNNING",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 58,
+      "module": "Flow",
+      "verb": "RESET_TIMER",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 59,
+      "module": "Flow",
+      "verb": "ENABLE_TIMER",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 60,
+      "module": "Flow",
+      "verb": "START_TIME",
+      "args": [
+        "*run.started",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 61,
+      "module": "TestData",
+      "verb": "SETDATACODES",
+      "args": [
+        "*run.datecode",
+        "*run.timestamp",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 62,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "POWER",
+        "POWERING UNITS",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 63,
+      "module": "Serial",
+      "verb": "EXCHANGEBYTES_LVS",
+      "args": [
+        "D1",
+        "48,49,43,47,47",
+        "48,49,43,47,47",
+        "5,5",
+        ""
+      ],
+      "comment": "UUT1 supply relay",
+      "started": "18:55:26",
+      "duration_s": 0.003,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 64,
+      "module": "Serial",
+      "verb": "EXCHANGEBYTES_LVS",
+      "args": [
+        "D1",
+        "48,50,43,47,47",
+        "48,50,43,47,47",
+        "5,5",
+        ""
+      ],
+      "comment": "UUT2 supply relay",
+      "started": "18:55:26",
+      "duration_s": 0.003,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 65,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "INST:NSEL 1",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 66,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "VOLT 13.5",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 67,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "CURR 2.0",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 68,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "OUTP ON",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 69,
+      "module": "Flow",
+      "verb": "DELAY",
+      "args": [
+        "0.2",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.1962,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 70,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "MEASURE",
+        "MEASURING",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 71,
+      "module": "VISA",
+      "verb": "MEASURE_FEVAL",
+      "args": [
+        "DP2A243200206",
+        "MEAS:VOLT?",
+        "13.0,14.0",
+        "*uut0.vbat",
+        "3,0,VBAT"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0009,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 72,
+      "module": "VISA",
+      "verb": "MEASURE_FEVAL",
+      "args": [
+        "DP2A243200206",
+        "MEAS:CURR?",
+        "0.10,1.00",
+        "*uut0.iload",
+        "3,0,ILOAD"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 73,
+      "module": "VISA",
+      "verb": "MEASURE_FEVAL",
+      "args": [
+        "DP2A243200206",
+        "MEAS:VOLT?",
+        "13.0,14.0",
+        "*uut1.vbat",
+        "3,1,VBAT"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 74,
+      "module": "VISA",
+      "verb": "MEASURE_FEVAL",
+      "args": [
+        "DP2A243200206",
+        "MEAS:CURR?",
+        "0.10,1.00",
+        "*uut1.iload",
+        "3,1,ILOAD"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 75,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "OPTICAL",
+        "OPTICAL CHECK",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 76,
+      "module": "Camera",
+      "verb": "CAPTURE",
+      "args": [
+        "UB101256",
+        "",
+        "*img.raw",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.3103,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 77,
+      "module": "Vision",
+      "verb": "BGR2GRAY",
+      "args": [
+        "*img.raw",
+        "",
+        "*img.grey",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.006,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 78,
+      "module": "Vision",
+      "verb": "GRAY2BIN",
+      "args": [
+        "*img.grey",
+        "",
+        "*img.binary",
+        "",
+        "100"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 79,
+      "module": "Vision",
+      "verb": "BIN2CONT",
+      "args": [
+        "*img.binary",
+        "",
+        "*img.contours",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0119,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 80,
+      "module": "Vision",
+      "verb": "EVALCONT",
+      "args": [
+        "*img.contours",
+        "128,240,40,50,1",
+        "*led.result",
+        "min",
+        "0,LED_A"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 81,
+      "module": "Vision",
+      "verb": "EVALCONT",
+      "args": [
+        "*img.contours",
+        "256,240,40,50,1",
+        "*led.result",
+        "min",
+        "0,LED_B"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.002,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 82,
+      "module": "Vision",
+      "verb": "EVALCONT",
+      "args": [
+        "*img.contours",
+        "384,240,40,50,1",
+        "*led.result",
+        "min",
+        "1,LED_A"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 83,
+      "module": "Vision",
+      "verb": "EVALCONT",
+      "args": [
+        "*img.contours",
+        "512,240,40,50,1",
+        "*led.result",
+        "min",
+        "1,LED_B"
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.001,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 84,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "END",
+        "SCORING",
+        "",
+        "#4C9AFF",
+        ""
+      ],
+      "comment": "yellow",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 85,
+      "module": "Product",
+      "verb": "VALIDATE",
+      "args": [
+        "",
+        "*verdicts",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 86,
+      "module": "Flow",
+      "verb": "J",
+      "args": [
+        "DONE",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 105,
+      "module": "Flow",
+      "verb": "LABEL",
+      "args": [
+        "DONE",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "gray",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 108,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "INST:NSEL 1",
+        "",
+        "",
+        ""
+      ],
+      "comment": "select channel 1",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 109,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "OUTP OFF",
+        "",
+        "",
+        ""
+      ],
+      "comment": "de-energise supply",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 110,
+      "module": "VISA",
+      "verb": "WRITE",
+      "args": [
+        "DP2A243200206",
+        "VOLT 0",
+        "",
+        "",
+        ""
+      ],
+      "comment": "zero the setpoint",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 111,
+      "module": "Serial",
+      "verb": "EXCHANGEBYTES_LVS",
+      "args": [
+        "D1",
+        "111,102,102,47,47",
+        "111,102,102,47,47",
+        "5,5",
+        ""
+      ],
+      "comment": "open all relays",
+      "started": "18:55:26",
+      "duration_s": 0.008,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    },
+    {
+      "row": 112,
+      "module": "Flow",
+      "verb": "DISABLE_TIMER",
+      "args": [
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "comment": "",
+      "started": "18:55:26",
+      "duration_s": 0.0,
+      "outcome": "ok",
+      "detail": "",
+      "alive_before": [
+        1,
+        1
+      ],
+      "measurement": null
+    }
+  ]
+}

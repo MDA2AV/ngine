@@ -209,6 +209,77 @@ QTabBar::tab {{
 }}
 QTabBar::tab:selected {{ color: {c['text']}; border-bottom-color: {c['accent']}; }}
 
+/* --- menu bar --- */
+QMenuBar {{
+    background: {c['surface']};
+    border-bottom: 1px solid {c['border']};
+    padding: 2px 6px;
+    font-size: 10.5pt;
+}}
+QMenuBar::item {{
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 5px;
+    color: {c['text']};
+}}
+QMenuBar::item:selected {{ background: {c['elevated']}; }}
+QMenuBar::item:pressed {{ background: {c['accent']}; color: #FFFFFF; }}
+QMenu {{
+    background: {c['elevated']};
+    border: 1px solid {c['border']};
+    border-radius: 8px;
+    padding: 6px;
+}}
+QMenu::item {{
+    padding: 7px 26px 7px 30px;
+    border-radius: 5px;
+    color: {c['text']};
+}}
+QMenu::item:selected {{ background: {c['accent']}; color: #FFFFFF; }}
+QMenu::item:disabled {{ color: {c['muted']}; }}
+QMenu::separator {{
+    height: 1px; background: {c['border']}; margin: 5px 10px;
+}}
+QMenu::indicator {{ width: 16px; height: 16px; left: 8px; }}
+
+/* --- identity strip --- */
+QFrame#Identity {{
+    background: {c['surface']};
+    border: none;
+    border-bottom: 1px solid {c['border']};
+}}
+QLabel#ProgramName {{
+    font-size: 17pt; font-weight: 700; letter-spacing: -0.3px;
+    color: {c['text']};
+}}
+QLabel#ProgramMeta {{
+    font-size: 9.5pt; color: {c['muted']};
+}}
+QLabel#StatCaption {{
+    font-size: 8pt; font-weight: 700; letter-spacing: 1.4px;
+    color: {c['muted']};
+}}
+QLabel#StatValue {{
+    font-family: {MONO}; font-size: 16pt; font-weight: 600;
+    color: {c['text']};
+}}
+QLabel#ScanCaption {{
+    font-size: 8pt; font-weight: 700; letter-spacing: 1.4px;
+    color: {c['muted']};
+}}
+QLabel#ScanValue {{
+    font-family: {MONO}; font-size: 13pt;
+    color: {c['text']};
+    background: {c['elevated']};
+    border: 1px solid {c['border']};
+    border-radius: 6px;
+    padding: 7px 12px;
+}}
+QLabel#Badge {{
+    font-size: 8.5pt; font-weight: 800; letter-spacing: 1.2px;
+    border-radius: 4px; padding: 4px 9px;
+}}
+
 /* --- misc --- */
 QSplitter::handle {{ background: {c['border']}; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 0; }}

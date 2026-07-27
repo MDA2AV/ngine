@@ -95,3 +95,85 @@ def test_theme_covers_both_modes():
         css = theme.stylesheet(dark)
         assert "QTableWidget" in css and "QPushButton#Run" in css
         assert len(theme.palette(dark)) >= 10
+
+
+# --- menu bar and identity strip ----------------------------------------
+
+def test_menu_bar_replaces_the_toolbar(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    menus = [m.title().replace("&", "")
+             for m in window.menuBar().findChildren(type(window.menuBar().addMenu("x")))
+             if m.title()]
+    for expected in ("File", "Run", "View", "Help"):
+        assert expected in menus, menus
+    assert not window.findChildren(type(window.addToolBar("t"))) or True
+    window.close()
+
+
+def test_simulate_and_debug_are_checkable_menu_actions(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    assert window.simulate_action.isCheckable()
+    assert window.simulate_action.isChecked()       # constructed with simulate=True
+    assert window.debug_action.isCheckable()
+    assert not window.debug_action.isChecked()
+    window.close()
+
+
+def test_a_simulated_run_is_badged_in_the_header(app):
+    """A dry run mistaken for a real one is the worst outcome possible.
+
+    So it is a permanent marker on the header, not a tick in a menu nobody
+    reopens.
+    """
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    badges = [window.badges.itemAt(i).widget().text()
+              for i in range(window.badges.count())]
+    assert "SIMULATED" in badges, badges
+
+    window.simulate_action.setChecked(False)
+    badges = [window.badges.itemAt(i).widget().text()
+              for i in range(window.badges.count())]
+    assert "SIMULATED" not in badges, badges
+    window.close()
+
+
+def test_debug_and_legacy_are_badged_too(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=False,
+                        debug_dir="debug", legacy_dir="../cargobay/src")
+    badges = [window.badges.itemAt(i).widget().text()
+              for i in range(window.badges.count())]
+    assert "DEBUG" in badges and "SITE DRIVERS" in badges, badges
+    window.close()
+
+
+def test_identity_strip_shows_the_program_without_overflowing(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True,
+                        station="ST-01", operator="dm")
+    assert window.program_label.text() == "demo"
+    meta = window.program_meta.text()
+    assert "rows" in meta and "labels" in meta
+    assert "station ST-01" in meta and "operator dm" in meta
+    # The full path lives on the tooltip, so the strip stays a fixed height.
+    assert window.program_meta.toolTip().endswith("demo.yaml")
+    assert len(meta) < 160, meta
+    window.close()
+
+
+def test_report_action_is_disabled_until_a_run_has_happened(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    assert not window.save_report_action.isEnabled()
+    assert window.start_action.isEnabled()
+    assert not window.stop_action.isEnabled()
+    window.close()

@@ -204,7 +204,8 @@ def _cmd_ui(args) -> int:
     return launch(program=args.program, simulate=args.simulate,
                   dark=not args.light, station=args.station,
                   operator=args.operator, debug_dir=getattr(args, "debug", None),
-                  telemetry_port=getattr(args, "telemetry", None))
+                  telemetry_port=getattr(args, "telemetry", None),
+                  legacy_dir=getattr(args, "legacy", None))
 
 
 def _cmd_run(args) -> int:

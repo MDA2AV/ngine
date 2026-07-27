@@ -6,7 +6,8 @@ import os
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QFont, QKeySequence
-from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QFileDialog,
+from PySide6.QtWidgets import (QAbstractItemView, QFileDialog, QFrame,
+                               QSizePolicy,
                                QGridLayout, QHBoxLayout, QHeaderView, QLabel,
                                QMainWindow, QMessageBox, QProgressBar,
                                QPushButton, QSplitter, QTableWidget,
@@ -19,7 +20,8 @@ from ..engine.loaders import load
 from ..engine.program import Program
 from . import theme
 from .bridge import QtBridge
-from .widgets import Card, FieldRow, LogView, StatusBanner, UutGrid
+from .widgets import (Badge, Card, LogView, ScanField, Stat,
+                      StatusBanner, UutGrid)
 
 MAX_UUTS = 4
 
@@ -28,7 +30,8 @@ class MainWindow(QMainWindow):
     def __init__(self, program_path: str | None = None, simulate: bool = False,
                  dark: bool = True, station: str = "", operator: str = "",
                  debug_dir: str | None = None,
-                 telemetry_port: int | None = None) -> None:
+                 telemetry_port: int | None = None,
+                 legacy_dir: str | None = None) -> None:
         super().__init__()
         self.setWindowTitle(f"NGWART {__version__} — Functional Test")
         self.resize(1500, 900)
@@ -41,7 +44,10 @@ class MainWindow(QMainWindow):
         self.station = station
         self.operator = operator
         self.debug_dir = debug_dir
+        self.legacy_dir = legacy_dir
         self._last_record = None
+        self._points = 0
+        self._failed = 0
 
         # Owned by the window, not by a run: a dashboard stays connected while
         # the operator swaps boards.
@@ -64,15 +70,16 @@ class MainWindow(QMainWindow):
         self._clock.setInterval(250)
         self._clock.timeout.connect(self._tick_clock)
 
-        self.simulate_box.setChecked(simulate)
-        self.debug_box.setChecked(bool(debug_dir))
+        self.simulate_action.setChecked(simulate)
+        self.debug_action.setChecked(bool(debug_dir))
+        self._refresh_badges()
         if program_path:
             self.open_program(program_path)
 
     # -- construction -----------------------------------------------------
 
     def _build_ui(self) -> None:
-        self._build_toolbar()
+        self._build_menus()
 
         root = QWidget()
         layout = QVBoxLayout(root)
@@ -97,58 +104,162 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("No program loaded.")
 
-    def _build_toolbar(self) -> None:
-        bar = self.addToolBar("Main")
-        bar.setMovable(False)
+    def _build_menus(self) -> None:
+        """A real menu bar.
 
-        open_action = QAction("Open program…", self)
-        open_action.setShortcut(QKeySequence.Open)
-        open_action.triggered.connect(self._choose_program)
-        bar.addAction(open_action)
+        The controls an operator uses constantly -- Run, Stop -- stay on the
+        footer as large targets. Everything else is setup, and setup belongs in
+        a menu rather than competing for space with the readout.
+        """
+        bar = self.menuBar()
 
-        reload_action = QAction("Reload", self)
-        reload_action.setShortcut("F5")
-        reload_action.triggered.connect(self._reload_program)
-        bar.addAction(reload_action)
+        file_menu = bar.addMenu("&File")
+        self._action(file_menu, "&Open program…", self._choose_program,
+                     QKeySequence.Open)
+        self._action(file_menu, "&Reload", self._reload_program, "F5")
+        self.recent_menu = file_menu.addMenu("Open &recent")
+        self.recent_menu.setEnabled(False)
+        file_menu.addSeparator()
+        self.save_report_action = self._action(
+            file_menu, "&Save report…", self._save_report, "Ctrl+S")
+        self.save_report_action.setEnabled(False)
+        file_menu.addSeparator()
+        self._action(file_menu, "E&xit", self.close, QKeySequence.Quit)
 
-        bar.addSeparator()
-        self.debug_box = QCheckBox("Debug bundle")
-        self.debug_box.setToolTip(
-            "Write captures, binary images, contour overlays, the data store and "
-            "the full log to ./debug. Turn on when a test fails unexpectedly.")
+        run_menu = bar.addMenu("&Run")
+        self.start_action = self._action(run_menu, "&Start", self.start_run, "F9")
+        self.stop_action = self._action(run_menu, "S&top", self.stop_run, "Esc")
+        self.stop_action.setEnabled(False)
+        run_menu.addSeparator()
 
-        self.simulate_box = QCheckBox("Simulate hardware")
-        self.simulate_box.setToolTip(
-            "Run against simulated instruments. Reports produced in this mode "
-            "are tagged, so they cannot be mistaken for a real run.")
-        bar.addWidget(self.simulate_box)
-        bar.addWidget(self.debug_box)
+        self.simulate_action = self._toggle(
+            run_menu, "Si&mulate hardware",
+            "Run against simulated instruments. Reports produced this way are "
+            "tagged, so they cannot be mistaken for a real run.")
+        self.simulate_action.toggled.connect(self._refresh_badges)
+        self.debug_action = self._toggle(
+            run_menu, "Write &debug bundle",
+            "Save captures, binary images, contour overlays, the data store "
+            "and the full log to ./debug.")
+        self.debug_action.toggled.connect(self._refresh_badges)
 
-        bar.addSeparator()
-        theme_action = QAction("Toggle theme", self)
-        theme_action.triggered.connect(self._toggle_theme)
-        bar.addAction(theme_action)
+        view_menu = bar.addMenu("&View")
+        for index, (name, key) in enumerate(
+                (("&Operator", "Ctrl+1"), ("&Program", "Ctrl+2"),
+                 ("&Verbs", "Ctrl+3"))):
+            self._action(view_menu, name,
+                         lambda _=False, i=index: self.tabs.setCurrentIndex(i),
+                         key)
+        view_menu.addSeparator()
+        self._action(view_menu, "Toggle &theme", self._toggle_theme, "Ctrl+T")
 
-        save_action = QAction("Save report…", self)
-        save_action.triggered.connect(self._save_report)
-        bar.addAction(save_action)
+        help_menu = bar.addMenu("&Help")
+        self._action(help_menu, "&About NGWART", self._about)
+
+    def _action(self, menu, text, slot, shortcut=None):
+        action = QAction(text, self)
+        if shortcut is not None:
+            action.setShortcut(shortcut)
+        action.triggered.connect(slot)
+        menu.addAction(action)
+        return action
+
+    def _toggle(self, menu, text, tip):
+        action = QAction(text, self)
+        action.setCheckable(True)
+        action.setToolTip(tip)
+        menu.addAction(action)
+        return action
+
+    def _about(self) -> None:
+        from ..engine import REGISTRY
+
+        QMessageBox.about(
+            self, "NGWART",
+            f"<b>NGWART {__version__}</b><br>"
+            f"Functional test sequencer<br><br>"
+            f"{len(REGISTRY)} verbs across {len(REGISTRY.modules())} modules.")
 
     def _build_header(self) -> QWidget:
-        card = Card()
-        row = QHBoxLayout()
-        row.setSpacing(26)
-        self.field_program = FieldRow("program", "—")
-        self.field_barcode1 = FieldRow("barcode 1")
-        self.field_barcode2 = FieldRow("barcode 2")
-        self.field_worker = FieldRow("worker")
-        self.field_elapsed = FieldRow("elapsed", "0.0 s")
-        self.field_station = FieldRow("station", self.station or "—")
-        for field in (self.field_program, self.field_barcode1, self.field_barcode2,
-                      self.field_worker, self.field_elapsed, self.field_station):
-            row.addWidget(field)
-        row.addStretch(1)
-        card.add_layout(row)
-        return card
+        """Program identity on the left, live figures on the right.
+
+        Replaces the row of small boxes: the things an operator reads at a
+        glance -- what is loaded, what was scanned, how long, how many failed --
+        now have a size that matches how often they are read, and the strip
+        spans the window instead of floating in a card.
+        """
+        frame = QFrame()
+        frame.setObjectName("Identity")
+        outer = QVBoxLayout(frame)
+        outer.setContentsMargins(18, 12, 18, 12)
+        outer.setSpacing(12)
+
+        top = QHBoxLayout()
+        top.setSpacing(14)
+
+        identity = QVBoxLayout()
+        identity.setSpacing(1)
+        self.program_label = QLabel("No program loaded")
+        self.program_label.setObjectName("ProgramName")
+        self.program_meta = QLabel("")
+        self.program_meta.setObjectName("ProgramMeta")
+        identity.addWidget(self.program_label)
+        identity.addWidget(self.program_meta)
+        holder = QWidget()
+        holder.setLayout(identity)
+        holder.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        top.addWidget(holder, 1)
+
+        self.badges = QHBoxLayout()
+        self.badges.setSpacing(6)
+        self.badges.setAlignment(Qt.AlignVCenter)
+        top.addLayout(self.badges)
+        top.addSpacing(20)
+
+        self.stat_elapsed = Stat("elapsed", "0.0s")
+        self.stat_points = Stat("points", "0")
+        self.stat_failed = Stat("failed", "0")
+        for stat in (self.stat_elapsed, self.stat_points, self.stat_failed):
+            stat.setMinimumWidth(84)
+            top.addWidget(stat, 0, Qt.AlignVCenter)
+            top.addSpacing(18)
+        outer.addLayout(top)
+
+        scans = QHBoxLayout()
+        scans.setSpacing(16)
+        self.scan_barcode1 = ScanField("barcode 1")
+        self.scan_barcode2 = ScanField("barcode 2")
+        self.scan_worker = ScanField("worker")
+        for field in (self.scan_barcode1, self.scan_barcode2, self.scan_worker):
+            scans.addWidget(field)
+        scans.addStretch(1)
+        outer.addLayout(scans)
+        return frame
+
+    def _refresh_badges(self) -> None:
+        """Show what is unusual about this run, permanently and in the header.
+
+        A simulated run that an operator takes for a real one is the worst thing
+        this application can produce, so it is a badge rather than a tick in a
+        menu they will not reopen.
+        """
+        while self.badges.count():
+            item = self.badges.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        palette = theme.palette(self.dark)
+        if self.simulate_action.isChecked():
+            self.badges.addWidget(self._badge("simulated", "warn", palette))
+        if self.debug_action.isChecked():
+            self.badges.addWidget(self._badge("debug", "info", palette))
+        if self.legacy_dir:
+            self.badges.addWidget(self._badge("site drivers", "accent", palette))
+
+    def _badge(self, text: str, tone: str, palette: dict) -> Badge:
+        badge = Badge(text, tone)
+        badge.apply_palette(palette)
+        return badge
 
     def _build_operator_tab(self) -> QWidget:
         splitter = QSplitter(Qt.Horizontal)
@@ -278,6 +389,7 @@ class MainWindow(QMainWindow):
             panel.verdict._palette = palette
             panel.verdict.set_state(panel.verdict.text())
         self.banner.show_status(self.banner.text())
+        self._refresh_badges()
 
     def _toggle_theme(self) -> None:
         self.dark = not self.dark
@@ -304,11 +416,24 @@ class MainWindow(QMainWindow):
             return
 
         self.program = program
-        self.field_program.set_value(program.meta.get("name", os.path.basename(path)))
+        self.program_label.setText(program.meta.get("name", os.path.basename(path)))
+        # Last few path components rather than the absolute path: enough to
+        # tell two similarly-named tables apart without pushing the badges off
+        # the strip. The full path is on the tooltip.
+        parts = os.path.abspath(path).split(os.sep)
+        short = os.sep.join(parts[-3:]) if len(parts) > 3 else os.path.abspath(path)
+        bits = [short, f"{len(program.rows)} rows", f"{len(program.labels)} labels"]
+        if self.station:
+            bits.append(f"station {self.station}")
+        if self.operator:
+            bits.append(f"operator {self.operator}")
+        self.program_meta.setText("  ·  ".join(bits))
+        self.program_meta.setToolTip(os.path.abspath(path))
         self._populate_program_table(program)
         report = self._show_diagnostics(program)
 
         self.run_button.setEnabled(report.ok)
+        self.start_action.setEnabled(report.ok)
         if report.ok:
             self.banner.show_status("READY")
             self.statusBar().showMessage(
@@ -368,16 +493,20 @@ class MainWindow(QMainWindow):
             panel.apply("clear", [], "", {})
             panel.set_verdict("RUN")
         self.progress.setValue(0)
-        self.field_barcode1.set_value("")
-        self.field_barcode2.set_value("")
+        self.scan_barcode1.set_value("")
+        self.scan_barcode2.set_value("")
+        self._points = self._failed = 0
+        self.stat_points.set_value("0")
+        self.stat_failed.set_value("0")
+        self.stat_elapsed.set_value("0.0s")
 
         options = RunOptions(
-            simulate=self.simulate_box.isChecked(),
+            simulate=self.simulate_action.isChecked(),
             strict=True,
             operator=self.operator,
             station=self.station,
             workdir=os.path.dirname(self.program.source or ".") or ".",
-            debug_dir=(self.debug_dir or "debug") if self.debug_box.isChecked() else None,
+            debug_dir=(self.debug_dir or "debug") if self.debug_action.isChecked() else None,
             telemetry=self.telemetry,
         )
         self.sequencer = Sequencer(REGISTRY, self.bridge, options)
@@ -387,6 +516,8 @@ class MainWindow(QMainWindow):
 
         self.run_button.setEnabled(False)
         self.stop_button.setEnabled(True)
+        self.start_action.setEnabled(False)
+        self.stop_action.setEnabled(True)
         self._clock.start()
         self.thread.start()
 
@@ -408,7 +539,7 @@ class MainWindow(QMainWindow):
         b.stepped.connect(self._on_step)
         b.status_changed.connect(self._on_status)
         b.progressed.connect(self._on_progress)
-        b.ticked.connect(lambda s: self.field_elapsed.set_value(f"{s:.1f} s"))
+        b.ticked.connect(lambda s: self.stat_elapsed.set_value(f"{s:.1f}s"))
         b.grid_changed.connect(self._on_grid)
         b.field_changed.connect(self._on_field)
         b.alive_changed.connect(self._on_alive)
@@ -438,13 +569,23 @@ class MainWindow(QMainWindow):
         if 0 <= index < len(self.uut_grids):
             self.uut_grids[index].apply(op, values, tag, config)
 
+        if op == "add":
+            self._points += 1
+            palette = theme.palette(self.dark)
+            self.stat_points.set_value(str(self._points))
+            if str(tag).upper() == "FAIL":
+                self._failed += 1
+                self.stat_failed.set_value(str(self._failed), "fail", palette)
+        elif op == "clear":
+            pass
+
     def _on_field(self, name: str, value: str, colour) -> None:
         if name == "barcode1":
-            self.field_barcode1.set_value(value)
+            self.scan_barcode1.set_value(value)
         elif name == "barcode2":
-            self.field_barcode2.set_value(value)
+            self.scan_barcode2.set_value(value)
         elif name == "worker_id":
-            self.field_worker.set_value(value)
+            self.scan_worker.set_value(value)
         elif name == "log" and colour == "clear":
             self.log.clear_log()
 
@@ -463,8 +604,11 @@ class MainWindow(QMainWindow):
         palette = theme.palette(self.dark)
         self.run_button.setEnabled(True)
         self.stop_button.setEnabled(False)
+        self.start_action.setEnabled(True)
+        self.stop_action.setEnabled(False)
         self._clock.stop()
         self._last_record = self.thread.record if self.thread else None
+        self.save_report_action.setEnabled(self._last_record is not None)
 
         for index, panel in enumerate(self.uut_grids):
             if index in per_uut:

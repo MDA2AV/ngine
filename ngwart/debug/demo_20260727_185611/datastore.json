@@ -1,0 +1,67 @@
+[
+  {
+    "coord": "0,0,0",
+    "name": "det.raw",
+    "value": "31"
+  },
+  {
+    "coord": "1,0,0",
+    "name": "run.datecode",
+    "value": "2026y_7m_27d"
+  },
+  {
+    "coord": "1,1,0",
+    "name": "run.timestamp",
+    "value": "18h_56m_11s"
+  },
+  {
+    "coord": "1,2,0",
+    "name": "run.started",
+    "value": "2026-07-27 18:56:11"
+  },
+  {
+    "coord": "2,0,0",
+    "name": "uut0.vbat",
+    "value": "13.50917"
+  },
+  {
+    "coord": "2,1,0",
+    "name": "uut1.vbat",
+    "value": "13.490326"
+  },
+  {
+    "coord": "3,0,0",
+    "name": "uut0.iload",
+    "value": "0.660475"
+  },
+  {
+    "coord": "3,1,0",
+    "name": "uut1.iload",
+    "value": "0.660655"
+  },
+  {
+    "coord": "4,0,0",
+    "name": "img.raw",
+    "value": "<ndarray shape=(480, 640, 3)>"
+  },
+  {
+    "coord": "4,1,0",
+    "name": "img.grey",
+    "value": "<ndarray shape=(480, 640)>"
+  },
+  {
+    "coord": "4,2,0",
+    "name": "img.binary",
+    "value": "<ndarray shape=(480, 640)>"
+  },
+  {
+    "coord": "5,0,0",
+    "name": "img.contours",
+    "value": "<list shape=?>"
+  },
+  {
+    "coord": "6,0,0",
+    "name": "verdicts",
+    "value": "0=PASS;1=PASS"
+  }
+]

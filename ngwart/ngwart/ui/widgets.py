@@ -243,3 +243,86 @@ def _readable_on(background: str) -> str:
                  + 0.7152 * channel(colour.green())
                  + 0.0722 * channel(colour.blue()))
     return "#0B0E11" if luminance > 0.45 else "#FFFFFF"
+
+
+class Badge(QLabel):
+    """A small state pill: SIMULATED, DEBUG, LEGACY.
+
+    SIMULATED especially has to be visible without looking for it. A dry run
+    that an operator mistakes for a real one is the single worst outcome a test
+    station can produce, so it is a permanent marker on the header rather than a
+    checkbox somewhere in a menu.
+    """
+
+    def __init__(self, text: str, tone: str = "warn", parent=None) -> None:
+        super().__init__(text.upper(), parent)
+        self.setObjectName("Badge")
+        self.tone = tone
+        self.setAlignment(Qt.AlignCenter)
+        self.apply_palette(theme.palette(True))
+
+    def apply_palette(self, palette: dict) -> None:
+        colour = palette.get(self.tone, palette["muted"])
+        self.setStyleSheet(
+            f"background: {colour}; color: {_readable_on(colour)};"
+            f"border-radius: 4px; padding: 4px 9px;"
+            f"font-size: 8.5pt; font-weight: 800; letter-spacing: 1.2px;")
+
+
+class Stat(QWidget):
+    """A caption over a large monospace number.
+
+    Tabular figures, so a changing value does not make the row jitter.
+    """
+
+    def __init__(self, caption: str, value: str = "--", parent=None) -> None:
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.caption = QLabel(caption.upper())
+        self.caption.setObjectName("StatCaption")
+        self.value = QLabel(value)
+        self.value.setObjectName("StatValue")
+        font = self.value.font()
+        font.setStyleHint(QFont.Monospace)
+        self.value.setFont(font)
+
+        layout.addWidget(self.caption)
+        layout.addWidget(self.value)
+
+    def set_value(self, text: str, tone: str | None = None,
+                  palette: dict | None = None) -> None:
+        self.value.setText(str(text))
+        if tone and palette:
+            self.value.setStyleSheet(
+                f"color: {palette.get(tone, palette['text'])};"
+                f"font-family: {theme.MONO}; font-size: 16pt; font-weight: 600;")
+
+
+class ScanField(QWidget):
+    """A scanned value -- barcode, worker id.
+
+    Reads as an input even though it is filled by the program, because that is
+    what the operator is scanning into. Empty shows a placeholder rather than
+    collapsing, so the row keeps its shape between boards.
+    """
+
+    def __init__(self, caption: str, parent=None) -> None:
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)
+
+        self.caption = QLabel(caption.upper())
+        self.caption.setObjectName("ScanCaption")
+        self.value = QLabel("—")
+        self.value.setObjectName("ScanValue")
+        self.value.setMinimumWidth(190)
+
+        layout.addWidget(self.caption)
+        layout.addWidget(self.value)
+
+    def set_value(self, text: str) -> None:
+        self.value.setText(text or "—")

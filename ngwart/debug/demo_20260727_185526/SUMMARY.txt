@@ -1,0 +1,30 @@
+NGWART debug bundle
+========================================
+
+program          demo
+station          ST-01
+operator         dm
+simulated        True
+started          2026-07-27T18:55:26
+ended            2026-07-27T18:55:26
+duration_s       0.825
+aborted          False
+abort_reason     
+steps            65
+points           8
+failed_points    0
+diverted_steps   0
+uuts             {'0': True, '1': True}
+barcodes         {}
+
+Files
+----------------------------------------
+  environment.txt   versions and SDK presence
+  program.tsv       the loaded program
+  validation.json   pre-run diagnostics
+  log.txt           full operator log
+  run.json          every step, timing and outcome
+  points.json       every pass/fail judgement
+  datastore.json    every populated data cell
+  notes.txt         what was inspected, in order
+  images/           captures, binaries, contour overlays

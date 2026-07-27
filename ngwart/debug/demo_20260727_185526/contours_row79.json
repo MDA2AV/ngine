@@ -1,0 +1,38 @@
+[
+  {
+    "index": 0,
+    "centroid": [
+      512,
+      240
+    ],
+    "area_raw": 1890.0,
+    "area_calibrated": 1890.0
+  },
+  {
+    "index": 1,
+    "centroid": [
+      384,
+      240
+    ],
+    "area_raw": 1890.0,
+    "area_calibrated": 1890.0
+  },
+  {
+    "index": 2,
+    "centroid": [
+      256,
+      240
+    ],
+    "area_raw": 1890.0,
+    "area_calibrated": 1890.0
+  },
+  {
+    "index": 3,
+    "centroid": [
+      128,
+      240
+    ],
+    "area_raw": 1890.0,
+    "area_calibrated": 1890.0
+  }
+]

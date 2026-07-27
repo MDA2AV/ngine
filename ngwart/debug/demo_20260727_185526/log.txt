@@ -1,0 +1,55 @@
+    0  [info] Debug bundle: debug\demo_20260727_185526
+    0  [info] --- Config ---
+   26  [info] Alive mask initialised with 2 unit(s).
+   27  [info] Labels indexed: 16
+   27  [info] Test span: 27 rows
+   28  [info] Port COM11 bound to 'CONTROL' (Control board (sim))
+   29  [info] Port COM12 bound to 'D1' (Denkovi DAE 1 (sim))
+   32  [info] VISA opened USB0::0x1AB1::0x0E11::DP2A243200206::INSTR RIGOL TECHNOLOGIES,DP832,SIM0001,00.01.16
+   33  [info] Camera UB101256 opened.
+   33  [info] Camera GX002467 opened.
+   44  [info] == TOP ==
+   48  [info] All units alive.
+   49  [info] Data initialised: 40 lines, 3 cols, 30 pages.
+   50  [info] == DETECTION ==
+   55  [info] Logging resumed.
+   56  [info] Detection: all units present.
+   57  [info] == START ==
+   61  [info] Datecode: 2026y_7m_27d  Extended: 18h_55m_26s
+   62  [info] == POWER ==
+   63  [info] D1 << 48,49,43,47,47 (attempt 1/5)
+   63  [info] D1 >> '48,49,43,47,47'
+   64  [info] D1 << 48,50,43,47,47 (attempt 1/5)
+   64  [info] D1 >> '48,50,43,47,47'
+   65  [info] VISA DP2A243200206 << INST:NSEL 1
+   66  [info] VISA DP2A243200206 << VOLT 13.5
+   67  [info] VISA DP2A243200206 << CURR 2.0
+   68  [info] VISA DP2A243200206 << OUTP ON
+   69  [info] Delay 0.2s
+   70  [info] == MEASURE ==
+   71  [pass] VBAT: 13.50917 in [13.0, 14.0] -> PASS
+   72  [pass] ILOAD: 0.660475 in [0.1, 1.0] -> PASS
+   73  [pass] VBAT: 13.490326 in [13.0, 14.0] -> PASS
+   74  [pass] ILOAD: 0.660655 in [0.1, 1.0] -> PASS
+   75  [info] == OPTICAL ==
+   76  [info] Camera UB101256 captured (480, 640, 3)
+   79  [info] BIN2CONT: 4 contour(s) found (threshold None, frame 640x480)
+   80  [info] LED_A: contour at (128, 240), calibrated area 1890.0
+   80  [pass] LED_A: 1890.0 vs 50.0 -> PASS
+   81  [info] LED_B: contour at (256, 240), calibrated area 1890.0
+   81  [pass] LED_B: 1890.0 vs 50.0 -> PASS
+   82  [info] LED_A: contour at (384, 240), calibrated area 1890.0
+   82  [pass] LED_A: 1890.0 vs 50.0 -> PASS
+   83  [info] LED_B: contour at (512, 240), calibrated area 1890.0
+   83  [pass] LED_B: 1890.0 vs 50.0 -> PASS
+   84  [info] == END ==
+   85  [pass] UUT 0: PASS (4 point(s))
+   85  [pass] UUT 1: PASS (4 point(s))
+   86  [info] Jumping to DONE
+  105  [info] == DONE ==
+  107  [info] --- Teardown ---
+  108  [info] VISA DP2A243200206 << INST:NSEL 1
+  109  [info] VISA DP2A243200206 << OUTP OFF
+  110  [info] VISA DP2A243200206 << VOLT 0
+  111  [info] D1 << 111,102,102,47,47 (attempt 1/5)
+  111  [info] D1 >> '111,102,102,47,47'
