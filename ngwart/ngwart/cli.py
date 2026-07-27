@@ -68,6 +68,26 @@ def main(argv: list[str] | None = None) -> int:
     verbs.add_argument("--module")
     verbs.add_argument("--long", action="store_true")
 
+    web = sub.add_parser("web", help="serve the station as a web app")
+    web.add_argument("program", nargs="?")
+    web.add_argument("--port", type=int, default=8080)
+    web.add_argument("--host", default="127.0.0.1",
+                     help="0.0.0.0 to allow other machines. Read the warning "
+                          "printed when combining that with --allow-control.")
+    web.add_argument("--simulate", action="store_true")
+    web.add_argument("--allow-control", action="store_true",
+                     help="let a browser load programs and start/stop tests. "
+                          "Off by default: this energises real hardware.")
+    web.add_argument("--token", help="shared secret required on control routes")
+    web.add_argument("--programs", default=".", metavar="DIR",
+                     help="directory the program picker lists")
+    web.add_argument("--debug", nargs="?", const="debug", metavar="DIR",
+                     help=_DEBUG_HELP)
+    web.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
+    web.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
+    web.add_argument("--station", default="")
+    web.add_argument("--operator", default="")
+
     adopt = sub.add_parser("adopt", help="adopt legacy v1 manager modules")
     adopt.add_argument("directory", help="a v1 'src' directory")
 
@@ -326,6 +346,19 @@ def _cmd_verbs(args) -> int:
             print(f"      {spec.doc.splitlines()[0]}")
     print(f"\n{len(specs)} verb(s) across {len({s.module for s in specs})} module(s).")
     return 0
+
+
+def _cmd_web(args) -> int:
+    from .web import serve
+
+    _use_legacy(getattr(args, "legacy", None), getattr(args, "legacy_only", None))
+    if args.program:
+        _hint_legacy(args.program, getattr(args, "legacy", None))
+    return serve(program=args.program, host=args.host, port=args.port,
+                 simulate=args.simulate, allow_control=args.allow_control,
+                 token=args.token, debug_dir=getattr(args, "debug", None),
+                 program_dir=args.programs, station=args.station,
+                 operator=args.operator)
 
 
 def _cmd_adopt(args) -> int:

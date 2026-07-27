@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NGWART</title>
+<style>
+/* Same tokens as the desktop station, so the two read as one product. */
+:root{
+  --bg:#0E1215; --surface:#151A1E; --elevated:#1C2328; --overlay:#232B31;
+  --border:#283238; --border-strong:#36434B;
+  --text:#E7ECEF; --muted:#A0ADB5; --faint:#6C7A82;
+  --accent:#3E9BD5; --accent-soft:#16303F;
+  --pass:#3BB878; --fail:#E8545B; --warn:#DFA13C; --idle:#333E45;
+  --s-xs:4px; --s-sm:8px; --s-md:12px; --s-lg:16px; --s-xl:24px;
+  --r-ctl:6px; --r-panel:10px; --r-pill:5px;
+  --mono:"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;
+  --sans:"Segoe UI",Inter,system-ui,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#F1F4F6; --surface:#FFFFFF; --elevated:#EDF1F4; --overlay:#E2E8ED;
+    --border:#D5DDE3; --border-strong:#B9C4CC;
+    --text:#11171B; --muted:#54626C; --faint:#7C8A93;
+    --accent:#0F6FA8; --accent-soft:#DCEDF7;
+    --pass:#1B7A4B; --fail:#C0353B; --warn:#8F6212; --idle:#C6CFD6;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:11px/1.5 var(--sans);
+     height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* --- identity strip --- */
+header{background:var(--surface);border-bottom:1px solid var(--border);
+       padding:var(--s-sm) var(--s-lg);display:flex;align-items:center;
+       gap:var(--s-lg);flex-wrap:wrap}
+#name{font-size:14px;font-weight:700}
+#meta{font-size:9px;color:var(--faint);letter-spacing:.3px}
+.grow{flex:1}
+.badge{font-size:9px;font-weight:800;letter-spacing:1.2px;border-radius:var(--r-pill);
+       padding:3px 8px;color:#fff}
+.stat{display:flex;flex-direction:column;min-width:66px}
+.stat b{font:600 15px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.stat span{font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--faint)}
+
+/* --- controls --- */
+button{background:var(--elevated);color:var(--text);border:1px solid var(--border);
+       border-radius:var(--r-ctl);padding:var(--s-sm) var(--s-lg);font:600 11px var(--sans);
+       cursor:pointer}
+button:hover:not(:disabled){background:var(--overlay);border-color:var(--border-strong)}
+button:disabled{color:var(--faint);cursor:not-allowed;opacity:.6}
+button.primary{background:var(--pass);color:#fff;border-color:transparent;
+               font-size:12px;font-weight:700;letter-spacing:.8px;padding:10px 22px}
+button.danger{background:var(--fail);color:#fff;border-color:transparent;
+              font-size:12px;font-weight:700;letter-spacing:.8px;padding:10px 22px}
+button.primary:disabled,button.danger:disabled{background:var(--idle);color:var(--faint)}
+select{background:var(--elevated);color:var(--text);border:1px solid var(--border);
+       border-radius:var(--r-ctl);padding:7px 10px;font:11px var(--mono);min-width:220px}
+
+/* --- banner --- */
+#banner{margin:var(--s-sm) var(--s-md) 0;border-radius:var(--r-panel);
+        background:var(--elevated);color:var(--text);text-align:center;
+        font:700 19px/1.3 var(--sans);letter-spacing:1.5px;padding:9px 16px}
+
+/* --- body --- */
+main{flex:1;display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;
+     gap:var(--s-sm);padding:var(--s-sm) var(--s-md);min-height:0}
+@media (max-width:900px){main{grid-template-columns:1fr;overflow:auto}}
+.panel{background:var(--surface);border:1px solid var(--border);
+       border-radius:var(--r-panel);display:flex;flex-direction:column;min-height:0;
+       overflow:hidden}
+.panel>h2{margin:0;padding:var(--s-sm) var(--s-md) var(--s-xs);
+          font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--faint)}
+#log{flex:1;overflow:auto;padding:0 var(--s-md) var(--s-sm);
+     font:10px/1.55 var(--mono);white-space:pre-wrap;word-break:break-word}
+#log div{display:flex;gap:var(--s-sm)}
+#log .g{color:var(--faint);flex:0 0 34px;text-align:right;
+        font-variant-numeric:tabular-nums}
+.warn{color:var(--warn)} .error,.fail{color:var(--fail);font-weight:600}
+.pass{color:var(--pass)}
+
+#units{display:grid;gap:var(--s-sm);grid-template-columns:1fr 1fr;
+       align-content:start;overflow:auto;min-height:0}
+@media (max-width:1200px){#units{grid-template-columns:1fr}}
+.unit{background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--r-panel);display:flex;flex-direction:column;overflow:hidden}
+.unit .head{display:flex;align-items:center;gap:var(--s-sm);
+            padding:var(--s-sm) var(--s-md)}
+.unit .num{font:700 13px var(--mono);background:var(--elevated);
+           border:1px solid var(--border);border-radius:var(--r-pill);padding:1px 8px}
+.unit .lbl{font-size:9px;font-weight:700;letter-spacing:1.4px;color:var(--faint)}
+.unit .tally{font:9px var(--mono);letter-spacing:.6px;color:var(--faint)}
+.verdict{font-size:11px;font-weight:800;letter-spacing:.8px;
+         border-radius:var(--r-pill);padding:3px 10px;background:var(--idle);color:var(--text)}
+table{width:100%;border-collapse:collapse;font:10px var(--mono)}
+th{text-align:left;font:700 9px var(--sans);letter-spacing:1.1px;color:var(--faint);
+   padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;
+   background:var(--surface)}
+td{padding:4px 8px;color:var(--muted);font-variant-numeric:tabular-nums}
+tr:nth-child(even) td{background:var(--elevated)}
+td.n{text-align:right}
+td:last-child{font-weight:700}
+.tbody-wrap{overflow:auto;max-height:340px}
+.empty{padding:var(--s-xl);text-align:center;color:var(--faint);font-size:11px}
+
+/* --- footer --- */
+footer{background:var(--surface);border-top:1px solid var(--border);
+       padding:var(--s-sm) var(--s-md);display:flex;align-items:center;gap:var(--s-md)}
+#bar{flex:1;height:8px;background:var(--elevated);border-radius:4px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--accent);
+       border-radius:4px;transition:width .2s}
+#pct{font:600 15px var(--mono);font-variant-numeric:tabular-nums;min-width:52px;
+     text-align:right}
+#step{flex:2;font:9px var(--mono);color:var(--faint);overflow:hidden;
+      text-overflow:ellipsis;white-space:nowrap}
+#conn{font-size:9px;font-weight:700;letter-spacing:1.2px;padding:3px 8px;
+      border-radius:var(--r-pill);background:var(--idle);color:var(--text)}
+</style></head>
+<body>
+
+<header>
+  <div>
+    <div id="name">No program loaded</div>
+    <div id="meta">Pick a program below</div>
+  </div>
+  <div id="badges" style="display:flex;gap:6px"></div>
+  <div class="grow"></div>
+  <select id="picker"><option value="">Loading…</option></select>
+  <button id="load">Load</button>
+  <div class="stat"><span>ELAPSED</span><b id="elapsed">0.0s</b></div>
+  <div class="stat"><span>POINTS</span><b id="points">0</b></div>
+  <div class="stat"><span>FAILED</span><b id="failed">0</b></div>
+</header>
+
+<div id="banner">READY</div>
+
+<main>
+  <section class="panel"><h2>LOG</h2><div id="log"></div></section>
+  <div id="units"><div class="empty">Panels appear once a program declares how
+    many units the fixture holds.</div></div>
+</main>
+
+<footer>
+  <button class="primary" id="run" disabled>▶ RUN</button>
+  <button class="danger" id="stop" disabled>■ STOP</button>
+  <div id="bar"><i></i></div>
+  <div id="pct">0%</div>
+  <div id="step">—</div>
+  <div id="conn">OFFLINE</div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = {units: 0, points: 0, failed: 0, control: false, running: false};
+
+/* ---------- REST: commands ---------- */
+async function api(path, opts) {
+  const r = await fetch(path, Object.assign({headers: {"Content-Type": "application/json"}}, opts));
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || `${r.status}`);
+  return body;
+}
+async function refreshPrograms() {
+  try {
+    const d = await api("/api/programs");
+    $("picker").innerHTML = d.programs.length
+      ? d.programs.map(p => `<option value="${p.path}">${p.name}</option>`).join("")
+      : '<option value="">no programs found</option>';
+  } catch (e) { log(`could not list programs: ${e.message}`, "error"); }
+}
+$("load").onclick = async () => {
+  const path = $("picker").value;
+  if (!path) return;
+  try { applyState(await api("/api/load", {method: "POST", body: JSON.stringify({path})})); }
+  catch (e) { log(`load failed: ${e.message}`, "error"); }
+};
+$("run").onclick = async () => {
+  try { clearRun(); applyState(await api("/api/start", {method: "POST"})); }
+  catch (e) { log(`start refused: ${e.message}`, "error"); }
+};
+$("stop").onclick = async () => {
+  try { applyState(await api("/api/stop", {method: "POST"})); }
+  catch (e) { log(`stop refused: ${e.message}`, "error"); }
+};
+
+/* ---------- state ---------- */
+function applyState(s) {
+  if (!s) return;
+  state.control = s.control;
+  state.running = s.running;
+  if (s.program) {
+    $("name").textContent = s.program.name || "(unnamed)";
+    const bits = [s.program.path, `${s.program.rows} rows`,
+                  `${s.program.labels} labels`, `${s.program.units} units`];
+    $("meta").textContent = bits.join("  ·  ");
+    buildUnits(s.program.units);
+  }
+  const badges = [];
+  if (s.simulate) badges.push(["SIMULATED", "var(--warn)"]);
+  if (s.debug) badges.push(["DEBUG", "var(--accent)"]);
+  if (!s.control) badges.push(["READ ONLY", "var(--idle)"]);
+  $("badges").innerHTML = badges
+    .map(([t, c]) => `<span class="badge" style="background:${c}">${t}</span>`).join("");
+
+  const errors = (s.diagnostics || []).filter(d => d.severity === "error");
+  $("run").disabled = !s.control || s.running || !s.program || errors.length > 0;
+  $("stop").disabled = !s.control || !s.running;
+  if (errors.length) {
+    banner(`PROGRAM INVALID — ${errors.length} error(s)`, "var(--fail)");
+    errors.slice(0, 12).forEach(d => log(`row ${d.row ?? "-"}: ${d.message}`, "error"));
+  }
+}
+function buildUnits(n) {
+  if (state.units === n) return;
+  state.units = n;
+  const host = $("units");
+  if (!n) {
+    host.innerHTML = '<div class="empty">Panels appear once a program declares '
+                   + 'how many units the fixture holds.</div>';
+    return;
+  }
+  host.innerHTML = "";
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("section");
+    el.className = "unit"; el.id = `unit${i}`;
+    el.innerHTML =
+      `<div class="head"><span class="num">${String(i + 1).padStart(2, "0")}</span>`
+      + `<span class="lbl">UNIT</span><span style="flex:1"></span>`
+      + `<span class="tally" id="tally${i}"></span>`
+      + `<span class="verdict" id="verdict${i}">--</span></div>`
+      + `<div class="tbody-wrap"><table><thead id="head${i}"></thead>`
+      + `<tbody id="rows${i}"></tbody></table></div>`;
+    host.appendChild(el);
+  }
+}
+function verdict(i, text, colour) {
+  const el = $(`verdict${i}`); if (!el) return;
+  el.textContent = text;
+  el.style.background = colour || "var(--idle)";
+  el.style.color = colour ? "#fff" : "var(--text)";
+}
+function clearRun() {
+  $("log").innerHTML = ""; state.points = 0; state.failed = 0;
+  $("points").textContent = "0"; $("failed").textContent = "0";
+  $("failed").style.color = ""; $("pct").textContent = "0%";
+  $("bar").firstElementChild.style.width = "0";
+  for (let i = 0; i < state.units; i++) {
+    const b = $(`rows${i}`); if (b) b.innerHTML = "";
+    const t = $(`tally${i}`); if (t) t.textContent = "";
+    verdict(i, "--");
+  }
+}
+function banner(text, colour) {
+  $("banner").textContent = text;
+  $("banner").style.background = colour || "var(--elevated)";
+  $("banner").style.color = colour ? "#fff" : "var(--text)";
+}
+function log(msg, level, row) {
+  const box = $("log");
+  const stick = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+  const el = document.createElement("div");
+  el.innerHTML = `<span class="g">${row ?? ""}</span>`
+               + `<span class="${level || ""}"></span>`;
+  el.lastChild.textContent = msg;
+  box.appendChild(el);
+  while (box.childElementCount > 2500) box.removeChild(box.firstChild);
+  if (stick) box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- WebSocket: the live stream ---------- */
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => { $("conn").textContent = "LIVE";
+                      $("conn").style.background = "var(--pass)";
+                      $("conn").style.color = "#fff"; };
+  ws.onclose = () => { $("conn").textContent = "OFFLINE";
+                       $("conn").style.background = "var(--fail)";
+                       $("conn").style.color = "#fff";
+                       setTimeout(connect, 2000); };
+  ws.onmessage = e => { let d; try { d = JSON.parse(e.data); } catch { return; } handle(d); };
+}
+function handle(d) {
+  switch (d.type) {
+    case "snapshot": applyState(d.state); break;
+    case "log": log(d.message, d.level, d.row); break;
+    case "step": $("step").textContent = `${d.text || ""} ${d.comment || ""}`.trim(); break;
+    case "status": banner(d.text || "", d.color); break;
+    case "progress": {
+      const f = Math.max(0, Math.min(1, d.value));
+      $("bar").firstElementChild.style.width = `${f * 100}%`;
+      $("pct").textContent = d.value < 0 ? "··" : `${Math.round(f * 100)}%`;
+      break;
+    }
+    case "timer": $("elapsed").textContent = `${(d.seconds || 0).toFixed(1)}s`; break;
+    case "alive":
+      buildUnits(d.alive.length);
+      d.alive.forEach((a, i) => { if (!a) verdict(i, "DEAD", "var(--fail)"); });
+      break;
+    case "grid": onGrid(d); break;
+    case "runstate":
+      state.running = d.state === "running";
+      $("run").disabled = !state.control || state.running;
+      $("stop").disabled = !state.control || !state.running;
+      if (d.state === "teardown") banner("TEARDOWN", "var(--warn)");
+      break;
+    case "result":
+      banner(d.passed ? "PASS" : `FAIL${d.detail ? " — " + d.detail : ""}`,
+             d.passed ? "var(--pass)" : "var(--fail)");
+      Object.entries(d.per_uut || {}).forEach(([u, ok]) =>
+        verdict(+u, ok ? "PASS" : "FAIL", ok ? "var(--pass)" : "var(--fail)"));
+      break;
+  }
+}
+function onGrid(d) {
+  const i = d.grid - 1;
+  if (i < 0) return;
+  if (i >= state.units) buildUnits(i + 1);
+  if (d.op === "config" && d.config && d.config.columns) {
+    $(`head${i}`).innerHTML = "<tr>"
+      + d.config.columns.map(c => `<th>${c}</th>`).join("") + "</tr>";
+    return;
+  }
+  if (d.op === "clear") {
+    $(`rows${i}`).innerHTML = ""; $(`tally${i}`).textContent = ""; verdict(i, "--");
+    return;
+  }
+  if (d.op !== "add") return;
+
+  const tag = (d.tag || "").toUpperCase();
+  const colour = tag === "PASS" ? "var(--pass)"
+               : tag === "FAIL" ? "var(--fail)"
+               : tag === "RETRY" ? "var(--warn)" : "";
+  const tr = document.createElement("tr");
+  (d.values || []).forEach((v, col) => {
+    const td = document.createElement("td");
+    td.textContent = v;
+    // Numbers right-align so a column of measurements can be scanned down.
+    if (col && v !== "" && !isNaN(Number(v))) td.className = "n";
+    tr.appendChild(td);
+  });
+  const last = tr.lastElementChild;
+  if (last && colour) { last.style.color = colour; }
+  $(`rows${i}`).appendChild(tr);
+  tr.scrollIntoView({block: "nearest"});
+
+  state.points++; $("points").textContent = state.points;
+  if (tag === "FAIL") {
+    state.failed++;
+    $("failed").textContent = state.failed;
+    $("failed").style.color = "var(--fail)";
+  }
+  const box = $(`tally${i}`);
+  const rows = $(`rows${i}`).childElementCount;
+  const fails = $(`rows${i}`).querySelectorAll("td:last-child").length
+    && [...$(`rows${i}`).querySelectorAll("td:last-child")]
+        .filter(td => td.textContent.toUpperCase() === "FAIL").length;
+  box.textContent = fails ? `${fails} FAILED OF ${rows}` : `${rows} PASSED`;
+}
+
+/* ---------- go ---------- */
+refreshPrograms();
+api("/api/state").then(applyState).catch(() => {});
+connect();
+</script>
+</body></html>

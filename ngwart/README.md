@@ -145,6 +145,35 @@ exceptions are translated back into typed errors. Legacy verbs are opaque to the
 validator — it confirms they exist, not that their arguments are sane. Port the
 ones you touch most, in whatever order suits you.
 
+## Web mode
+
+```bash
+py run.py web                                  # read-only, localhost:8080
+py run.py web programs/demo.yaml --simulate --allow-control
+```
+
+Open `http://localhost:8080`. The page shows the program, per-unit result
+tables, the log, progress and the verdict, all updating as the run happens.
+
+Two protocols, because they answer different questions:
+
+| | |
+|---|---|
+| **REST** | commands — `GET /api/state`, `/api/programs`, `/api/verbs`, `/api/report?format=xml\|json\|csv`, `POST /api/load`, `/api/start`, `/api/stop` |
+| **WebSocket** at `/ws` | the live stream — every engine event, pushed |
+
+Polling REST for a log that emits hundreds of lines a second is the wrong
+shape; pushing commands down a socket means reinventing status codes. So both.
+
+**Control is off by default.** An endpoint that can start a test is a
+remote-control surface on powered hardware, so the server binds to localhost,
+refuses `/api/start` and `/api/stop` unless `--allow-control` was passed, and
+prints a warning naming the risk if you bind it to the network *with* control
+enabled. `--token` adds a shared secret on the control routes.
+
+The first WebSocket frame carries the whole station state, then the last 500
+events replay, so a browser opened mid-run is never blind.
+
 ## Live telemetry
 
 The station serves a port for the whole session, publishing everything the run
