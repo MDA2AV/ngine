@@ -13,19 +13,13 @@
   },
   {
     "severity": "warning",
-    "row": 318,
-    "message": "'TEMP \u2013 DEBUG' has no module in column 0 -- row will be skipped",
-    "detail": "Fill in column 0 to make this step run. In v1 it raised KeyError and diverted to the row's exception handler, so it never executed there either."
-  },
-  {
-    "severity": "warning",
-    "row": 477,
+    "row": 469,
     "message": "'VALIDATE' has no module in column 0 -- row will be skipped",
     "detail": "Fill in column 0 to make this step run. In v1 it raised KeyError and diverted to the row's exception handler, so it never executed there either."
   },
   {
     "severity": "warning",
-    "row": 506,
+    "row": 498,
     "message": "'J' has no module in column 0 -- row will be skipped",
     "detail": "Fill in column 0 to make this step run. In v1 it raised KeyError and diverted to the row's exception handler, so it never executed there either."
   }

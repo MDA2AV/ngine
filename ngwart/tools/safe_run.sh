@@ -9,7 +9,11 @@ LIMIT="${LIMIT:-40}"
 LOG="${LOG:-/tmp/hw-run.log}"
 shift_args=("$@")
 
-timeout "$LIMIT" py run.py run "${shift_args[@]}" > "$LOG" 2>&1
+# -u is essential: Python block-buffers stdout when it is a pipe, and the
+# SIGTERM from `timeout` discards whatever is still in the buffer. Without it a
+# capped run can produce an empty log precisely when you most need to see how
+# far it got.
+timeout "$LIMIT" py -u run.py run "${shift_args[@]}" > "$LOG" 2>&1
 code=$?
 echo "EXIT: $code$( [ $code -eq 124 ] && echo '  (time cap reached)' )"
 

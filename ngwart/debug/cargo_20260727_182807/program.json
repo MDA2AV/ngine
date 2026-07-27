@@ -1,0 +1,75 @@
+{
+  "source": "../cargobay/src/TestTables/cargo.ods",
+  "modules": {
+    "Flow": "FlowManager",
+    "UI": "UIManager",
+    "Cargo": "CargoManager",
+    "VISA": "GlobalVISAManager",
+    "Camera": "BaluffManager",
+    "Serial": "WinSerialManager",
+    "ImageProcess": "ImageProcessManager"
+  },
+  "vars": {},
+  "labels": {
+    "TOP": 88,
+    "DETECTION": 119,
+    "START": 126,
+    "INITIAL_CONDITIONS": 144,
+    "POWER": 153,
+    "POWER1": 159,
+    "CURR_ON_1_2": 170,
+    "ON_LEDS_1_2": 177,
+    "EIMAN_1_2": 213,
+    "CURR_IDLE_1_2": 225,
+    "OFF_LEDS_1_2": 232,
+    "BUTTON_LED_1_2": 254,
+    "ON_AGAIN_1_2": 276,
+    "UUT_3_4": 315,
+    "CURR_ON_3_4": 325,
+    "EIMAN_3_4": 368,
+    "CURR_IDLE_3_4": 379,
+    "OFF_LEDS_3_4": 386,
+    "BUTTON_LED_3_4": 408,
+    "ON_AGAIN_3_4": 430,
+    "VALIDATE": 468,
+    "SHUTDOWN_ALL": 471,
+    "SAVE": 488,
+    "END": 494,
+    "REMOVE": 499,
+    "FLOW_EX": 506,
+    "SERIAL_EX": 509,
+    "SHELL_EX": 512,
+    "VISA_EX": 515,
+    "SCANNER_EX": 518,
+    "CAN_EX": 522,
+    "UI_EX": 525,
+    "WORKER_EX": 528,
+    "BLE_EX": 531,
+    "PSU_EX": 534,
+    "IMPRO_EX": 537,
+    "DATAPRO_EX": 540,
+    "CAM_EX": 543,
+    "BANANAS": 546,
+    "PRINT_EX": 549,
+    "STD_EX": 552,
+    "DROP": 555
+  },
+  "sections": {
+    "Modules": [
+      0,
+      8
+    ],
+    "Config": [
+      9,
+      86
+    ],
+    "Exec": [
+      87,
+      504
+    ],
+    "Ehandling": [
+      505,
+      554
+    ]
+  }
+}

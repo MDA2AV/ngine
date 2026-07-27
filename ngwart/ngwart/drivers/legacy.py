@@ -91,10 +91,48 @@ class _LegacyFrame:
 
 
 class _NullWidget:
-    """Absorbs Tk calls from legacy verbs that paint grids directly."""
+    """Absorbs Tk use by legacy verbs that paint grids directly.
+
+    ``__getattr__`` alone is not enough. Python looks up dunder methods on the
+    *type*, not the instance, so ``widget[0]`` never reaches ``__getattr__`` and
+    raises "object is not subscriptable" instead. That is exactly what happened
+    on the bench: v1's ImageProcessManager reached UIManager.SYNCGRID1, which
+    indexes ``UI.frames[0].Tree``, and a passing optical test was reported as an
+    image-processing failure.
+
+    So every protocol a Tk widget might plausibly be used through is absorbed
+    explicitly, and each returns another inert widget so chains keep working.
+    """
 
     def __getattr__(self, _name):
-        return lambda *a, **k: None
+        return _NullWidget()
+
+    def __call__(self, *_args, **_kwargs):
+        return _NullWidget()
+
+    def __getitem__(self, _key):
+        return _NullWidget()
+
+    def __setitem__(self, _key, _value):
+        return None
+
+    def __iter__(self):
+        return iter(())
+
+    def __len__(self):
+        return 0
+
+    def __contains__(self, _item):
+        return False
+
+    def __bool__(self):
+        return False
+
+    def __str__(self):
+        return ""
+
+    def __repr__(self):
+        return "<inert widget>"
 
 
 def _bind_testdata(ctx, module) -> None:

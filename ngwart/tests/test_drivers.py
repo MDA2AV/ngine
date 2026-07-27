@@ -552,3 +552,39 @@ def test_jl_reports_a_value_that_is_neither():
     ctx.set_data("0,0,0", "ZZZ")
     with pytest.raises(VerbError, match="neither a decimal nor a hex"):
         call(ctx, "Flow", "JL", row("Flow", "JL", "DETECTION", "*0,0,0", "16"))
+
+
+# --- legacy UI shim must absorb every way a Tk widget gets used ----------
+
+def test_inert_widget_absorbs_subscripting():
+    """The bench failure: SYNCGRID1 indexes UI.frames[0].Tree.
+
+    __getattr__ alone does not cover it -- Python resolves dunders on the type,
+    so widget[0] raised "not subscriptable" and a PASSING optical test was
+    reported as an image-processing failure.
+    """
+    from ngwart.drivers.legacy import _NullWidget
+
+    w = _NullWidget()
+    w["columns"] = ("a", "b")            # __setitem__
+    assert w["columns"] is not None      # __getitem__
+    assert w.insert(parent="", index="end", values=(1, 2)) is not None
+    assert w.column("#0", width=0).heading("x") is not None   # chains
+    assert list(w) == [] and len(w) == 0
+    assert "x" not in w and not w
+    assert str(w) == ""
+
+
+def test_legacy_ui_frame_exposes_the_grid_attributes_v1_touches():
+    from ngwart.drivers.legacy import LegacyUI
+
+    class Ctx:
+        def log(self, *a, **k): pass
+
+    ui = LegacyUI(Ctx())
+    frame = ui.frames[0]
+    for name in ("Tree", "Tree2", "Tree3", "Tree4"):
+        widget = getattr(frame, name)
+        widget["columns"] = ("A",)
+        widget.insert(parent="", index="end", iid=0, values=("x",), tag="PASS")
+    assert frame.DGRID1_iid == 0
