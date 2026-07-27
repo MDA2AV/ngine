@@ -291,3 +291,55 @@ def test_barcode_accepted_when_both_checks_pass():
     assert ctx.get_data("0,1,0") == "PASS"
     assert ctx.alive[0] == 1
     assert ctx.record.barcodes[0] == code
+
+
+# --- legacy adoption / site-driver override -----------------------------
+
+def test_legacy_adoption_can_override_a_bundled_verb(tmp_path):
+    """A site's own driver must be able to displace the bundled one.
+
+    The camera is the motivating case: v1's BaluffManager holds the mvIMPACT
+    DeviceManager at module scope because letting it be collected unloads the
+    driver stack and invalidates every open handle. Vendor knowledge like that
+    is not re-derivable, so the site driver has to be able to win.
+    """
+    from ngwart.drivers.legacy import adopt
+    from ngwart.engine.registry import Registry, VerbSpec
+
+    module = tmp_path / "FakeManager.py"
+    module.write_text(
+        "def PING(line, UI):\n"
+        "    UI.addToLbox('site driver ran')\n"
+    )
+
+    reg = Registry()
+    reg.add(VerbSpec(module="FakeManager", name="PING",
+                     fn=lambda ctx, row: ctx.log("bundled ran")))
+
+    # Without override the bundled verb stands.
+    assert adopt("FakeManager", str(module), reg) == 0
+
+    # With override the site driver replaces it.
+    assert adopt("FakeManager", str(module), reg, override=True) == 1
+    assert reg.lookup("FakeManager", "PING").legacy is True
+
+
+def test_registry_still_rejects_accidental_duplicates():
+    from ngwart.engine.registry import Registry, VerbSpec
+
+    reg = Registry()
+    spec = VerbSpec(module="M", name="V", fn=lambda ctx, row: None)
+    reg.add(spec)
+    with pytest.raises(ValueError, match="duplicate verb"):
+        reg.add(spec)
+
+
+def test_ui_and_engine_modules_are_excluded_from_legacy_override():
+    """--legacy must not swap back the modules the v2 engine owns.
+
+    v1's UIManager writes to Tk widgets, so adopting it would leave the Qt grids
+    silently blank -- worse than not running.
+    """
+    from ngwart.cli import LEGACY_EXCLUDED
+
+    assert {"UIManager", "FlowManager", "TestData"} <= LEGACY_EXCLUDED

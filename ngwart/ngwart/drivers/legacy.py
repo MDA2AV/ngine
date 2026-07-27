@@ -161,7 +161,8 @@ def _translate(exc: Exception, row):
 
 
 def adopt(module_name: str, source: str | types.ModuleType | None = None,
-          registry: Registry | None = None, skip: set[str] | None = None) -> int:
+          registry: Registry | None = None, skip: set[str] | None = None,
+          override: bool = False) -> int:
     """Register every ``UPPERCASE`` function of a legacy manager as a verb.
 
     :param module_name: the name tables use in <Modules>, e.g. ``CANManager``.
@@ -169,6 +170,9 @@ def adopt(module_name: str, source: str | types.ModuleType | None = None,
                    importing `module_name` from sys.path.
     :param skip: verb names to leave unregistered (usually because a native
                  implementation already covers them).
+    :param override: displace a bundled verb of the same name. Use this when the
+                     v1 driver is the authority -- vendor SDK code often encodes
+                     hardware knowledge a rewrite silently loses.
     :returns: how many verbs were registered.
     """
     reg = registry or REGISTRY
@@ -194,7 +198,9 @@ def adopt(module_name: str, source: str | types.ModuleType | None = None,
             continue
         if name != name.upper() and name not in ("initAlive", "updateLabels"):
             continue
-        if name in skip or reg.lookup(module_name, name) is not None:
+        if name in skip:
+            continue
+        if reg.lookup(module_name, name) is not None and not override:
             continue
         import functools
 
@@ -203,7 +209,7 @@ def adopt(module_name: str, source: str | types.ModuleType | None = None,
             fn=functools.partial(_call_legacy, fn=fn, module=module, name=name),
             params=_LEGACY_PARAMS, legacy=True,
             doc=(inspect.getdoc(fn) or f"Legacy verb {module_name}.{name}."),
-        ))
+        ), override=override)
         count += 1
     return count
 
@@ -226,7 +232,9 @@ def _load_from_path(module_name: str, path: str) -> types.ModuleType:
 
 
 def adopt_directory(directory: str, registry: Registry | None = None,
-                    only: set[str] | None = None) -> dict[str, int]:
+                    only: set[str] | None = None,
+                    override: bool = False,
+                    exclude: set[str] | None = None) -> dict[str, int]:
     """Adopt every ``*Manager.py`` in a v1 ``src`` directory.
 
     Modules whose vendor SDK is missing are skipped with a note rather than
@@ -244,10 +252,13 @@ def adopt_directory(directory: str, registry: Registry | None = None,
             name = entry[:-3]
             if only is not None and name not in only:
                 continue
+            if exclude and name in exclude:
+                continue
             if not (name.endswith("Manager") or name == "TestData"):
                 continue
             try:
-                results[name] = adopt(name, os.path.join(directory, entry), registry)
+                results[name] = adopt(name, os.path.join(directory, entry),
+                                      registry, override=override)
             except ProgramError as exc:
                 results[name] = -1
                 print(f"  skipped {name}: {exc}")

@@ -73,13 +73,18 @@ def open_all(ctx, row):
 
 
 def _enumerate_real() -> list[str]:
+    """List attached Balluff serials.
+
+    Uses the shared, module-scope DeviceManager. Creating a local one here would
+    unload the driver stack when it went out of scope, invalidating handles that
+    OPEN had already returned.
+    """
     try:
-        from mvIMPACT import acquire  # type: ignore
+        from .backends.real import _device_manager
+        mgr = _device_manager()
+        return [mgr.getDevice(i).serial.read() for i in range(mgr.deviceCount())]
     except ImportError:
         return []
-    try:
-        mgr = acquire.DeviceManager()
-        return [mgr.getDevice(i).serial.read() for i in range(mgr.deviceCount())]
     except Exception:  # noqa: BLE001
         return []
 

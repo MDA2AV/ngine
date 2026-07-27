@@ -28,6 +28,8 @@ def main(argv: list[str] | None = None) -> int:
     ui.add_argument("--light", action="store_true", help="use the light theme")
     ui.add_argument("--station", default="")
     ui.add_argument("--operator", default="")
+    ui.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
+    ui.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
 
     run = sub.add_parser("run", help="execute a program without a UI")
     run.add_argument("program")
@@ -36,10 +38,14 @@ def main(argv: list[str] | None = None) -> int:
                      help="run even if validation reports errors (bench use only)")
     run.add_argument("--report", help="write a report here (.xml/.json/.csv)")
     run.add_argument("--quiet", action="store_true")
+    run.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
+    run.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
 
     check = sub.add_parser("check", help="validate a program")
     check.add_argument("program")
     check.add_argument("--warnings-as-errors", action="store_true")
+    check.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
+    check.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
 
     convert = sub.add_parser("convert", help="convert between program formats")
     convert.add_argument("source")
@@ -59,16 +65,69 @@ def main(argv: list[str] | None = None) -> int:
     return globals()[f"_cmd_{args.command}"](args)
 
 
-def _load(path: str):
+_LEGACY_HELP = (
+    "directory of v1 *Manager.py files whose HARDWARE drivers should replace the "
+    "bundled ones. Use when the site driver is the authority -- vendor SDK code "
+    "often encodes knowledge a rewrite cannot re-derive."
+)
+
+_LEGACY_ONLY_HELP = (
+    "comma-separated module names to take from --legacy, overriding the default "
+    "hardware-only selection (e.g. BaluffManager,WinSerialManager)"
+)
+
+#: Never replaced by --legacy unless named explicitly with --legacy-only.
+#:
+#: UIManager drives Tk widgets directly, so the v1 version cannot paint the Qt
+#: grids -- it would fail silently, which is worse than not running at all.
+#: FlowManager and TestData are pure logic the v2 engine owns: their v2 forms
+#: declare parameters (so the validator can see them), request jumps through the
+#: sequencer, and route typed errors. Swapping those back loses real ground.
+LEGACY_EXCLUDED = {"UIManager", "FlowManager", "TestData"}
+
+
+def _use_legacy(directory: str | None, only: str | None = None) -> None:
+    """Let a site's own v1 managers displace the bundled hardware drivers.
+
+    Adopting with override=True is deliberate. A rewritten driver that merely
+    looks correct is worse than the original: mvIMPACT's DeviceManager lifetime
+    rules, packed-pixel buffer geometry and white-balance parameter sets are all
+    things the v1 code learned against real hardware.
+    """
+    if not directory:
+        return
+    from .drivers.legacy import adopt_directory
+
+    chosen = None
+    if only:
+        chosen = {name.strip() for name in only.split(",") if name.strip()}
+
+    results = adopt_directory(directory, only=chosen, override=True,
+                              exclude=None if chosen else LEGACY_EXCLUDED)
+    for name, count in sorted(results.items()):
+        if count > 0:
+            print(f"  using site driver {name} ({count} verbs)")
+    skipped = [k for k, v in results.items() if v < 0]
+    if skipped:
+        print(f"  unavailable (missing SDK): {', '.join(sorted(skipped))}")
+    if not chosen:
+        print(f"  keeping v2: {', '.join(sorted(LEGACY_EXCLUDED))} "
+              f"(use --legacy-only to override)")
+
+
+def _load(path: str, legacy: str | None = None, only: str | None = None):
     from . import drivers  # noqa: F401 - registers verbs
     from .engine.loaders import load
 
+    _use_legacy(legacy, only)
     return load(path)
 
 
 def _cmd_ui(args) -> int:
     from .ui import launch
 
+    _use_legacy(getattr(args, "legacy", None),
+                getattr(args, "legacy_only", None))
     return launch(program=args.program, simulate=args.simulate,
                   dark=not args.light, station=args.station,
                   operator=args.operator)
@@ -78,7 +137,8 @@ def _cmd_run(args) -> int:
     from .engine import RecordingListener, RunOptions, Sequencer, REGISTRY
     from .engine.events import LogEvent, ResultEvent
 
-    program = _load(args.program)
+    program = _load(args.program, getattr(args, "legacy", None),
+                          getattr(args, "legacy_only", None))
 
     class Printer:
         def emit(self, event):
@@ -120,7 +180,8 @@ def _cmd_run(args) -> int:
 def _cmd_check(args) -> int:
     from .engine import REGISTRY, validate
 
-    program = _load(args.program)
+    program = _load(args.program, getattr(args, "legacy", None),
+                          getattr(args, "legacy_only", None))
     report = validate(program, REGISTRY)
 
     for diag in report:

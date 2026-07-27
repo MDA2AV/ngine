@@ -744,6 +744,25 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
           revision that passed qualification and the one running now.
         </li>
       </ol>
+      <h3>When the site driver should win</h3>
+      <p>
+        Some v1 drivers encode hardware knowledge a rewrite cannot re-derive.
+        The Balluff camera is the clearest case: <code>BaluffManager.py</code>
+        holds the mvIMPACT <code>DeviceManager</code> at module scope, because
+        letting it be collected unloads the driver stack and turns every open
+        handle into a dangling native pointer — the next call crashes the
+        process rather than raising. It also carries the binning and AOI
+        arithmetic, the packed-pixel buffer geometry, and the
+        <code>User1</code> white-balance parameter set.
+      </p>
+<pre><code>py run.py ui TestTables/cargo.ods --legacy ../cargobay/src</code></pre>
+      <p>
+        Only hardware drivers are replaced. <code>UIManager</code>,
+        <code>FlowManager</code> and <code>TestData</code> stay on the v2
+        implementations — v1's <code>UIManager</code> writes to Tk widgets and
+        would leave the Qt grids silently blank. Override with
+        <code>--legacy-only BaluffManager,WinSerialManager</code>.
+      </p>
       <div class="note">
         <span class="lbl">Adopted verbs are opaque to the validator</span>
         <p>
@@ -833,6 +852,8 @@ adopt(<span class="st">"CANManager"</span>, <span class="st">"/path/to/v1/src/CA
             <tr><td><code>--report path.xml</code></td><td>write XML, JSON or CSV by extension</td></tr>
             <tr><td><code>--no-strict</code></td><td>run despite validation errors — bench debugging only</td></tr>
             <tr><td><code>--warnings-as-errors</code></td><td>for <code>check</code> in CI</td></tr>
+            <tr><td><code>--legacy DIR</code></td><td>use the site's own v1 hardware drivers instead of the bundled ones</td></tr>
+            <tr><td><code>--legacy-only M1,M2</code></td><td>name exactly which modules <code>--legacy</code> takes</td></tr>
             <tr><td><code>--light</code></td><td>light theme for the UI</td></tr>
           </tbody>
         </table>

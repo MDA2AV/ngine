@@ -79,8 +79,16 @@ class Registry:
 
     # -- registration -----------------------------------------------------
 
-    def add(self, spec: VerbSpec) -> VerbSpec:
-        if spec.key in self._verbs:
+    def add(self, spec: VerbSpec, override: bool = False) -> VerbSpec:
+        """Register a verb.
+
+        `override` exists for one purpose: letting a site's own, hardware-proven
+        driver displace the bundled one. Some vendor code encodes knowledge that
+        cannot be re-derived from a datasheet -- buffer geometry, parameter-set
+        semantics, driver lifetime rules -- and a rewrite of it is a liability,
+        not an improvement.
+        """
+        if spec.key in self._verbs and not override:
             raise ValueError(f"duplicate verb {spec.module}.{spec.name}")
         self._verbs[spec.key] = spec
         return spec

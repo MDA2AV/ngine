@@ -108,6 +108,29 @@ py run.py check TestTables/cargo.ods    # lint before anything else
 py run.py convert TestTables/cargo.ods programs/cargo.yaml   # optional
 ```
 
+### When the site driver should win
+
+Some v1 drivers encode hardware knowledge a rewrite cannot re-derive. The
+Balluff camera is the clearest case: `BaluffManager.py` holds the mvIMPACT
+`DeviceManager` at module scope because letting it be collected unloads the
+driver stack and turns every open handle into a dangling native pointer — the
+next call crashes the process rather than raising. It also carries the
+binning/AOI arithmetic, packed-pixel buffer geometry and the `User1`
+white-balance parameter set.
+
+Point NGWART at your v1 `src` and those drivers take precedence:
+
+```bash
+py run.py ui  TestTables/cargo.ods --legacy ../cargobay/src
+py run.py run TestTables/cargo.ods --legacy ../cargobay/src
+```
+
+Only hardware drivers are replaced. `UIManager`, `FlowManager` and `TestData`
+stay on the v2 implementations — v1's `UIManager` writes to Tk widgets and would
+leave the Qt grids silently blank, and the v2 `FlowManager`/`TestData` declare
+their parameters so the validator can see them. Override that with
+`--legacy-only BaluffManager,WinSerialManager`.
+
 For a manager you have not ported, adopt it wholesale:
 
 ```python

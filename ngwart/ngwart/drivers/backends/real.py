@@ -132,12 +132,33 @@ def visa_resources() -> list[str]:
         raise HardwareError(f"cannot enumerate VISA resources: {exc}") from exc
 
 
+#: The mvIMPACT DeviceManager must outlive every device handle it hands out.
+#: When the last DeviceManager is collected, the driver stack unloads and every
+#: open pDev / FunctionInterface becomes a dangling native handle -- the next
+#: driver call then crashes the process rather than raising. Holding one at
+#: module scope is the documented fix, and matches what v1's BaluffManager does.
+_DEVICE_MANAGER = None
+
+
+def _device_manager():
+    global _DEVICE_MANAGER
+    if _DEVICE_MANAGER is None:
+        from mvIMPACT import acquire  # type: ignore
+        _DEVICE_MANAGER = acquire.DeviceManager()
+    return _DEVICE_MANAGER
+
+
 class RealCamera:
     """Balluff / GenICam camera via mvIMPACT, falling back to OpenCV.
 
     The fallback matters in practice: several v1 fixtures used a plain UVC
     camera through OpenCV (CameraManager.py) while others used the Balluff SDK
     (BaluffManager.py). One class covers both, chosen at open time.
+
+    For a Balluff fixture, prefer the site's own BaluffManager via
+    ``--legacy <v1-src-dir>``: the vendor code there encodes buffer geometry,
+    binning/AOI arithmetic and white-balance parameter-set handling that this
+    generic wrapper does not model.
     """
 
     def __init__(self, serial: str, index: int | None = None, **_kw) -> None:
@@ -154,10 +175,18 @@ class RealCamera:
 
         if acquire is not None:
             try:
-                mgr = acquire.DeviceManager()
-                dev = mgr.getDeviceBySerial(self.serial)
+                mgr = _device_manager()
+                dev = None
+                # Match on a substring, as v1 does: tables address cameras by a
+                # fragment of the serial ("UB101256"), not the full string.
+                for i in range(mgr.deviceCount()):
+                    candidate = mgr.getDevice(i)
+                    if not self.serial or self.serial in candidate.serial.read():
+                        dev = candidate
+                        break
                 if dev is not None:
-                    dev.open()
+                    if not dev.isOpen:
+                        dev.open()
                     self._impl = (acquire, dev, acquire.FunctionInterface(dev))
                     self._kind = "mvimpact"
                     return
