@@ -507,8 +507,29 @@ def _kill_and_id(ctx, row) -> tuple[int | None, str]:
 
 
 def _store_triplet(ctx, row, measured, result, test_id) -> None:
-    """Write value/result/id into the ';'-separated destinations of column 4."""
-    cells = [c.strip() for c in ctx.text(row.raw(4)).split(";") if c.strip()]
+    """Write value / result / test-id to column 4's destinations.
+
+    Two forms, both in use:
+
+    * ``0,0,1;0,1,1;0,2,1`` -- three explicit cells.
+    * ``0,0,1``             -- one cell, from which the other two are derived by
+      incrementing the **column**: (0,0,1), (0,1,1), (0,2,1). This is v1's
+      ``getTripleIndex`` and is what the cargo table actually writes.
+
+    Supporting only the explicit form silently dropped the PASS/FAIL and the
+    test id, leaving the measured value stored but no verdict anywhere -- the
+    area was right and the result was blank.
+    """
+    raw = ctx.text(row.raw(4)).strip()
+    if not raw:
+        return
+    cells = [c.strip() for c in raw.split(";") if c.strip()]
+    if len(cells) == 1:
+        parts = [x.strip() for x in cells[0].split(",")]
+        if len(parts) == 3 and parts[1].lstrip("-").isdigit():
+            column = int(parts[1])
+            cells = [f"{parts[0]},{column + offset},{parts[2]}"
+                     for offset in range(3)]
     for cell, value in zip(cells, [measured, result, test_id]):
         ctx.set_data(cell, value)
 

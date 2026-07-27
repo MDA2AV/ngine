@@ -633,3 +633,31 @@ def test_openall_can_be_asked_for_serial_resources(monkeypatch):
     ctx.simulate = True
     call(ctx, "VISA", "OPENALL", row("VISA", "OPENALL", "10000", "ALL"))
     assert any(r.startswith("ASRL") for r in seen), seen
+
+
+def test_result_triplet_is_derived_from_a_single_index():
+    """v1's getTripleIndex: one index implies three, by incrementing column.
+
+    cargo.ods writes a single "0,0,1". Supporting only the explicit
+    ';'-separated form stored the measured area but left the verdict nowhere.
+    """
+    pytest.importorskip("cv2")
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 25)), stringify=False)
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,30,100,1",
+             "1,0,0", "min", "0,INTENSITY_A"))
+    assert ctx.get_data("1,1,0") == "PASS"          # derived +1 column
+    assert ctx.get_data("1,2,0") == "INTENSITY_A"   # derived +2 columns
+    assert float(ctx.get_data("1,0,0")) > 100
+
+
+def test_explicit_triplet_still_works():
+    pytest.importorskip("cv2")
+    ctx = _contour_ctx()
+    ctx.set_data("0,0,0", _blobs((200, 200, 25)), stringify=False)
+    call(ctx, "Vision", "EVALCONT",
+         row("Vision", "EVALCONT", "*0,0,0", "200,200,30,100,1",
+             "1,0,0;2,0,0;3,0,0", "min", "0,X"))
+    assert ctx.get_data("2,0,0") == "PASS"
+    assert ctx.get_data("3,0,0") == "X"
