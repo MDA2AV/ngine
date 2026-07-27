@@ -154,6 +154,61 @@ def test_debug_and_legacy_are_badged_too(app):
     window.close()
 
 
+def test_no_unit_panels_before_a_program_is_loaded(app):
+    """Four panels for units that may not exist is a lie about the fixture."""
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow()
+    assert window.uut_grids == []
+    assert window.uut_placeholder.isVisible() or not window.isVisible()
+    window.close()
+
+
+def test_panel_count_comes_from_the_programs_initalive(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    assert len(window.uut_grids) == 2, "demo.yaml declares initAlive 2"
+    window.close()
+
+
+def test_panel_count_follows_the_live_alive_mask(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    window._on_alive([1, 1, 1, 1])
+    assert len(window.uut_grids) == 4
+    window._on_alive([1, 0])
+    assert len(window.uut_grids) == 2
+    window.close()
+
+
+def test_scanned_values_appear_only_once_a_program_sets_them(app):
+    """A fixture may scan none, one or several -- empty boxes are just noise."""
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    assert window._scan_chips == {}
+
+    window._on_field("barcode1", "R02XXXXXXXX", None)
+    assert "barcode1" in window._scan_chips
+    assert "R02XXXXXXXX" in window._scan_chips["barcode1"].text()
+    assert "barcode2" not in window._scan_chips
+    window.close()
+
+
+def test_header_stays_one_row(app):
+    """It is glanced at, not read. The screen belongs to the results."""
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path=DEMO, simulate=True)
+    window.resize(1500, 880)
+    window.show()
+    header = window.centralWidget().layout().itemAt(0).widget()
+    assert header.sizeHint().height() < 90, header.sizeHint()
+    window.close()
+
+
 def test_identity_strip_shows_the_program_without_overflowing(app):
     from ngwart.ui.main_window import MainWindow
 

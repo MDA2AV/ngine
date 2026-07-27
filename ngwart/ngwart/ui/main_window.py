@@ -181,60 +181,76 @@ class MainWindow(QMainWindow):
             f"{len(REGISTRY)} verbs across {len(REGISTRY.modules())} modules.")
 
     def _build_header(self) -> QWidget:
-        """Program identity on the left, live figures on the right.
+        """One row: what is loaded, what state it is in, and the live figures.
 
-        Replaces the row of small boxes: the things an operator reads at a
-        glance -- what is loaded, what was scanned, how long, how many failed --
-        now have a size that matches how often they are read, and the strip
-        spans the window instead of floating in a card.
+        Deliberately compact. The header is glanced at, not read, so it earns a
+        single line -- the screen belongs to the results.
         """
         frame = QFrame()
         frame.setObjectName("Identity")
-        outer = QVBoxLayout(frame)
-        outer.setContentsMargins(18, 12, 18, 12)
-        outer.setSpacing(12)
-
-        top = QHBoxLayout()
-        top.setSpacing(14)
+        row = QHBoxLayout(frame)
+        row.setContentsMargins(18, 9, 18, 9)
+        row.setSpacing(14)
 
         identity = QVBoxLayout()
-        identity.setSpacing(1)
+        identity.setSpacing(0)
         self.program_label = QLabel("No program loaded")
         self.program_label.setObjectName("ProgramName")
-        self.program_meta = QLabel("")
+        self.program_meta = QLabel("Open one from the File menu")
         self.program_meta.setObjectName("ProgramMeta")
         identity.addWidget(self.program_label)
         identity.addWidget(self.program_meta)
+
         holder = QWidget()
         holder.setLayout(identity)
         holder.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
-        top.addWidget(holder, 1)
+        row.addWidget(holder, 1)
 
         self.badges = QHBoxLayout()
         self.badges.setSpacing(6)
         self.badges.setAlignment(Qt.AlignVCenter)
-        top.addLayout(self.badges)
-        top.addSpacing(20)
+        row.addLayout(self.badges)
+
+        # Scanned values appear here only once a program sets them. A fixture
+        # may scan none, one, or several, and empty boxes for values that may
+        # never arrive are just noise.
+        self.scans = QHBoxLayout()
+        self.scans.setSpacing(8)
+        self.scans.setAlignment(Qt.AlignVCenter)
+        self._scan_chips: dict[str, QLabel] = {}
+        row.addLayout(self.scans)
+        row.addSpacing(14)
 
         self.stat_elapsed = Stat("elapsed", "0.0s")
         self.stat_points = Stat("points", "0")
         self.stat_failed = Stat("failed", "0")
         for stat in (self.stat_elapsed, self.stat_points, self.stat_failed):
-            stat.setMinimumWidth(84)
-            top.addWidget(stat, 0, Qt.AlignVCenter)
-            top.addSpacing(18)
-        outer.addLayout(top)
-
-        scans = QHBoxLayout()
-        scans.setSpacing(16)
-        self.scan_barcode1 = ScanField("barcode 1")
-        self.scan_barcode2 = ScanField("barcode 2")
-        self.scan_worker = ScanField("worker")
-        for field in (self.scan_barcode1, self.scan_barcode2, self.scan_worker):
-            scans.addWidget(field)
-        scans.addStretch(1)
-        outer.addLayout(scans)
+            stat.setMinimumWidth(78)
+            row.addWidget(stat, 0, Qt.AlignVCenter)
+            row.addSpacing(14)
         return frame
+
+    def _set_scan(self, name: str, value: str) -> None:
+        """Show a scanned value, creating its chip on first sight."""
+        caption = {"barcode1": "BCODE 1", "barcode2": "BCODE 2",
+                   "worker_id": "WORKER"}.get(name, name.upper())
+        chip = self._scan_chips.get(name)
+        if not value:
+            if chip is not None:
+                chip.hide()
+            return
+        if chip is None:
+            chip = QLabel()
+            chip.setObjectName("ScanChip")
+            self.scans.addWidget(chip)
+            self._scan_chips[name] = chip
+        palette = theme.palette(self.dark)
+        chip.setText(f"{caption}  {value}")
+        chip.setStyleSheet(
+            f"background: {palette['elevated']}; color: {palette['text']};"
+            f"border: 1px solid {palette['border']}; border-radius: 6px;"
+            f"padding: 5px 10px; font-family: {theme.MONO}; font-size: 10.5pt;")
+        chip.show()
 
     def _refresh_badges(self) -> None:
         """Show what is unusual about this run, permanently and in the header.
@@ -269,21 +285,60 @@ class MainWindow(QMainWindow):
         log_card.add(self.log, 1)
         splitter.addWidget(log_card)
 
-        grids = QWidget()
-        grid_layout = QGridLayout(grids)
-        grid_layout.setContentsMargins(0, 0, 0, 0)
-        grid_layout.setSpacing(10)
+        self.grid_host = QWidget()
+        self.grid_layout = QGridLayout(self.grid_host)
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
+        self.grid_layout.setSpacing(10)
+
+        # Nothing is known about the fixture until a program declares it, so
+        # start with a placeholder rather than four panels for units that may
+        # not exist.
+        self.uut_placeholder = QLabel(
+            "No units yet.\n\n"
+            "Panels appear once a program declares how many units the "
+            "fixture holds.")
+        self.uut_placeholder.setAlignment(Qt.AlignCenter)
+        self.uut_placeholder.setWordWrap(True)
+        self.grid_layout.addWidget(self.uut_placeholder, 0, 0)
+
         self.uut_grids: list[UutGrid] = []
-        for i in range(MAX_UUTS):
-            panel = UutGrid(i)
-            self.uut_grids.append(panel)
-            grid_layout.addWidget(panel, i // 2, i % 2)
-        splitter.addWidget(grids)
+        splitter.addWidget(self.grid_host)
 
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 5)
         splitter.setSizes([420, 1050])
         return splitter
+
+    def _set_uut_count(self, count: int) -> None:
+        """Build exactly as many panels as the fixture has units.
+
+        Called when a program is loaded -- from its initAlive row -- and again
+        when the engine reports the live mask, in case the two disagree.
+        """
+        count = max(0, int(count))
+        if count == len(self.uut_grids):
+            return
+
+        for panel in self.uut_grids:
+            self.grid_layout.removeWidget(panel)
+            panel.deleteLater()
+        self.uut_grids = []
+
+        self.uut_placeholder.setVisible(count == 0)
+        if count == 0:
+            self.grid_layout.addWidget(self.uut_placeholder, 0, 0)
+            return
+
+        self.grid_layout.removeWidget(self.uut_placeholder)
+        columns = 1 if count == 1 else 2
+        palette = theme.palette(self.dark)
+        for i in range(count):
+            panel = UutGrid(i)
+            panel._palette = palette
+            panel.verdict._palette = palette
+            panel.verdict.set_state("--")
+            self.uut_grids.append(panel)
+            self.grid_layout.addWidget(panel, i // columns, i % columns)
 
     def _build_program_tab(self) -> QWidget:
         widget = QWidget()
@@ -388,6 +443,10 @@ class MainWindow(QMainWindow):
             panel._palette = palette
             panel.verdict._palette = palette
             panel.verdict.set_state(panel.verdict.text())
+        for name, chip in list(self._scan_chips.items()):
+            if chip.isVisible():
+                self._set_scan(name, chip.text().split("  ", 1)[-1])
+        self.uut_placeholder.setStyleSheet(f"color: {palette['muted']};")
         self.banner.show_status(self.banner.text())
         self._refresh_badges()
 
@@ -429,6 +488,10 @@ class MainWindow(QMainWindow):
             bits.append(f"operator {self.operator}")
         self.program_meta.setText("  ·  ".join(bits))
         self.program_meta.setToolTip(os.path.abspath(path))
+
+        from ..engine.validator import _declared_alive_size
+
+        self._set_uut_count(_declared_alive_size(program) or 0)
         self._populate_program_table(program)
         report = self._show_diagnostics(program)
 
@@ -493,8 +556,8 @@ class MainWindow(QMainWindow):
             panel.apply("clear", [], "", {})
             panel.set_verdict("RUN")
         self.progress.setValue(0)
-        self.scan_barcode1.set_value("")
-        self.scan_barcode2.set_value("")
+        for name in list(self._scan_chips):
+            self._set_scan(name, "")
         self._points = self._failed = 0
         self.stat_points.set_value("0")
         self.stat_failed.set_value("0")
@@ -580,18 +643,14 @@ class MainWindow(QMainWindow):
             pass
 
     def _on_field(self, name: str, value: str, colour) -> None:
-        if name == "barcode1":
-            self.scan_barcode1.set_value(value)
-        elif name == "barcode2":
-            self.scan_barcode2.set_value(value)
-        elif name == "worker_id":
-            self.scan_worker.set_value(value)
+        if name in ("barcode1", "barcode2", "worker_id"):
+            self._set_scan(name, value)
         elif name == "log" and colour == "clear":
             self.log.clear_log()
 
     def _on_alive(self, alive: list) -> None:
+        self._set_uut_count(len(alive))
         for i, panel in enumerate(self.uut_grids):
-            panel.setVisible(i < len(alive))
             if i < len(alive) and not alive[i]:
                 panel.set_alive(False)
 
