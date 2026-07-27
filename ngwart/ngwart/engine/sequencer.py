@@ -203,7 +203,7 @@ class Sequencer:
                 # globals()[""] and diverted to the row's handler, so the step
                 # never ran and nobody noticed.
                 ctx.log(f"{row.index}- '{row.verb}' has no module in column 0 "
-                        f"-- step skipped", "error")
+                        f"-- step skipped", "warn")
                 ctx.pointer += 1
                 continue
 

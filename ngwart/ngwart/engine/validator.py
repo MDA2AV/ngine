@@ -110,10 +110,16 @@ def validate(program: Program, registry: Registry | None = None) -> Report:
             continue
         if not row.module:
             if row.verb:
-                err(row.index,
-                    f"'{row.verb}' has no module in column 0",
-                    "v1 raised KeyError here and diverted to the row's exception "
-                    "handler, so this step never actually ran.")
+                # A warning, not an error: the row is skipped and the program
+                # still loads. v1 raised KeyError on globals()[""] and diverted
+                # to the row's handler, so the step never ran there either --
+                # blocking the load would be stricter than the behaviour this
+                # replaces. The warning stays so the skip is never silent.
+                warn(row.index,
+                     f"'{row.verb}' has no module in column 0 -- row will be skipped",
+                     "Fill in column 0 to make this step run. In v1 it raised "
+                     "KeyError and diverted to the row's exception handler, so "
+                     "it never executed there either.")
             continue
 
         module = program.modules.get(row.module, row.module)

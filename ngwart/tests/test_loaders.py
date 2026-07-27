@@ -136,12 +136,16 @@ def test_every_verb_used_by_cargo_resolves():
 
 
 @needs_cargo
-def test_validator_finds_the_known_defects_in_cargo():
-    """cargo.ods really does have rows whose module cell is blank."""
+def test_module_less_rows_in_cargo_warn_but_do_not_block_loading():
+    """cargo.ods has rows whose module cell is blank.
+
+    They are reported and skipped, not fatal -- the table still loads.
+    """
     program = load(CARGO)
     report = validate(program)
-    blanks = [d for d in report.errors if "has no module" in d.message]
+    blanks = [d for d in report.warnings if "has no module" in d.message]
     assert len(blanks) >= 5
+    assert not [d for d in report.errors if "has no module" in d.message]
 
 
 # --- reports ------------------------------------------------------------

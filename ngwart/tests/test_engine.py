@@ -159,11 +159,27 @@ def test_undefined_jump_target_is_caught():
     assert any("undefined label" in d.message for d in report.errors)
 
 
-def test_verb_without_module_is_caught():
-    """The exact defect present in cargo.ods: a verb with a blank column 0."""
+def test_verb_without_module_warns_but_does_not_block():
+    """The exact defect present in cargo.ods: a verb with a blank column 0.
+
+    Reported, but not fatal -- the row is skipped and the program still loads,
+    which is no worse than v1, where globals()[""] raised KeyError and the step
+    never ran either.
+    """
     program = build(exec=[["", "LOG_FLAG", "OFF"]])
     report = validate(program)
-    assert any("has no module" in d.message for d in report.errors)
+    assert report.ok
+    assert any("has no module" in d.message for d in report.warnings)
+
+
+def test_a_module_less_row_is_skipped_at_runtime():
+    program = build(exec=[["TestData", "INITDATA", "4", "3", "2"],
+                          ["", "LOG_FLAG", "OFF"],
+                          ["Flow", "STORE", "after", "0,0,0"]])
+    record, listener = run(program)
+    assert not record.aborted
+    assert any("has no module" in m for m in listener.messages())
+    assert any(s.verb == "STORE" for s in record.steps)   # execution continued
 
 
 def test_alive_index_beyond_initalive_is_caught():

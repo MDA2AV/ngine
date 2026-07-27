@@ -180,8 +180,11 @@ uses resolves — the compatibility guarantee, enforced.
 
 ## Findings in `cargo.ods`
 
-Running `check` against the table in this repo reports eight defects. They are
-in the table, not the engine:
+Running `check` against the table in this repo reports nine findings. They are
+in the table, not the engine. The blank-module rows are **warnings** -- the row
+is skipped and the program still loads, which is no worse than v1, where
+`globals()[""]` raised `KeyError` and the step never ran either. The undefined
+jump label is an **error**, because the run aborts the moment it is reached:
 
 | Row | Problem |
 |---|---|
