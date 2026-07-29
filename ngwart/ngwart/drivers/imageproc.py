@@ -7,6 +7,10 @@ source colourspace and a target stage. Written once, registered nine times.
 Every verb takes its input either from a data cell (column 2) or from a file
 (column 3), and writes to a data cell (column 4), a file (column 5), or both --
 the same convention v1 used.
+
+The *2CONT verbs bend it in the one way v1 did: column 4 holds the contours,
+so column 5 saves the thresholded frame the contours came from rather than the
+column-4 value.
 """
 
 from __future__ import annotations
@@ -66,6 +70,22 @@ def _load(ctx, row, data_col: int = 2, path_col: int = 3):
                     f"or a path (column {path_col})")
 
 
+def _write(ctx, row, image, path_col: int) -> None:
+    """Write an image to the path named by a column, creating its directory.
+
+    cv2.imwrite reports a missing directory or an unwritable path by returning
+    False, not by raising -- unchecked, a table asking for saved frames just
+    quietly produces none.
+    """
+    path = ctx.text(row.raw(path_col))
+    parent = os.path.dirname(os.path.abspath(path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    if not _cv2().imwrite(path, image):
+        raise VerbError(f"{row.verb}: could not write '{path}'")
+    ctx.log(f"{row.verb}: saved {path}")
+
+
 def _emit(ctx, row, image, data_col: int = 4, path_col: int = 5) -> None:
     """Store the result wherever the row asked for it."""
     wrote = False
@@ -73,12 +93,7 @@ def _emit(ctx, row, image, data_col: int = 4, path_col: int = 5) -> None:
         ctx.set_data(row.raw(data_col), image, stringify=False)
         wrote = True
     if row.has(path_col):
-        path = ctx.text(row.raw(path_col))
-        parent = os.path.dirname(os.path.abspath(path))
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-        if not _cv2().imwrite(path, image):
-            raise VerbError(f"{row.verb}: could not write '{path}'")
+        _write(ctx, row, image, path_col)
         wrote = True
     if not wrote:
         raise VerbError(f"{row.verb}: give a destination index (column {data_col}) "
@@ -122,6 +137,14 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
         _emit(ctx, row, binary)
         return
 
+    # A *2CONT row spends column 4 on the contours, so column 5 is the only
+    # place left to ask for the thresholded frame -- that is what fills a
+    # program's Binary_Captures directory, and how an operator sees what the
+    # threshold actually produced. Written before findContours so the frame
+    # lands even when contour extraction is what fails.
+    if row.has(5):
+        _write(ctx, row, binary, 5)
+
     contours, _ = cv2.findContours(binary.astype(_np().uint8), cv2.RETR_TREE,
                                    cv2.CHAIN_APPROX_NONE)
     ctx.log(f"{row.verb}: {len(contours)} contour(s) found "
@@ -142,8 +165,9 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
 _CONV_PARAMS = (
     Param(2, "image_index", False, "source image held in the data store"),
     Param(3, "image_path", False, "source image on disk"),
-    Param(4, "dest_index", False),
-    Param(5, "save_path", False),
+    Param(4, "dest_index", False, "result, or the contours for a *2CONT verb"),
+    Param(5, "save_path", False, "file to save the result to; for a *2CONT "
+                                 "verb, the thresholded frame"),
     Param(6, "threshold", False, "binary threshold, default 127"),
 )
 

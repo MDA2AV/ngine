@@ -1,0 +1,826 @@
+# NGWART native program -- generated from cargo.ods, then reviewed.
+#
+# Same steps, same order, same arguments as the legacy table. What is
+# different is that the data store is addressed by name: see `vars`.
+#
+# Run it with:   ngwart run programs/cargo.yaml
+#      check:    ngwart check programs/cargo.yaml
+
+meta:
+  name: cargo
+  product: CARGO
+  source: cargobay/src/TestTables/cargo.ods
+  notes: >
+    Four-up LED and current test. Paths, supply channels and camera
+    serials are the ones the real fixture uses -- running this drives
+    hardware unless --simulate is given.
+
+modules:
+  Flow: FlowManager
+  UI: UIManager
+  Cargo: CargoManager
+  VISA: GlobalVISAManager
+  Camera: BaluffManager
+  Serial: WinSerialManager
+  ImageProcess: ImageProcessManager
+
+# The readability fix: names instead of raw l,c,p coordinates.
+#
+# Not used for the EVALCONT / EVALCONTN / EVALLEDS result columns: those
+# take a single index that the engine expands into a value/result/id
+# triple by splitting the text on commas, before names are resolved. A
+# name there would store the measurement and drop the other two.
+vars:
+  # board detection
+  det.insert:           '0,0,20'
+  det.remove:           '1,0,20'
+
+  # run identity and output paths
+  run.datecode:         '2,0,23'
+  run.timecode:         '3,0,23'
+  run.started:          '38,0,29'
+  path.day:             '4,1,23'
+  path.run:             '4,0,23'
+  path.captures:        '0,0,24'
+  path.binary:          '1,0,24'
+  path.log:             '5,0,23'
+  path.data:            '5,1,23'
+  path.xml:             '6,0,23'
+
+  # supply current, per UUT (value / result / test id)
+  uut0.i_on.value:      '0,0,0'
+  uut0.i_on.result:     '0,1,0'
+  uut0.i_on.id:         '0,2,0'
+  uut1.i_on.value:      '1,0,0'
+  uut1.i_on.result:     '1,1,0'
+  uut1.i_on.id:         '1,2,0'
+  uut0.i_idle.value:    '2,0,0'
+  uut0.i_idle.result:   '2,1,0'
+  uut0.i_idle.id:       '2,2,0'
+  uut1.i_idle.value:    '3,0,0'
+  uut1.i_idle.result:   '3,1,0'
+  uut1.i_idle.id:       '3,2,0'
+  uut0.i_on2.value:     '4,0,0'
+  uut0.i_on2.result:    '4,1,0'
+  uut0.i_on2.id:        '4,2,0'
+  uut1.i_on2.value:     '5,0,0'
+  uut1.i_on2.result:    '5,1,0'
+  uut1.i_on2.id:        '5,2,0'
+  uut2.i_on.value:      '6,0,0'
+  uut2.i_on.result:     '6,1,0'
+  uut2.i_on.id:         '6,2,0'
+  uut3.i_on.value:      '7,0,0'
+  uut3.i_on.result:     '7,1,0'
+  uut3.i_on.id:         '7,2,0'
+  uut2.i_idle.value:    '8,0,0'
+  uut2.i_idle.result:   '8,1,0'
+  uut2.i_idle.id:       '8,2,0'
+  uut3.i_idle.value:    '9,0,0'
+  uut3.i_idle.result:   '9,1,0'
+  uut3.i_idle.id:       '9,2,0'
+  uut2.i_on2.value:     '10,0,0'
+  uut2.i_on2.result:    '10,1,0'
+  uut2.i_on2.id:        '10,2,0'
+  uut3.i_on2.value:     '11,0,0'
+  uut3.i_on2.result:    '11,1,0'
+  uut3.i_on2.id:        '11,2,0'
+
+  # capture slots: colour file, thresholded file, contours
+  img.u12_on.color:     '0,0,25'
+  img.u12_on.binary:    '1,0,25'
+  img.u12_on.contours:  '0,1,25'
+  img.u12_off.color:    '2,0,25'
+  img.u12_off.binary:   '3,0,25'
+  img.u12_off.contours: '2,1,25'
+  img.u12_btn.color:    '4,0,25'
+  img.u12_btn.binary:   '5,0,25'
+  img.u12_btn.contours: '4,1,25'
+  img.u12_on2.color:    '6,0,25'
+  img.u12_on2.binary:   '7,0,25'
+  img.u12_on2.contours: '6,1,25'
+  img.u34_on.color:     '8,0,25'
+  img.u34_on.binary:    '9,0,25'
+  img.u34_on.contours:  '8,1,25'
+  img.u34_off.color:    '10,0,25'
+  img.u34_off.binary:   '11,0,25'
+  img.u34_off.contours: '10,1,25'
+  img.u34_btn.color:    '12,0,25'
+  img.u34_btn.binary:   '13,0,25'
+  img.u34_btn.contours: '12,1,25'
+  img.u34_on2.color:    '14,0,25'
+  img.u34_on2.binary:   '15,0,25'
+  img.u34_on2.contours: '14,1,25'
+
+config:
+  - [TestData, initAlive, '4', '', '', '', '', '', '', gray]
+  - [TestData, updateLabels, '', '', '', '', '', '', '', gray]
+  - [Serial, FINDPORT, '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', CONTROL, '', '', '', '', gray]
+  - [Serial, FINDPORT, '9600,1', DAE006GCA, D1, '', '', '', '', gray]
+  - [Serial, FINDPORT, '9600,1', DAE00646A, D2, '', '', '', '', gray]
+  - [Serial, OPEN, CONTROL, '', '', '', '', '', '', gray]
+  - [Serial, OPEN, D1, '', '', '', '', '', '', gray]
+  - [Serial, OPEN, D2, '', '', '', '', '', '', gray]
+  - [VISA, OPENALL, '10000', '1', '', '', '', '', '', gray]
+  - [Camera, OPENALL, '', '', '', '', '', '', '', gray]
+  - [Camera, SETPROPS, UB101256, '4,1296,972', '0,0', '0,120', '0,100,0,0', '', '', gray]
+  - [Camera, CALIBRATEWB, UB101256, '50000', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Place, '0.00', '0.00', '0.5', '0.5', '', '', gray]
+  - [UI, GRID1_CONFIG, Add_Columns, 'Test ID,Device,Min,Max,Result', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Column, 'Test ID,100,0', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Column, 'Device,50,0', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Column, 'Min,80,0', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Column, 'Max,80,0', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Column, 'Result,140,0', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Heading, 'Test ID,Test ID', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Heading, 'Device,Device', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Heading, 'Min,Min', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Heading, 'Max,Max', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Edit_Heading, 'Result,Result', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Tag_Config, 'PASS,#62AF75', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Tag_Config, 'FAIL,#810D0D', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Tag_Config, 'RETRY,#E5AE59', '', '', '', '', '', gray]
+  - [UI, GRID1_CONFIG, Tag_Config, 'IRR,#130089', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Place, '0.5', '0.00', '0.5', '0.5', '', '', gray]
+  - [UI, GRID2_CONFIG, Add_Columns, 'Test ID,Device,Min,Max,Result', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Column, 'Test ID,100,0', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Column, 'Device,50,0', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Column, 'Min,120,0', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Column, 'Max,120,0', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Column, 'Result,100,0', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Heading, 'Test ID,Test ID', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Heading, 'Device,Device', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Heading, 'Min,Min', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Heading, 'Max,Max', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Edit_Heading, 'Result,Result', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Tag_Config, 'PASS,#62AF75', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Tag_Config, 'FAIL,#810D0D', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Tag_Config, 'RETRY,#E5AE59', '', '', '', '', '', gray]
+  - [UI, GRID2_CONFIG, Tag_Config, 'IRR,#130089', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Place, '0.00', '0.5', '0.5', '0.5', '', '', gray]
+  - [UI, GRID3_CONFIG, Add_Columns, 'Test ID,Device,Min,Max,Result', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Column, 'Test ID,100,0', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Column, 'Device,50,0', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Column, 'Min,120,0', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Column, 'Max,120,0', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Column, 'Result,100,0', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Heading, 'Test ID,Test ID', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Heading, 'Device,Device', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Heading, 'Min,Min', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Heading, 'Max,Max', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Edit_Heading, 'Result,Result', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Tag_Config, 'PASS,#62AF75', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Tag_Config, 'FAIL,#810D0D', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Tag_Config, 'RETRY,#E5AE59', '', '', '', '', '', gray]
+  - [UI, GRID3_CONFIG, Tag_Config, 'IRR,#130089', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Place, '0.5', '0.5', '0.5', '0.5', '', '', gray]
+  - [UI, GRID4_CONFIG, Add_Columns, 'Test ID,Device,Min,Max,Result', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Column, 'Test ID,100,0', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Column, 'Device,50,0', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Column, 'Min,120,0', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Column, 'Max,120,0', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Column, 'Result,100,0', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Heading, 'Test ID,Test ID', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Heading, 'Device,Device', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Heading, 'Min,Min', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Heading, 'Max,Max', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Edit_Heading, 'Result,Result', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Tag_Config, 'PASS,#62AF75', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Tag_Config, 'FAIL,#810D0D', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Tag_Config, 'RETRY,#E5AE59', '', '', '', '', '', gray]
+  - [UI, GRID4_CONFIG, Tag_Config, 'IRR,#130089', '', '', '', '', '', gray]
+
+exec:
+
+  # ----------------------------------------------------------------------
+  # TOP  --  Start
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, TOP, Start, '', '#689ed7', '', '', '', yellow]
+  - [UI, GRID1, Clear, '', '', '', '', UI_EX, '', Clear GRID1]
+  - [UI, GRID2, Clear, '', '', '', '', UI_EX, '', Clear GRID2]
+  - [UI, GRID3, Clear, '', '', '', '', UI_EX]
+  - [UI, GRID4, Clear, '', '', '', '', UI_EX]
+  - []
+  - [UI, LBOX, Clear, '', '', '', '', UI_EX, '', Clear LISTBOX]
+  - [UI, BCODE1, Clear, '', '', '', '', UI_EX, '', Clear BCODE1]
+  - [UI, BCODE2, Clear, '', '', '', '', UI_EX, '', Clear BCODE2]
+  - [UI, RESETPBARCOLOR, '', '', '', '', '', UI_EX, '', Reset Pbar color]
+  - []
+  - [TestData, STARTALIVE, '', '', '', '', '', '', '', Restart Alive]
+  - [TestData, INITDATA, '40', '3', '30', '', '', '', '', Initialize Data Array]
+  - []
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX, '', Select CH1]
+  - [VISA, WRITE, DP2A243200206, VOLT 0V, '', '', '', VISA_EX, '', 'Set Output @ 0VDC']
+  - [VISA, WRITE, DP2A243200206, CURR 0A, '', '', '', VISA_EX, '', 'Set max current Output @ 0A']
+  - [VISA, WRITE, DP2A243200206, OUTP OFF, '', '', '', VISA_EX, '', Set Output OFF]
+  - []
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', VISA_EX, '', Select CH2]
+  - [VISA, WRITE, DP2A243200206, VOLT 0V, '', '', '', VISA_EX, '', 'Set Output @ 0VDC']
+  - [VISA, WRITE, DP2A243200206, CURR 0A, '', '', '', VISA_EX, '', 'Set max current Output @ 0A']
+  - [VISA, WRITE, DP2A243200206, OUTP OFF, '', '', '', VISA_EX, '', Set Output OFF]
+  - []
+  - [Serial, EXCHANGELINE_LVS, CONTROL, r/n, Outputs Reset, '5', '', SERIAL_EX, '', Reset control board]
+  - []
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 1]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 2]
+  - []
+  - ['', LOG_FLAG, 'OFF']
+  - []
+
+  # ----------------------------------------------------------------------
+  # DETECTION  --  Insert PCBA
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, DETECTION, Insert PCBA, '', '', '', '', '', yellow]
+  - [Serial, EXCHANGELINE_LT_LV0, CONTROL, d/n, '', '', det.insert, SERIAL_EX]
+  - [Flow, DELAY, '0.1', '', '', '', '', FLOW_EX]
+  - [Flow, JL, DETECTION, '*det.insert', '16', '', '', SERIAL_EX]
+  - []
+  - [Cargo, VALIDATE_DET, '*det.insert', '', '', '', '', BANANAS]
+  - []
+
+  # ----------------------------------------------------------------------
+  # START  --  Test started
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, START, Test started, '', '', '', '', '', yellow]
+  - [TestData, LOG_FLAG, 'ON']
+  - [Flow, RESET_TIMER]
+  - [Flow, ENABLE_TIMER]
+  - [Flow, START_TIME, run.started]
+  - []
+  - [TestData, SETDATACODES, run.datecode, run.timecode, '', '', '', '', '', Set Datacodes]
+  - []
+  - [Flow, STOREF, 'C:\Users\Admin.ONTPC12\Desktop\Logs\CARGO\;*run.datecode', path.day, '', '', '', FLOW_EX, '', Save PATH0]
+  - [Flow, STOREF, 'C:\Users\Admin.ONTPC12\Desktop\Logs\CARGO\%0\%1;*run.datecode;*run.timecode', path.run, '', '', '', FLOW_EX, '', Save PATH1]
+  - [Flow, STOREF, '%0\Captures;*path.run', path.captures, '', '', '', FLOW_EX, '', Save PATH2]
+  - [Flow, STOREF, '%0\Binary_Captures;*path.run', path.binary, '', '', '', FLOW_EX, '', Save PATH3]
+  - [Flow, CREATEDIR, '*path.day', '', '', '', '', FLOW_EX]
+  - [Flow, CREATEDIR, '*path.run', '', '', '', '', FLOW_EX]
+  - [Flow, CREATEDIR, '*path.captures', '', '', '', '', FLOW_EX]
+  - [Flow, CREATEDIR, '*path.binary', '', '', '', '', FLOW_EX]
+  - [Flow, STOREF, 'C:\Users\Admin.ONTPC12\Desktop\Logs_XML', path.xml, '', '', '', FLOW_EX]
+  - []
+
+  # ----------------------------------------------------------------------
+  # INITIAL_CONDITIONS
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, INITIAL_CONDITIONS, '', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 1]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 2]
+  - []
+
+  # ----------------------------------------------------------------------
+  # POWER  --  Powering units
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, POWER, Powering units, '', '', '', '', '', yellow]
+  - []
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,49,43,47,47', '48,49,43,47,47', '5,5', '', SERIAL_EX, '1', 'CH1 + ON –> DVI2 K1 ON – UUT 2']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,50,43,47,47', '48,50,43,47,47', '5,5', '', SERIAL_EX, '1', 'CH1 – ON –> DVI2 K2 ON – UUT 2']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,51,43,47,47', '48,51,43,47,47', '5,5', '', SERIAL_EX, '0', 'CH2 + ON –> DVI2 K3 ON – UUT 1']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,52,43,47,47', '48,52,43,47,47', '5,5', '', SERIAL_EX, '0', 'CH2 – ON –> DVI2 K4 ON – UUT 1']
+
+  # ----------------------------------------------------------------------
+  # POWER1
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, POWER1]
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX, '1', Select CH1]
+  - [VISA, WRITE, DP2A243200206, VOLT 13.5V, '', '', '', VISA_EX, '1', 'Set Output @ 13.5VDC']
+  - [VISA, WRITE, DP2A243200206, CURR 1A, '', '', '', VISA_EX, '1', 'Set max current Output @ 1A']
+  - [VISA, WRITE, DP2A243200206, OUTP ON, '', '', '', VISA_EX, '1', Set Output ON]
+  - []
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', VISA_EX, '0', Select CH2]
+  - [VISA, WRITE, DP2A243200206, VOLT 13.5V, '', '', '', VISA_EX, '0', 'Set Output @ 13.5VDC']
+  - [VISA, WRITE, DP2A243200206, CURR 1A, '', '', '', VISA_EX, '0', 'Set max current Output @ 1A']
+  - [VISA, WRITE, DP2A243200206, OUTP ON, '', '', '', VISA_EX, '0', Set Output ON]
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_ON_1_2  --  Current On 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_ON_1_2, 'Current On 1,2', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on.value, '', VISA_EX, '1', Measure UUT 2 current On]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on.value, '', VISA_EX, '0', Measure UUT 1 current On]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut0.i_on.value', 'uut0.i_on.value;uut0.i_on.result;uut0.i_on.id', min, '0,CURRON1', FLOW_EX, '0', Evaluate UUT1 Current On]
+  - [Flow, EVAFLOAT, '0,1', '*uut1.i_on.value', 'uut1.i_on.value;uut1.i_on.result;uut1.i_on.id', min, '1,CURRON1', FLOW_EX, '1', Evaluate UUT2 Current On]
+  - []
+
+  # ----------------------------------------------------------------------
+  # ON_LEDS_1_2  --  LEDs On 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, ON_LEDS_1_2, 'LEDs On 1,2', '', '', '', '', '', yellow]
+  - [Flow, STOREF, '%0\UUT_1_2_ON.jpg;*path.captures', img.u12_on.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_1_2_ON.jpg;*path.binary', img.u12_on.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u12_on.color', '', '', '', CAM_EX, '0,1']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u12_on.color', img.u12_on.contours, '*img.u12_on.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '895,659,10,50,1', '0,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '878,659,10,50,1', '1,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '861,659,10,50,1', '2,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '845,659,10,50,1', '3,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '828,658,10,50,1', '4,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '811,658,10,50,1', '5,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '895,659,10,50', '6,0,1', '240,240,240', '0,COLOR_A,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '878,659,10,50', '7,0,1', '240,240,240', '0,COLOR_B,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '861,659,10,50', '8,0,1', '240,240,240', '0,COLOR_C,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '845,659,10,50', '9,0,1', '240,240,240', '0,COLOR_D,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '828,658,10,50', '10,0,1', '240,240,240', '0,COLOR_E,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '811,658,10,50', '11,0,1', '240,240,240', '0,COLOR_F,min', IMPRO_EX, '0']
+  - []
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '525,648,10,50,1', '0,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '509,647,10,50,1', '1,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '493,647,10,50,1', '2,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '478,647,10,50,1', '3,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '463,646,10,50,1', '4,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '447,646,10,50,1', '5,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '525,648,10,50', '6,0,2', '240,240,240', '1,COLOR_A,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '509,647,10,50', '7,0,2', '240,240,240', '1,COLOR_B,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '493,647,10,50', '8,0,2', '240,240,240', '1,COLOR_C,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '478,647,10,50', '9,0,2', '240,240,240', '1,COLOR_D,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '463,646,10,50', '10,0,2', '240,240,240', '1,COLOR_E,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '447,646,10,50', '11,0,2', '240,240,240', '1,COLOR_F,min', IMPRO_EX, '1']
+  - []
+
+  # ----------------------------------------------------------------------
+  # EIMAN_1_2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, EIMAN_1_2, '', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,43,47,47', '48,57,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,43,47,47', '49,48,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,45,47,47', '48,57,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,45,47,47', '49,54,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
+  - []
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_IDLE_1_2  --  Current Idle 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_IDLE_1_2, 'Current Idle 1,2', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_idle.value, '', VISA_EX, '1', Measure UUT 2 current Idle]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_idle.value, '', VISA_EX, '0', Measure UUT 1 current Idle]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut0.i_idle.value', 'uut0.i_idle.value;uut0.i_idle.result;uut0.i_idle.id', min, '0,CURRIDLE', FLOW_EX, '0', Evaluate UUT1 Current Idle]
+  - [Flow, EVAFLOAT, '0,1', '*uut1.i_idle.value', 'uut1.i_idle.value;uut1.i_idle.result;uut1.i_idle.id', min, '1,CURRIDLE', FLOW_EX, '1', Evaluate UUT2 Current Idle]
+  - []
+
+  # ----------------------------------------------------------------------
+  # OFF_LEDS_1_2  --  LEDs Off 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, OFF_LEDS_1_2, 'LEDs Off 1,2', '', '', '', '', '', yellow]
+  - [Flow, STOREF, '%0\UUT_1_2_OFF.jpg;*path.captures', img.u12_off.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_1_2_OFF.jpg;*path.binary', img.u12_off.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u12_off.color', '', '', '', CAM_EX, '0,1']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u12_off.color', img.u12_off.contours, '*img.u12_off.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '895,659,10,50,1', '12,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '878,659,10,50,1', '13,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '861,659,10,50,1', '14,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '845,659,10,50,1', '15,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '828,658,10,50,1', '16,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '811,658,10,50,1', '17,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '525,648,10,50,1', '12,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '509,647,10,50,1', '13,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '493,647,10,50,1', '14,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '478,647,10,50,1', '15,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '463,646,10,50,1', '16,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '447,646,10,50,1', '17,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # BUTTON_LED_1_2  --  Button LED 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, BUTTON_LED_1_2, 'Button LED 1,2', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,45,47,47', '49,49,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ OFF –> DVI2 K11 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,45,47,47', '49,52,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- OFF –> DVI1 K14 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,45,47,47', '49,50,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ OFF –> DVI2 K12 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,45,47,47', '49,51,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– OFF –> DVI1 K13 OFF']
+  - []
+  - [Camera, SETEXPOSURE, UB101256, '10000', '', '', '', CAM_EX, '0,1']
+  - [Flow, STOREF, '%0\UUT_1_2_BUTTON.jpg;*path.captures', img.u12_btn.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_1_2_BUTTON.jpg;*path.binary', img.u12_btn.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u12_btn.color', '', '', '', CAM_EX, '0,1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u12_btn.color', img.u12_btn.contours, '*img.u12_btn.binary', '100', IMPRO_EX, '0,1', Extract Contours from image]
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u12_btn.contours', '778,657,5,10,1', '18,0,1', min, '0,INTENSITY_G', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_btn.contours', '402,648,5,10,1', '18,0,2', min, '1,INTENSITY_G', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # ON_AGAIN_1_2  --  On Again 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, ON_AGAIN_1_2, 'On Again 1,2', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,43,47,47', '48,57,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,43,47,47', '49,48,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,45,47,47', '48,57,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,45,47,47', '49,54,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
+  - []
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on2.value, '', VISA_EX, '1', Measure UUT 2 current Power]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on2.value, '', VISA_EX, '0', Measure UUT 1 current Power]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut0.i_on2.value', 'uut0.i_on2.value;uut0.i_on2.result;uut0.i_on2.id', min, '0,CURRON2', FLOW_EX, '0', Evaluate UUT1 Current Power]
+  - [Flow, EVAFLOAT, '0,1', '*uut1.i_on2.value', 'uut1.i_on2.value;uut1.i_on2.result;uut1.i_on2.id', min, '1,CURRON2', FLOW_EX, '1', Evaluate UUT2 Current Power]
+  - []
+  - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.captures', img.u12_on2.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.binary', img.u12_on2.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u12_on2.color', '', '', '', CAM_EX, '0,1']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u12_on2.color', img.u12_on2.contours, '*img.u12_on2.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '895,659,10,50,1', '19,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '878,659,10,50,1', '20,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '861,659,10,50,1', '21,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '845,659,10,50,1', '22,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '828,658,10,50,1', '23,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '811,658,10,50,1', '24,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '525,648,10,50,1', '19,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '509,647,10,50,1', '20,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '493,647,10,50,1', '21,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '478,647,10,50,1', '22,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '463,646,10,50,1', '23,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '447,646,10,50,1', '24,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+  - []
+
+  # ----------------------------------------------------------------------
+  # UUT_3_4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, UUT_3_4, '', '', '', '', FLOW_EX, '', yellow]
+  - []
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 1]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 2]
+  - []
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '3', 'CH1 + ON –> DVI2 K15 ON – UUT 4']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,50,43,47,47', '48,50,43,47,47', '5,5', '', SERIAL_EX, '3', 'CH1 – ON –> DVI2 K2 ON – UUT 4']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '2', 'CH2 + ON –> DVI2 K16 ON – UUT 3']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,52,43,47,47', '48,52,43,47,47', '5,5', '', SERIAL_EX, '2', 'CH2 – ON –> DVI2 K4 ON – UUT 3']
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_ON_3_4  --  Current On 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_ON_3_4, 'Current On 3,4', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_on.value, '', VISA_EX, '3', Measure UUT 4 current On]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_on.value, '', VISA_EX, '2', Measure UUT 3 current On]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut2.i_on.value', 'uut2.i_on.value;uut2.i_on.result;uut2.i_on.id', min, '2,CURRON1', FLOW_EX, '2', Evaluate UUT3 Current On]
+  - [Flow, EVAFLOAT, '0,1', '*uut3.i_on.value', 'uut3.i_on.value;uut3.i_on.result;uut3.i_on.id', min, '3,CURRON1', FLOW_EX, '3', Evaluate UUT4 Current On]
+  - []
+  - [Flow, STOREF, '%0\UUT_3_4_ON.jpg;*path.captures', img.u34_on.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_3_4_ON.jpg;*path.binary', img.u34_on.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u34_on.color', '', '', '', CAM_EX, '2,3']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u34_on.color', img.u34_on.contours, '*img.u34_on.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '898,407,10,50,1', '0,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '881,407,10,50,1', '1,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '864,407,10,50,1', '2,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '848,407,10,50,1', '3,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '831,407,10,50,1', '4,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '814,407,10,50,1', '5,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '898,407,10,50', '6,0,3', '240,240,240', '2,COLOR_A,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '881,407,10,50', '7,0,3', '240,240,240', '2,COLOR_B,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '864,407,10,50', '8,0,3', '240,240,240', '2,COLOR_C,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '848,407,10,50', '9,0,3', '240,240,240', '2,COLOR_D,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '831,407,10,50', '10,0,3', '240,240,240', '2,COLOR_E,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '814,407,10,50', '11,0,3', '240,240,240', '2,COLOR_F,min', IMPRO_EX, '2']
+  - []
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '528,406,10,50,1', '0,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '513,406,10,50,1', '1,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '497,406,10,50,1', '2,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '482,406,10,50,1', '3,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '466,406,10,50,1', '4,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '451,407,10,50,1', '5,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '528,406,10,50', '6,0,4', '240,240,240', '3,COLOR_A,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '513,406,10,50', '7,0,4', '240,240,240', '3,COLOR_B,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '497,406,10,50', '8,0,4', '240,240,240', '3,COLOR_C,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '482,406,10,50', '9,0,4', '240,240,240', '3,COLOR_D,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '466,406,10,50', '10,0,4', '240,240,240', '3,COLOR_E,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '451,407,10,50', '11,0,4', '240,240,240', '3,COLOR_F,min', IMPRO_EX, '3']
+  - []
+  - []
+
+  # ----------------------------------------------------------------------
+  # EIMAN_3_4  --  Press Buttons 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, EIMAN_3_4, 'Press Buttons 3,4', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,45,47,47', '49,49,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ OFF –> DVI2 K11 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,45,47,47', '49,52,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- OFF –> DVI1 K14 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,45,47,47', '49,50,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ OFF –> DVI2 K12 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,45,47,47', '49,51,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– OFF –> DVI1 K13 OFF']
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_IDLE_3_4  --  Current Idle 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_IDLE_3_4, 'Current Idle 3,4', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_idle.value, '', VISA_EX, '3', Measure UUT 4 current Idle]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_idle.value, '', VISA_EX, '2', Measure UUT 3 current Idle]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut2.i_idle.value', 'uut2.i_idle.value;uut2.i_idle.result;uut2.i_idle.id', min, '2,CURRIDLE', FLOW_EX, '2', Evaluate UUT3 Current Idle]
+  - [Flow, EVAFLOAT, '0,1', '*uut3.i_idle.value', 'uut3.i_idle.value;uut3.i_idle.result;uut3.i_idle.id', min, '3,CURRIDLE', FLOW_EX, '3', Evaluate UUT4 Current Idle]
+  - []
+
+  # ----------------------------------------------------------------------
+  # OFF_LEDS_3_4  --  LEDs Off 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, OFF_LEDS_3_4, 'LEDs Off 3,4', '', '', '', '', '', yellow]
+  - [Flow, STOREF, '%0\UUT_3_4_OFF.jpg;*path.captures', img.u34_off.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_3_4_OFF.jpg;*path.binary', img.u34_off.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u34_off.color', '', '', '', CAM_EX, '2,3']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u34_off.color', img.u34_off.contours, '*img.u34_off.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '898,407,10,50,1', '12,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '881,407,10,50,1', '13,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '864,407,10,50,1', '14,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '848,407,10,50,1', '15,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '831,407,10,50,1', '16,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '814,407,10,50,1', '17,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '528,406,10,50,1', '12,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '513,406,10,50,1', '13,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '497,406,10,50,1', '14,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '482,406,10,50,1', '15,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '466,406,10,50,1', '16,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '451,407,10,50,1', '17,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # BUTTON_LED_3_4  --  Button LED 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, BUTTON_LED_3_4, 'Button LED 3,4', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,43,47,47', '48,57,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,43,47,47', '49,48,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,45,47,47', '48,57,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,45,47,47', '49,54,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
+  - []
+  - [Camera, SETEXPOSURE, UB101256, '10000', '', '', '', CAM_EX, '2,3']
+  - [Flow, STOREF, '%0\UUT_3_4_BUTTON.jpg;*path.captures', img.u34_btn.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_3_4_BUTTON.jpg;*path.binary', img.u34_btn.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u34_btn.color', '', '', '', CAM_EX, '2,3']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u34_btn.color', img.u34_btn.contours, '*img.u34_btn.binary', '100', IMPRO_EX, '2,3', Extract Contours from image]
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
+  - []
+  - [ImageProcess, EVALCONTN, '*img.u34_btn.contours', '778,657,5,10,1', '18,0,3', min, '2,INTENSITY_G', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_btn.contours', '402,648,5,10,1', '18,0,4', min, '3,INTENSITY_G', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # ON_AGAIN_3_4  --  On Again 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, ON_AGAIN_3_4, 'On Again 3,4', '', '', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
+  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,45,47,47', '49,49,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ OFF –> DVI2 K11 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,45,47,47', '49,52,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- OFF –> DVI1 K14 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,45,47,47', '49,50,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ OFF –> DVI2 K12 OFF']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,45,47,47', '49,51,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– OFF –> DVI1 K13 OFF']
+  - []
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_on2.value, '', VISA_EX, '3', Measure UUT 4 current Power]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_on2.value, '', VISA_EX, '2', Measure UUT 3 current Power]
+  - []
+  - [Flow, EVAFLOAT, '0,1', '*uut2.i_on2.value', 'uut2.i_on2.value;uut2.i_on2.result;uut2.i_on2.id', min, '2,CURRON2', FLOW_EX, '2', Evaluate UUT1 Current Power]
+  - [Flow, EVAFLOAT, '0,1', '*uut3.i_on2.value', 'uut3.i_on2.value;uut3.i_on2.result;uut3.i_on2.id', min, '3,CURRON2', FLOW_EX, '3', Evaluate UUT2 Current Power]
+  - []
+  - [Flow, STOREF, '%0\UUT_3_4_ON2.jpg;*path.captures', img.u34_on2.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Flow, STOREF, '%0\UUT_3_4_ON2.jpg;*path.binary', img.u34_on2.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
+  - [Camera, CAPTURE, UB101256, '*img.u34_on2.color', '', '', '', CAM_EX, '2,3']
+  - [Flow, DELAY, '0.1']
+  - []
+  - [ImageProcess, BGR2CONT, '', '*img.u34_on2.color', img.u34_on2.contours, '*img.u34_on2.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '898,407,10,50,1', '19,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '881,407,10,50,1', '20,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '864,407,10,50,1', '21,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '848,407,10,50,1', '22,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '831,407,10,50,1', '23,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '814,407,10,50,1', '24,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '528,406,10,50,1', '19,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '513,406,10,50,1', '20,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '497,406,10,50,1', '21,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '482,406,10,50,1', '22,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '466,406,10,50,1', '23,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '451,407,10,50,1', '24,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # VALIDATE  --  VALIDATE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, VALIDATE, VALIDATE, '', '', '', FLOW_EX, '', yellow]
+  - [Cargo, VALIDATE]
+  - []
+
+  # ----------------------------------------------------------------------
+  # SHUTDOWN_ALL
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, SHUTDOWN_ALL, '', '', '', '', FLOW_EX, '', yellow]
+  - []
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, VOLT 0V, '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, CURR 0A, '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, OUTP OFF, '', '', '', VISA_EX]
+  - []
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, VOLT 0V, '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, CURR 0A, '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, OUTP OFF, '', '', '', VISA_EX]
+  - []
+  - [Serial, EXCHANGELINE_LVS, CONTROL, r/n, Outputs Reset, '5', '', SERIAL_EX]
+  - []
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX]
+  - []
+
+  # ----------------------------------------------------------------------
+  # SAVE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, SAVE, '', '', '', '', FLOW_EX, '', yellow]
+  - [Flow, STOREF, '%0\LOG.txt;*path.run', path.log, '', '', '', FLOW_EX]
+  - [Flow, STOREF, '%0\DATA.txt;*path.run', path.data, '', '', '', FLOW_EX]
+  - [TestData, SAVELOG, '*path.log']
+  - [TestData, SAVEDATA, '*path.data']
+  - []
+
+  # ----------------------------------------------------------------------
+  # END
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, END, '', '', '', '', FLOW_EX]
+  - [Flow, DISABLE_TIMER]
+  - []
+  - [TestData, LOG_FLAG, 'OFF']
+  - ['', J, TOP]
+
+  # ----------------------------------------------------------------------
+  # REMOVE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, REMOVE, '', '', '', '', FLOW_EX, '', yellow]
+  - [Serial, EXCHANGELINE_LT_LV0, CONTROL, d/n, '', '', det.remove, SERIAL_EX]
+  - [Flow, JL, TOP, '*det.remove', '16', '', '', FLOW_EX]
+  - [Flow, DELAY, '0.1', '', '', '', '', FLOW_EX]
+  - [Flow, J, REMOVE]
+
+ehandling:
+
+  # ----------------------------------------------------------------------
+  # FLOW_EX  --  FLOW EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, FLOW_EX, FLOW EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # SERIAL_EX  --  SERIAL EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, SERIAL_EX, SERIAL EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # SHELL_EX  --  SHELL EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, SHELL_EX, SHELL EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # VISA_EX  --  VISA EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, VISA_EX, VISA EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # SCANNER_EX  --  S/N EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, SCANNER_EX, S/N EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, DELAY, '5', '', '', '', '', '', '', red]
+  - [Flow, J, REMOVE, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # CAN_EX  --  CAN EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CAN_EX, CAN EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # UI_EX  --  UI EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, UI_EX, UI EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # WORKER_EX  --  WORKER ID?
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, WORKER_EX, 'WORKER ID?', '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, DROP, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # BLE_EX  --  BLE FAILURE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, BLE_EX, BLE FAILURE, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # PSU_EX  --  PSU FAILURE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, PSU_EX, PSU FAILURE, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, DROP, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # IMPRO_EX  --  IMPRO EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, IMPRO_EX, IMPRO EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # DATAPRO_EX  --  DATAPRO EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, DATAPRO_EX, DATAPRO EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # CAM_EX  --  CAMERA EXCEPTION
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CAM_EX, CAMERA EXCEPTION, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # BANANAS  --  BANANAS
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, BANANAS, BANANAS, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # PRINT_EX  --  PRINTER FAILURE
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, PRINT_EX, PRINTER FAILURE, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, SHUTDOWN_ALL, '', '', '', '', '', '', red]
+  - ['', '', '', '', '', '', '', '', '', red]
+
+  # ----------------------------------------------------------------------
+  # STD_EX  --  System FAIL
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, STD_EX, System FAIL, '', '#FF1A1A', '', '', '', red]
+  - [Flow, J, DROP, '', '', '', '', '', '', red]
+
+  # Terminal label. In the .ods this sits after <Ehandling/>;
+  # WORKER_EX, PSU_EX and STD_EX jump here to abandon the run.
+  - [Flow, LABEL, DROP]

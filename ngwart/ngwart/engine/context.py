@@ -19,7 +19,7 @@ from typing import Any
 
 from .errors import ProgramError, VerbError
 from .events import (AliveEvent, Event, FieldEvent, Listener, LogEvent,
-                     NullListener, ProgressEvent, TimerEvent)
+                     NullListener, ProgressEvent, TimerEvent, VerdictEvent)
 from .program import Program
 
 _COORD_RE = re.compile(r"^\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*$")
@@ -233,6 +233,10 @@ class Context:
         if not already:
             self.log(f"UUT {index} killed{f': {reason}' if reason else ''}", "fail")
             self.emit(AliveEvent(alive=list(self.alive)))
+
+    def verdict(self, index: int, passed: bool, detail: str = "") -> None:
+        """Publish one unit's verdict as soon as it is known."""
+        self.emit(VerdictEvent(uut=index, passed=passed, detail=detail))
 
     def is_any_alive(self, mask: str) -> bool:
         """Evaluate column 8.

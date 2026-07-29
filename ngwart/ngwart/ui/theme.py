@@ -64,6 +64,19 @@ DARK = {
     "warn": "#DFA13C",
     "info": "#3E9BD5",
     "idle": "#333E45",
+    # Verdict tints for a whole unit panel. Deliberately near the neutral
+    # surface they replace -- the panel should read as "this one passed" at a
+    # glance without turning the results inside it into low-contrast text.
+    # Selected row in the program table. Lifted off the surface enough to find
+    # at a glance, far short of the filled block that made a table look like two
+    # different panels.
+    "select": "#1B2833",
+    "pass_surface": "#122320",
+    "pass_elevated": "#162B26",
+    "pass_border": "#2B5645",
+    "fail_surface": "#231619",
+    "fail_elevated": "#2B1B1F",
+    "fail_border": "#653036",
 }
 
 LIGHT = {
@@ -83,6 +96,13 @@ LIGHT = {
     "warn": "#8F6212",
     "info": "#0F6FA8",
     "idle": "#C6CFD6",
+    "select": "#E4EEF6",
+    "pass_surface": "#F2FAF5",
+    "pass_elevated": "#E4F2E9",
+    "pass_border": "#A9D4BD",
+    "fail_surface": "#FEF4F4",
+    "fail_elevated": "#FAE8E9",
+    "fail_border": "#E9B5B8",
 }
 
 #: Result tag -> palette key. A table's own Tag_Config colours win over these.
@@ -117,6 +137,21 @@ QWidget {{
     font-family: {SANS};
     font-size: {t['body']}pt;
 }}
+/* Text and controls never paint their own background.
+
+   The rule above gives every QWidget the *window* colour, which is darker than
+   the surface a panel sits on. Any label inside a panel therefore drew a darker
+   rectangle behind itself -- visible as a box around the progress percentage,
+   the step caption and the header figures. Whatever is behind them should show
+   through; only the handful of things that are deliberately a chip or a pill
+   set a background, and those do it with an ID rule that wins over this one. */
+QLabel, QCheckBox, QRadioButton {{ background: transparent; }}
+
+/* A widget that exists only to hold a layout is not a surface. Without this it
+   paints the window colour inside whatever panel it sits in -- the same dark
+   rectangle, one level up from the labels. */
+QWidget#Bare {{ background: transparent; }}
+
 QMainWindow::separator {{ background: {c['border']}; width: 1px; height: 1px; }}
 QToolTip {{
     background: {c['overlay']}; color: {c['text']};
@@ -188,10 +223,28 @@ QTableWidget, QTableView {{
     border: none;
     font-family: {MONO};
     font-size: {t['data']}pt;
-    selection-background-color: {c['accent_soft']};
-    selection-color: {c['text']};
+    selection-background-color: transparent;
+    selection-color: {c['accent']};
 }}
 QTableView::item {{ padding: {s['xs']}px {s['sm']}px; border: none; }}
+/* The running step, and a row the operator clicks, are marked by their ink
+   rather than by a filled block. A tinted rectangle behind one row of a table
+   reads as a different surface and breaks the panel it sits in; recolouring
+   the text says the same thing without introducing a second background. */
+QTableView::item:selected {{
+    background: transparent;
+    color: {c['accent']};
+    font-weight: 700;
+}}
+/* The program table is the exception: its selection is not just a highlight,
+   it is what "run these steps" acts on, so it has to be unmistakable. A tint
+   this close to the surface reads as one panel; the accent ink still carries
+   it for anyone who cannot see the tint. */
+QTableView#ProgramTable::item:selected {{
+    background: {c['select']};
+    color: {c['accent']};
+    font-weight: 700;
+}}
 QHeaderView {{ background: transparent; }}
 QHeaderView::section {{
     background: {c['surface']};
@@ -324,8 +377,10 @@ QFrame#Identity {{
 }}
 /* Children inherit the window background otherwise, which paints a darker
    rectangle behind every group and makes the strip look like a row of boxes. */
+/* The layout holder is a bare QWidget, so it needs this even though labels are
+   handled globally above -- otherwise it paints the window colour behind the
+   whole identity group. */
 QFrame#Identity > QWidget {{ background: transparent; }}
-QFrame#Identity QLabel {{ background: transparent; }}
 QLabel#ProgramName {{
     font-size: {t['title']}pt; font-weight: 700; letter-spacing: -0.2px;
     color: {c['text']};

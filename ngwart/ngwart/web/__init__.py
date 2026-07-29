@@ -18,24 +18,7 @@ from .station import Station
 __all__ = ["WebServer", "Station", "DEFAULT_PORT", "serve"]
 
 
-def _pick_program_dir(explicit: str | None, program: str | None) -> str:
-    """Where the picker looks, when nobody said.
-
-    The cwd is a poor default: a station is usually launched from the package
-    root while its programs sit in a subdirectory, so the picker came up empty
-    and looked broken. Prefer the folder of the program actually opened, then a
-    conventional ./programs, and only then the cwd.
-    """
-    if explicit:
-        return explicit
-    if program:
-        directory = os.path.dirname(os.path.abspath(program))
-        if os.path.isdir(directory):
-            return directory
-    for candidate in ("programs", "TestTables"):
-        if os.path.isdir(candidate):
-            return candidate
-    return "."
+from ..engine.loaders import pick_program_dir as _pick_program_dir  # noqa: E402
 
 
 def serve(program: str | None = None, host: str = "127.0.0.1",

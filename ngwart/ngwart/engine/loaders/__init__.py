@@ -21,7 +21,8 @@ from ..errors import LoaderError
 from ..program import NCOLS, Program, Row
 from . import native, ods
 
-__all__ = ["load", "load_rows", "save", "detect_format", "ods", "native"]
+__all__ = ["load", "load_rows", "save", "detect_format", "ods", "native",
+           "pick_program_dir", "program_names"]
 
 LEGACY_EXTS = {".ods", ".txt", ".csv"}
 NATIVE_EXTS = {".yaml", ".yml", ".ngw"}
@@ -37,6 +38,51 @@ def detect_format(path: str) -> str:
         f"unsupported program format '{ext}' -- expected one of "
         f"{', '.join(sorted(LEGACY_EXTS | NATIVE_EXTS))}"
     )
+
+
+def pick_program_dir(explicit: str | None = None,
+                     program: str | None = None) -> str:
+    """Where a picker should look when nobody said.
+
+    The cwd is a poor default: a station is usually launched from the package
+    root while its programs sit in a subdirectory, so a picker came up empty and
+    looked broken. Prefer the folder of the program actually opened, then a
+    conventional ./programs, and only then the cwd.
+    """
+    if explicit:
+        return explicit
+    if program:
+        directory = os.path.dirname(os.path.abspath(program))
+        if os.path.isdir(directory):
+            return directory
+    for candidate in ("programs", "TestTables"):
+        if os.path.isdir(candidate):
+            return candidate
+    return "."
+
+
+def program_names(directory: str) -> list[str]:
+    """The programs a directory offers, under the name a run records.
+
+    A run stores ``program`` as the file's stem (loaders fill meta['name'] from
+    it), so listing stems here gives values that match the history table without
+    opening a single file. cargo.ods and cargo.yaml are deliberately one entry:
+    they are the same fixture in two formats, and splitting their history in the
+    statistics would be worse than useless.
+    """
+    if not directory or not os.path.isdir(directory):
+        return []
+    known = LEGACY_EXTS | NATIVE_EXTS
+    names = set()
+    try:
+        entries = os.listdir(directory)
+    except OSError:
+        return []
+    for entry in entries:
+        stem, ext = os.path.splitext(entry)
+        if ext.lower() in known and not entry.startswith(("~$", ".~")):
+            names.add(stem)
+    return sorted(names)
 
 
 def load(path: str) -> Program:

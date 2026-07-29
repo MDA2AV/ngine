@@ -39,6 +39,14 @@ SECTIONS = ("Modules", "Vars", "Config", "Exec", "Ehandling", "Teardown")
 #: Sections whose rows are declarations, not instructions.
 DECLARATIVE = ("Modules", "Vars")
 
+#: Where a partial run lands when its last selected step finishes. Named with
+#: underscores so it cannot collide with a label a real table declares.
+END_LABEL = "__SELECTION_END__"
+
+
+def _row(index: int, cells: list[str]) -> "Row":
+    return Row(index=index, cells=(list(cells) + [""] * NCOLS)[:NCOLS])
+
 
 @dataclass
 class Row:
@@ -177,6 +185,87 @@ class Program:
             if section is not None and section.start <= index <= section.end:
                 return True
         return False
+
+    #: Exec rows that create the store every other verb writes into. A selection
+    #: is carried out against a fresh context, so without these almost any step
+    #: run on its own dies with "data store not initialised".
+    SETUP_VERBS = ("INITDATA", "STARTALIVE")
+
+    def subset(self, indices, with_setup: bool = True) -> "Program":
+        """A runnable program holding only the given <Exec> rows.
+
+        Everything declarative is carried over verbatim -- <Modules> so verbs
+        resolve, <Vars> so names resolve, <Config> so ports and instruments are
+        opened, <Ehandling> so the rows' error routes still name real labels,
+        and <Teardown> so a partial run still powers the fixture down. Only the
+        body of <Exec> is replaced.
+
+        ``with_setup`` prepends the program's own INITDATA and STARTALIVE rows
+        when the selection does not already include them. They are idempotent
+        setup, and without them a single selected step has nowhere to write.
+        """
+        exec_section = self.sections.get("Exec")
+        if exec_section is None:
+            raise ProgramError("program has no <Exec> section")
+
+        body = self.body("Exec")
+        chosen = sorted(i for i in indices if i in body)
+        if with_setup:
+            chosen = self._with_setup(chosen, body)
+
+        rows: list[Row] = []
+
+        def carry(name: str) -> None:
+            section = self.sections.get(name)
+            if section is None:
+                return
+            for i in range(section.start, section.end + 1):
+                rows.append(Row(index=len(rows), cells=list(self.rows[i].cells)))
+
+        carry("Modules")
+        carry("Vars")
+        carry("Config")
+
+        flow = self._flow_alias()
+
+        rows.append(Row(index=len(rows),
+                        cells=list(self.rows[exec_section.start].cells)))
+        for i in chosen:
+            rows.append(Row(index=len(rows), cells=list(self.rows[i].cells)))
+        # Without this the pointer runs off the end of the selection and keeps
+        # going: <Exec/> is not the end of the executable span, <Teardown> is,
+        # so the next thing it would reach is the first error handler. Jump to a
+        # label parked immediately before teardown instead.
+        rows.append(_row(len(rows), [flow, "J", END_LABEL]))
+        rows.append(Row(index=len(rows),
+                        cells=list(self.rows[exec_section.end].cells)))
+
+        carry("Ehandling")
+        rows.append(_row(len(rows), [flow, "LABEL", END_LABEL]))
+        carry("Teardown")
+
+        meta = dict(self.meta)
+        meta["partial"] = True
+        return Program(rows=rows, source=self.source, meta=meta).finalize()
+
+    def _flow_alias(self) -> str:
+        """Whatever this program calls FlowManager. Tables do rename it."""
+        for alias, module in self.modules.items():
+            if module.strip().lower() in ("flowmanager", "flow"):
+                return alias
+        return "Flow"
+
+    def _with_setup(self, chosen: list[int], body: range) -> list[int]:
+        present = {self.rows[i].verb.upper() for i in chosen}
+        extra = []
+        for verb in self.SETUP_VERBS:
+            if verb in present:
+                continue
+            for i in body:
+                if self.rows[i].verb.upper() == verb and self.rows[i].module:
+                    extra.append(i)
+                    break
+        return sorted(set(chosen) | set(extra))
 
     # -- labels -----------------------------------------------------------
 

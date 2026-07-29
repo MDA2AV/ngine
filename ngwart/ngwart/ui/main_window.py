@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFileDialog, QFrame,
 
 from .. import __version__
 from ..engine import REGISTRY, Context, RunOptions, RunThread, Sequencer, validate
+from ..engine import loaders
 from ..engine.loaders import load
 from ..engine.program import Program
 from . import theme
@@ -50,6 +51,14 @@ class MainWindow(QMainWindow):
         self._last_record = None
         self._points = 0
         self._failed = 0
+        self._program_ok = False
+        self._active = False
+        #: Step count when the current run is a hand-picked selection, else 0.
+        self._partial_run = 0
+
+        # What this station offers, which is what the statistics should be
+        # scoped to -- not every product name the history file has accumulated.
+        self.programs_dir = loaders.pick_program_dir(program=program_path)
 
         # Yield, Pareto and "has this ever failed here" are questions about many
         # runs, so they need a store that outlives the process.
@@ -103,17 +112,15 @@ class MainWindow(QMainWindow):
         body_layout.setContentsMargins(12, 8, 12, 8)
         body_layout.setSpacing(8)
 
-        self.banner = StatusBanner()
-        body_layout.addWidget(self.banner)
+        body_layout.addWidget(self._build_command_bar())
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_operator_tab(), "Operator")
         self.tabs.addTab(self._build_program_tab(), "Program")
-        self.stats_tab = StatsTab(self.history)
+        self.stats_tab = StatsTab(self.history, programs_dir=self.programs_dir)
         self.tabs.addTab(self.stats_tab, "Stats")
         self.tabs.addTab(self._build_verbs_tab(), "Verbs")
         body_layout.addWidget(self.tabs, 1)
-        body_layout.addWidget(self._build_footer())
         layout.addWidget(body, 1)
         self.setCentralWidget(root)
         if self.telemetry is not None:
@@ -148,6 +155,13 @@ class MainWindow(QMainWindow):
         self.start_action = self._action(run_menu, "&Start", self.start_run, "F9")
         self.stop_action = self._action(run_menu, "S&top", self.stop_run, "Esc")
         self.stop_action.setEnabled(False)
+        self.step_action = self._action(
+            run_menu, "Run &selected step(s)", self.run_selected_steps,
+            "Ctrl+Return")
+        self.step_action.setToolTip(
+            "Execute only the rows selected in the Program tab. "
+            "Available while stopped.")
+        self.step_action.setEnabled(False)
         run_menu.addSeparator()
 
         self.simulate_action = self._toggle(
@@ -168,6 +182,13 @@ class MainWindow(QMainWindow):
             self._action(view_menu, name,
                          lambda _=False, i=index: self.tabs.setCurrentIndex(i),
                          key)
+        view_menu.addSeparator()
+        self.log_action = self._toggle(
+            view_menu, "Show &log",
+            "Collapse the log to give the result panels the full width.")
+        self.log_action.setChecked(True)
+        self.log_action.setShortcut("Ctrl+L")
+        self.log_action.toggled.connect(self._toggle_log)
         view_menu.addSeparator()
         self._action(view_menu, "Toggle &theme", self._toggle_theme, "Ctrl+T")
 
@@ -239,10 +260,13 @@ class MainWindow(QMainWindow):
         row.addLayout(self.scans)
         row.addSpacing(14)
 
+        # Units, not points. A four-up fixture running a 60-point program made
+        # "points 240" the headline number, which is the one figure an operator
+        # never needs -- what they act on is how many boards are good.
         self.stat_elapsed = Stat("elapsed", "0.0s")
-        self.stat_points = Stat("points", "0")
+        self.stat_passed = Stat("passed", "0")
         self.stat_failed = Stat("failed", "0")
-        for stat in (self.stat_elapsed, self.stat_points, self.stat_failed):
+        for stat in (self.stat_elapsed, self.stat_passed, self.stat_failed):
             stat.setMinimumWidth(78)
             row.addWidget(stat, 0, Qt.AlignVCenter)
             row.addSpacing(14)
@@ -279,8 +303,16 @@ class MainWindow(QMainWindow):
         """
         while self.badges.count():
             item = self.badges.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            widget = item.widget()
+            if widget is not None:
+                # Reparent now, do not merely schedule the delete. deleteLater()
+                # runs when the event loop next collects, and until it does the
+                # badge is still a visible child of the header -- but no longer
+                # laid out, so it sits at Qt's default 640x480 and paints a
+                # coloured rectangle across the whole strip.
+                widget.hide()
+                widget.setParent(None)
+                widget.deleteLater()
 
         palette = theme.palette(self.dark)
         if self.simulate_action.isChecked():
@@ -297,11 +329,12 @@ class MainWindow(QMainWindow):
 
     def _build_operator_tab(self) -> QWidget:
         splitter = QSplitter(Qt.Horizontal)
+        self.op_splitter = splitter
 
-        log_card = Card("Log")
+        self.log_card = Card("Log")
         self.log = LogView()
-        log_card.add(self.log, 1)
-        splitter.addWidget(log_card)
+        self.log_card.add(self.log, 1)
+        splitter.addWidget(self.log_card)
 
         self.grid_host = QWidget()
         self.grid_layout = QGridLayout(self.grid_host)
@@ -326,7 +359,26 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 5)
         splitter.setSizes([420, 1050])
+        # Draggable all the way shut, as well as toggleable from the View menu:
+        # during a run the log is the thing to watch, and between boards it is
+        # just taking width from the results.
+        splitter.setCollapsible(0, True)
+        splitter.setCollapsible(1, False)
+        self._log_width = 420
         return splitter
+
+    def _toggle_log(self, show: bool) -> None:
+        sizes = self.op_splitter.sizes()
+        total = sum(sizes) or 1470
+        if show:
+            width = self._log_width or 420
+            self.op_splitter.setSizes([width, max(total - width, 200)])
+        else:
+            # Remember how wide it was, so showing it again restores the
+            # operator's layout rather than a default.
+            if sizes and sizes[0]:
+                self._log_width = sizes[0]
+            self.op_splitter.setSizes([0, total])
 
     def _set_uut_count(self, count: int) -> None:
         """Build exactly as many panels as the fixture has units.
@@ -372,9 +424,16 @@ class MainWindow(QMainWindow):
         self.program_table.setHorizontalHeaderLabels(
             ["Module", "Verb", "A2", "A3", "A4", "A5", "A6",
              "On error", "Alive", "Comment"])
+        self.program_table.setObjectName("ProgramTable")
         self.program_table.verticalHeader().setDefaultSectionSize(22)
         self.program_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.program_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        # Several steps at once: ctrl-click to pick them out, shift-click for a
+        # block. The selection is what "run selected" acts on.
+        self.program_table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.program_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.program_table.customContextMenuRequested.connect(
+            self._program_context_menu)
         self.program_table.horizontalHeader().setSectionResizeMode(
             QHeaderView.Interactive)
         self.program_table.horizontalHeader().setStretchLastSection(True)
@@ -420,7 +479,14 @@ class MainWindow(QMainWindow):
         card.add(table, 1)
         return card
 
-    def _build_footer(self) -> QWidget:
+    def _build_command_bar(self) -> QWidget:
+        """Controls, state and progress on one line.
+
+        These were three stacked strips -- banner, then tabs, then a footer of
+        buttons -- which spent roughly a hundred vertical pixels saying things
+        that fit comfortably side by side. The results are what the screen is
+        for, so the chrome shares a row and gives the height back.
+        """
         card = Card()
         card._layout.setContentsMargins(10, 7, 10, 7)
         row = QHBoxLayout()
@@ -450,14 +516,31 @@ class MainWindow(QMainWindow):
         self.step_label = QLabel("—")
         self.step_label.setObjectName("ProgramMeta")
         self.step_label.setFont(QFont(theme.MONO.split(",")[0], 9))
+        # A long comment on a step must not be able to push the banner around.
+        self.step_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+
+        self.banner = StatusBanner()
+        self.banner.setMinimumWidth(240)
+
+        progress = QVBoxLayout()
+        progress.setSpacing(2)
+        progress.setContentsMargins(0, 0, 0, 0)
+        bar = QHBoxLayout()
+        bar.setSpacing(theme.SPACE["sm"])
+        bar.addWidget(self.progress, 1)
+        bar.addWidget(self.progress_label)
+        progress.addLayout(bar)
+        progress.addWidget(self.step_label)
+        progress_host = QWidget()
+        progress_host.setObjectName("Bare")     # a layout holder, not a surface
+        progress_host.setLayout(progress)
 
         row.addWidget(self.run_button)
         row.addWidget(self.stop_button)
         row.addSpacing(theme.SPACE["sm"])
-        row.addWidget(self.progress, 1)
-        row.addWidget(self.progress_label)
-        row.addSpacing(theme.SPACE["md"])
-        row.addWidget(self.step_label, 2)
+        row.addWidget(self.banner, 3)
+        row.addSpacing(theme.SPACE["sm"])
+        row.addWidget(progress_host, 4)
         card.add_layout(row)
         return card
 
@@ -472,6 +555,9 @@ class MainWindow(QMainWindow):
             panel._palette = palette
             panel.verdict._palette = palette
             panel.verdict.set_state(panel.verdict.text())
+            panel.repaint_tone()
+        if hasattr(self, "stat_passed"):
+            self._retally_units()
         for name, chip in list(self._scan_chips.items()):
             if chip.isVisible():
                 self._set_scan(name, chip.text().split("  ", 1)[-1])
@@ -529,8 +615,8 @@ class MainWindow(QMainWindow):
         self._populate_program_table(program)
         report = self._show_diagnostics(program)
 
-        self.run_button.setEnabled(report.ok)
-        self.start_action.setEnabled(report.ok)
+        self._program_ok = report.ok
+        self._sync_run_actions()
         if report.ok:
             self.banner.show_status("READY")
             self.statusBar().showMessage(
@@ -571,6 +657,25 @@ class MainWindow(QMainWindow):
             self.diagnostics.setItem(i, 2, message)
         return report
 
+    def _program_context_menu(self, point) -> None:
+        from PySide6.QtWidgets import QMenu
+
+        rows = self._selected_exec_rows()
+        menu = QMenu(self)
+        action = menu.addAction(
+            f"Run selected step{'s' if len(rows) != 1 else ''}"
+            + (f"  ({len(rows)})" if rows else ""))
+        # Says why it is unavailable rather than just being grey.
+        if self.is_running:
+            action.setEnabled(False)
+            action.setToolTip("A run is in progress.")
+        elif not rows:
+            action.setEnabled(False)
+            action.setToolTip("Select one or more executable steps.")
+        else:
+            action.triggered.connect(self.run_selected_steps)
+        menu.exec(self.program_table.viewport().mapToGlobal(point))
+
     def _goto_diagnostic(self, row: int, _column: int) -> None:
         item = self.diagnostics.item(row, 1)
         if item and item.text().isdigit():
@@ -581,9 +686,66 @@ class MainWindow(QMainWindow):
 
     # -- running ----------------------------------------------------------
 
+    @property
+    def is_running(self) -> bool:
+        """True from launch until the run reports finished.
+
+        Not ``thread.is_alive()``: the controls have to lock the instant a run
+        is launched, and the thread has not started running by then -- which is
+        how "run selected" stayed clickable during its own run.
+        """
+        return self._active
+
     def start_run(self) -> None:
-        if self.program is None or (self.thread and self.thread.is_alive()):
+        if self.program is None or self.is_running:
             return
+        self._launch(self.program)
+
+    def run_selected_steps(self) -> None:
+        """Execute just the rows selected in the Program tab.
+
+        For bring-up: energise one supply, poke one relay, re-read one
+        measurement, without sitting through the whole table. Only while
+        stopped -- interleaving hand-picked steps with a running sequence would
+        drive the fixture from two places at once.
+        """
+        if self.program is None or self.is_running:
+            return
+        rows = self._selected_exec_rows()
+        if not rows:
+            QMessageBox.information(
+                self, "Nothing to run",
+                "Select one or more executable steps in the Program tab.\n\n"
+                "Section markers, blank rows and rows with no module in "
+                "column 0 are not steps.")
+            return
+        self._launch(self.program.subset(rows), partial=len(rows))
+
+    def _selected_exec_rows(self) -> list[int]:
+        """Selected rows that are actually steps inside <Exec>."""
+        if self.program is None:
+            return []
+        body = self.program.body("Exec")
+        chosen = {index.row() for index in
+                  self.program_table.selectionModel().selectedRows()}
+        return sorted(
+            i for i in chosen
+            if i in body and i < len(self.program.rows)
+            and self.program.rows[i].module.strip()
+            and not self.program.rows[i].is_marker)
+
+    def _sync_run_actions(self) -> None:
+        """Run controls follow one rule: nothing starts while something runs."""
+        loaded = self.program is not None
+        idle = not self.is_running
+        self.run_button.setEnabled(loaded and idle and self._program_ok)
+        self.start_action.setEnabled(loaded and idle and self._program_ok)
+        self.stop_button.setEnabled(not idle)
+        self.stop_action.setEnabled(not idle)
+        self.step_action.setEnabled(loaded and idle and self._program_ok)
+
+    def _launch(self, program: Program, partial: int = 0) -> None:
+        self._partial_run = partial
 
         self.log.clear_log()
         for panel in self.uut_grids:
@@ -593,8 +755,7 @@ class MainWindow(QMainWindow):
         for name in list(self._scan_chips):
             self._set_scan(name, "")
         self._points = self._failed = 0
-        self.stat_points.set_value("0")
-        self.stat_failed.set_value("0")
+        self._retally_units()
         self.stat_elapsed.set_value("0.0s")
 
         options = RunOptions(
@@ -607,14 +768,19 @@ class MainWindow(QMainWindow):
             telemetry=self.telemetry,
         )
         self.sequencer = Sequencer(REGISTRY, self.bridge, options)
-        ctx = Context(self.program, self.bridge, simulate=options.simulate,
+        ctx = Context(program, self.bridge, simulate=options.simulate,
                       workdir=options.workdir)
-        self.thread = RunThread(self.sequencer, self.program, ctx)
+        self.thread = RunThread(self.sequencer, program, ctx)
 
-        self.run_button.setEnabled(False)
-        self.stop_button.setEnabled(True)
-        self.start_action.setEnabled(False)
-        self.stop_action.setEnabled(True)
+        if partial:
+            self.banner.show_status(
+                f"STEP RUN — {partial} step(s)", theme.palette(self.dark)["warn"])
+            self.log.append(
+                f"Running {partial} selected step(s). Config and teardown still "
+                f"run; this is not a board result and is not recorded.", "warn")
+
+        self._active = True
+        self._sync_run_actions()
         self._clock.start()
         self.thread.start()
 
@@ -627,6 +793,13 @@ class MainWindow(QMainWindow):
         if self.thread and self.thread.is_alive():
             return
         self._clock.stop()
+        # Safety net: if a run thread ever dies without reporting, unlock the
+        # controls rather than leave the station stuck. ident is None until the
+        # thread has actually started, so this cannot fire in the launch window.
+        if (self._active and self.thread is not None
+                and self.thread.ident is not None):
+            self._active = False
+            self._sync_run_actions()
 
     # -- engine events ----------------------------------------------------
 
@@ -641,6 +814,7 @@ class MainWindow(QMainWindow):
         b.field_changed.connect(self._on_field)
         b.alive_changed.connect(self._on_alive)
         b.state_changed.connect(self._on_state)
+        b.verdict_reached.connect(self._on_verdict)
         b.finished.connect(self._on_finished)
 
     def _on_log(self, message: str, level: str, row) -> None:
@@ -671,13 +845,35 @@ class MainWindow(QMainWindow):
 
         if op == "add":
             self._points += 1
-            palette = theme.palette(self.dark)
-            self.stat_points.set_value(str(self._points))
             if str(tag).upper() == "FAIL":
                 self._failed += 1
-                self.stat_failed.set_value(str(self._failed), "fail", palette)
-        elif op == "clear":
-            pass
+            self._retally_units()
+
+    def _on_verdict(self, uut: int, passed: bool, detail: str) -> None:
+        """A program decided a unit's fate -- show it now, not at run end.
+
+        cargo's table loops at REMOVE and never reaches a terminal result, so
+        waiting for _on_finished left every panel showing RUN indefinitely.
+        """
+        if 0 <= uut < len(self.uut_grids):
+            self.uut_grids[uut].set_verdict("PASS" if passed else "FAIL")
+        self._retally_units()
+
+    def _retally_units(self) -> None:
+        """Count boards, not measurements.
+
+        A unit is failed the moment it takes a failing point or is killed --
+        which is also when the operator can stop caring about it. Everything
+        else that has produced a result so far is passing; a unit still waiting
+        for its first point is in neither column, so the two never add up to
+        more than the units actually under test.
+        """
+        palette = theme.palette(self.dark)
+        outcomes = [p.outcome() for p in self.uut_grids]
+        passed = outcomes.count("pass")
+        failed = outcomes.count("fail")
+        self.stat_passed.set_value(str(passed), "pass" if passed else None, palette)
+        self.stat_failed.set_value(str(failed), "fail" if failed else None, palette)
 
     def _on_field(self, name: str, value: str, colour) -> None:
         if name in ("barcode1", "barcode2", "worker_id"):
@@ -690,6 +886,7 @@ class MainWindow(QMainWindow):
         for i, panel in enumerate(self.uut_grids):
             if i < len(alive) and not alive[i]:
                 panel.set_alive(False)
+        self._retally_units()
 
     def _on_state(self, state: str, detail: str) -> None:
         self.statusBar().showMessage(f"{state.title()}{': ' + detail if detail else ''}")
@@ -705,15 +902,20 @@ class MainWindow(QMainWindow):
                 f"{summary['points']} points · {summary['failed_points']} failed"
                 f" · {summary['duration_s']}s"
                 + (f" · {summary['abort_reason']}" if summary["aborted"] else ""))
-        self.run_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        self.start_action.setEnabled(True)
-        self.stop_action.setEnabled(False)
+        self._active = False
+        self.thread = None
+        self._sync_run_actions()
         self._clock.stop()
-        self._last_record = self.thread.record if self.thread else None
+        self._last_record = record
         self.save_report_action.setEnabled(self._last_record is not None)
 
-        if self.history is not None and self._last_record is not None:
+        partial, self._partial_run = self._partial_run, 0
+        if partial:
+            # A hand-picked set of steps is not a board. Folding it into the
+            # history would put a fictional unit into the yield figure.
+            self.log.append(f"Step run finished ({partial} step(s)). "
+                            f"Not recorded in history.", "warn")
+        elif self.history is not None and self._last_record is not None:
             run_id = self.history.add_run(self._last_record)
             if run_id is None and self.history.error:
                 self.log.append(f"History not written: {self.history.error}",
@@ -725,13 +927,24 @@ class MainWindow(QMainWindow):
                 panel.set_verdict("PASS" if per_uut[index] else "FAIL")
             elif panel.verdict.text() == "RUN":
                 panel.set_verdict("--")
+        self._retally_units()
+
+        self.progress.setRange(0, 1000)
+        if partial:
+            # PASS on a handful of hand-picked steps would read as "the board
+            # passed", which is the one thing it does not mean.
+            aborted = record is not None and record.summary()["aborted"]
+            self.banner.show_status(
+                "STEP RUN FAILED" if aborted else "STEP RUN DONE",
+                palette["fail"] if aborted else palette["warn"])
+            self.progress.setValue(1000)
+            return
 
         if passed:
             self.banner.show_status("PASS", palette["pass"])
         else:
             self.banner.show_status("FAIL" if not detail else f"FAIL — {detail}"[:80],
                                     palette["fail"])
-        self.progress.setRange(0, 1000)
         self.progress.setValue(1000 if passed else self.progress.value())
 
     # -- reports ----------------------------------------------------------

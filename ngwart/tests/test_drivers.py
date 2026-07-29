@@ -375,6 +375,129 @@ def test_ui_and_engine_modules_are_excluded_from_legacy_override():
     assert {"UIManager", "FlowManager", "TestData"} <= LEGACY_EXCLUDED
 
 
+# --- the conversion pipeline: where each column's result goes ------------
+
+def _vision_ctx():
+    program = from_dict({"modules": {"Vision": "ImageProcessManager"},
+                         "exec": [["Flow", "LABEL", "A"]]}).finalize()
+    ctx = Context(program, simulate=True)
+    ctx.init_data(8, 3, 2)
+    ctx.init_alive(2)
+    ctx.record = RunRecord()
+    return ctx
+
+
+def test_bgr2cont_saves_the_thresholded_frame_to_the_column_5_path(tmp_path):
+    """cargo.ods fills Binary_Captures this way, and got an empty folder.
+
+    A *2CONT row spends column 4 on the contours, so the pipeline used to
+    return before anything looked at column 5.
+    """
+    cv2 = pytest.importorskip("cv2")
+    ctx = _vision_ctx()
+    out = tmp_path / "Binary_Captures" / "UUT_1_2_ON.jpg"
+    ctx.set_data("0,0,0", _solid_frame((200, 200, 200)), stringify=False)
+
+    call(ctx, "Vision", "BGR2CONT",
+         row("Vision", "BGR2CONT", "*0,0,0", "", "1,0,0", str(out), "180"))
+
+    assert out.exists(), "column 5 was ignored -- Binary_Captures stays empty"
+    saved = cv2.imread(str(out), cv2.IMREAD_GRAYSCALE)
+    assert set(saved.flatten().tolist()) == {255}, "not the thresholded frame"
+    assert ctx.get_data("1,0,0"), "column 4 must still receive the contours"
+
+
+def test_bgr2cont_writes_the_frame_even_when_column_5_names_a_new_directory(tmp_path):
+    """The directory is normally made by Flow CREATEDIR, but cv2.imwrite
+    answers a missing one with False, not an exception."""
+    pytest.importorskip("cv2")
+    ctx = _vision_ctx()
+    out = tmp_path / "does" / "not" / "exist" / "bin.png"
+    ctx.set_data("0,0,0", _solid_frame((200, 200, 200)), stringify=False)
+
+    call(ctx, "Vision", "BGR2CONT",
+         row("Vision", "BGR2CONT", "*0,0,0", "", "1,0,0", str(out), "180"))
+
+    assert out.exists()
+
+
+def test_bgr2cont_still_works_with_no_save_path():
+    """v1 tables that leave column 5 as '-' must be unaffected."""
+    pytest.importorskip("cv2")
+    ctx = _vision_ctx()
+    ctx.set_data("0,0,0", _solid_frame((200, 200, 200)), stringify=False)
+
+    call(ctx, "Vision", "BGR2CONT",
+         row("Vision", "BGR2CONT", "*0,0,0", "", "1,0,0", "-", "180"))
+
+    assert ctx.get_data("1,0,0")
+
+
+def test_bgr2bin_saves_to_column_5_as_well():
+    """The *2BIN verbs always honoured column 5 -- keep it that way."""
+    cv2 = pytest.importorskip("cv2")
+    import tempfile
+    import os as _os
+
+    ctx = _vision_ctx()
+    with tempfile.TemporaryDirectory() as tmp:
+        out = _os.path.join(tmp, "bin.png")
+        ctx.set_data("0,0,0", _solid_frame((200, 200, 200)), stringify=False)
+        call(ctx, "Vision", "BGR2BIN",
+             row("Vision", "BGR2BIN", "*0,0,0", "", "", out, "180"))
+        assert cv2.imread(out) is not None
+
+
+# --- VALIDATE publishes a verdict, it does not only log one --------------
+
+def _validate_ctx(units=2):
+    from ngwart.engine.events import RecordingListener
+
+    program = from_dict({"modules": {"Cargo": "CargoManager"},
+                         "exec": [["Flow", "LABEL", "A"]]}).finalize()
+    listener = RecordingListener()
+    ctx = Context(program, listener, simulate=True)
+    ctx.init_data(8, 3, 2)
+    ctx.init_alive(units)
+    ctx.record = RunRecord()
+    return ctx, listener
+
+
+def test_validate_publishes_a_verdict_for_every_unit():
+    """The station has to colour each panel when VALIDATE decides.
+
+    cargo's table loops at REMOVE and never reaches a terminal result, so a
+    verdict that only reaches the UI at end of run never arrives at all.
+    """
+    from ngwart.engine.events import VerdictEvent
+    from ngwart.engine.runrecord import TestPoint
+
+    ctx, listener = _validate_ctx(2)
+    ctx.record.add_point(TestPoint(name="A", uut=0, result="PASS", measured="1"))
+    ctx.record.add_point(TestPoint(name="A", uut=1, result="FAIL", measured="0"))
+
+    call(ctx, "Cargo", "VALIDATE", row("Cargo", "VALIDATE"))
+
+    verdicts = {e.uut: e.passed for e in listener.of_type(VerdictEvent)}
+    assert verdicts == {0: True, 1: False}
+
+
+def test_a_failing_validate_verdict_precedes_the_kill():
+    """Order matters: the panel must not be relabelled DEAD over its FAIL."""
+    from ngwart.engine.events import AliveEvent, VerdictEvent
+    from ngwart.engine.runrecord import TestPoint
+
+    ctx, listener = _validate_ctx(1)
+    ctx.record.add_point(TestPoint(name="A", uut=0, result="FAIL", measured="0"))
+    listener.clear()
+
+    call(ctx, "Cargo", "VALIDATE", row("Cargo", "VALIDATE"))
+
+    kinds = [type(e).__name__ for e in listener.events
+             if isinstance(e, (VerdictEvent, AliveEvent))]
+    assert kinds.index("VerdictEvent") < kinds.index("AliveEvent")
+
+
 # --- EVALLEDS: faithful port of v1's K-means colour check ----------------
 
 def _led_ctx():

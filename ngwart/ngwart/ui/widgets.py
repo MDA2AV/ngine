@@ -119,6 +119,9 @@ class UutGrid(Card):
 
         self.passed = 0
         self.failed = 0
+        self.dead = False
+        #: None, "pass" or "fail" -- drives the whole-panel tint.
+        self._tone: str | None = None
 
         header = QHBoxLayout()
         header.setSpacing(theme.SPACE["sm"])
@@ -160,8 +163,10 @@ class UutGrid(Card):
         elif op == "clear":
             self.table.setRowCount(0)
             self.passed = self.failed = 0
+            self.dead = False
             self._update_count()
             self.verdict.set_state("--")
+            self.set_tone(None)
         elif op == "config":
             self._configure(config)
 
@@ -219,6 +224,9 @@ class UutGrid(Card):
             self.passed += 1
         elif key == "FAIL":
             self.failed += 1
+            # A failing point kills the unit, so tint now rather than waiting
+            # for the end of the run -- the operator can pull the board.
+            self.set_tone("fail")
         self._update_count()
         self.table.scrollToBottom()
 
@@ -239,11 +247,68 @@ class UutGrid(Card):
         return self._palette.get(palette_key) if palette_key else None
 
     def set_alive(self, alive: bool) -> None:
-        if not alive:
+        if alive:
+            return
+        self.dead = True
+        self.set_tone("fail")
+        # VALIDATE fails a unit and then kills it. FAIL is the more specific of
+        # the two words, so it stays; anything else becomes DEAD, including a
+        # stale PASS from a unit that died after being judged.
+        if self.verdict.text() != "FAIL":
             self.verdict.set_state("DEAD")
 
     def set_verdict(self, state: str) -> None:
         self.verdict.set_state(state)
+        self.set_tone({"PASS": "pass", "FAIL": "fail", "DEAD": "fail"}.get(state))
+
+    def outcome(self) -> str | None:
+        """'pass', 'fail', or None while the unit has produced nothing yet.
+
+        Kept here rather than in the window so the header counters and the
+        panel tint can never disagree about what a unit is doing.
+        """
+        if self.dead or self.failed:
+            return "fail"
+        state = self.verdict.text()
+        if state in ("PASS", "FAIL"):
+            return "pass" if state == "PASS" else "fail"
+        return "pass" if self.passed else None
+
+    # -- whole-panel verdict tint -----------------------------------------
+
+    def set_tone(self, tone: str | None) -> None:
+        """Wash the whole panel, not just the badge in its corner.
+
+        A verdict on a 6-inch panel is easy to miss when four units are on
+        screen; the surface behind the numbers is not. The tints sit close to
+        the neutral surface on purpose -- enough to name the state across the
+        bench, not so much that the measurements inside stop being readable.
+        """
+        self._tone = tone
+        self.setStyleSheet(self._tone_sheet())
+
+    def repaint_tone(self) -> None:
+        """Re-apply the current tone after a palette change."""
+        self.setStyleSheet(self._tone_sheet())
+
+    def _tone_sheet(self) -> str:
+        if not self._tone:
+            return ""            # fall back to the application stylesheet
+        p = self._palette
+        surface = p.get(f"{self._tone}_surface", p["surface"])
+        elevated = p.get(f"{self._tone}_elevated", p["elevated"])
+        border = p.get(f"{self._tone}_border", p["border"])
+        radius = theme.RADIUS["panel"]
+        return (
+            f"QFrame#Card {{ background: {surface};"
+            f" border: 1px solid {border}; border-radius: {radius}px; }}"
+            f"QTableWidget {{ background: {surface};"
+            f" alternate-background-color: {elevated}; }}"
+            f"QHeaderView::section {{ background: {surface};"
+            f" border-bottom: 1px solid {border}; }}"
+            f"QLabel#UnitNumber {{ background: {elevated};"
+            f" border: 1px solid {border}; }}"
+        )
 
 
 class LogView(QPlainTextEdit):
@@ -372,11 +437,14 @@ class Stat(QWidget):
     def set_value(self, text: str, tone: str | None = None,
                   palette: dict | None = None) -> None:
         self.value.setText(str(text))
-        if tone and palette:
-            self.value.setStyleSheet(
-                f"background: transparent;"
-                f"color: {palette.get(tone, palette['text'])};"
-                f"font-family: {theme.MONO}; font-size: 15pt; font-weight: 600;")
+        if palette is None:
+            return
+        # Clearing matters as much as setting: a counter that went red on the
+        # last board must not still be red on the next one.
+        colour = palette.get(tone, palette["text"]) if tone else palette["text"]
+        self.value.setStyleSheet(
+            f"background: transparent; color: {colour};"
+            f"font-family: {theme.MONO}; font-size: 15pt; font-weight: 600;")
 
 
 class ScanField(QWidget):

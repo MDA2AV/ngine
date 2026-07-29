@@ -149,6 +149,10 @@ def validate(ctx, row):
                   + ("" if enough else f", expected {expected}"))
         ctx.log(f"UUT {uut}: {'PASS' if ok else 'FAIL'} ({detail})",
                 "pass" if ok else "fail")
+        # Publish it, don't just log it. This is the point at which the station
+        # knows which boards to keep, and a table like cargo's never reaches a
+        # terminal result -- it loops waiting for the board to be removed.
+        ctx.verdict(uut, ok, detail)
         if not ok and alive:
             ctx.kill(uut, reason="final validation")
 

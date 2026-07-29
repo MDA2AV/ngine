@@ -82,6 +82,22 @@ class RunStateEvent:
 
 
 @dataclass
+class VerdictEvent:
+    """One unit's verdict, published the moment a program decides it.
+
+    Separate from ResultEvent because a fixture program need not ever end. The
+    cargo table loops at REMOVE waiting for the board to be pulled and then
+    jumps back to TOP for the next one, so the terminal result only arrives when
+    the operator stops the station -- far too late to tell them which of the
+    four boards in front of them to keep.
+    """
+
+    uut: int
+    passed: bool
+    detail: str = ""
+
+
+@dataclass
 class ResultEvent:
     """Terminal verdict for the run."""
 

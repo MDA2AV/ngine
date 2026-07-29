@@ -62,6 +62,21 @@ CREATE INDEX IF NOT EXISTS runs_program  ON runs(program);
 """
 
 
+def _as_float(text) -> float | None:
+    """Parse a stored measurement, or None if it is not a single number.
+
+    Points store whatever the verb measured, as text: "0.2306", but also
+    "NOT_FOUND", "None", and colour triples like "238,241,239". Only the first
+    kind can be plotted on a value axis.
+    """
+    if text is None:
+        return None
+    try:
+        return float(str(text).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 @dataclass
 class Summary:
     """Headline figures for a set of runs."""
@@ -167,13 +182,13 @@ class History:
             return []
 
     def summary(self, run_ids: list[int] | None = None,
-                include_simulated: bool = False) -> Summary:
+                include_simulated: bool = False, program: str = "") -> Summary:
         """Headline figures, over everything or over a specific set of runs.
 
         Simulated runs are excluded by default. Folding dry runs into a yield
         figure would quietly corrupt the number that matters most.
         """
-        where, args = self._scope(run_ids, include_simulated)
+        where, args = self._scope(run_ids, include_simulated, program)
         rows = self._query(
             f"SELECT COUNT(*) AS runs, SUM(points) AS points, "
             f"SUM(failed_points) AS failed, SUM(aborted) AS aborted, "
@@ -202,13 +217,14 @@ class History:
         )
 
     def pareto(self, run_ids: list[int] | None = None, limit: int = 12,
-               include_simulated: bool = False) -> list[tuple[str, int, int]]:
+               include_simulated: bool = False,
+               program: str = "") -> list[tuple[str, int, int]]:
         """Failures by test, worst first: (name, failures, total attempts).
 
         Attempts come along because "5 failures out of 5" and "5 out of 500"
         are very different problems, and a bare count cannot tell them apart.
         """
-        where, args = self._scope(run_ids, include_simulated)
+        where, args = self._scope(run_ids, include_simulated, program)
         rows = self._query(
             f"SELECT p.name AS name, "
             f"  SUM(CASE WHEN p.result = 'FAIL' THEN 1 ELSE 0 END) AS fails, "
@@ -219,9 +235,10 @@ class History:
         return [(r["name"], r["fails"], r["attempts"]) for r in rows]
 
     def by_test(self, run_ids: list[int] | None = None,
-                include_simulated: bool = False) -> list[tuple[str, int, int]]:
+                include_simulated: bool = False,
+                program: str = "") -> list[tuple[str, int, int]]:
         """Every test with its pass and fail counts, worst rate first."""
-        where, args = self._scope(run_ids, include_simulated)
+        where, args = self._scope(run_ids, include_simulated, program)
         rows = self._query(
             f"SELECT p.name AS name, "
             f"  SUM(CASE WHEN p.result = 'FAIL' THEN 1 ELSE 0 END) AS fails, "
@@ -254,10 +271,65 @@ class History:
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         rows = self._query(
             f"SELECT p.name, p.uut, p.result, p.measured, p.low, p.high, "
-            f"       p.barcode, r.started, r.program, r.station, r.simulated "
+            f"       p.barcode, p.run_id, r.started, r.program, r.station, "
+            f"       r.simulated "
             f"FROM points p JOIN runs r ON r.id = p.run_id {where} "
             f"ORDER BY r.started DESC, p.id DESC LIMIT ?", (*args, limit))
         return [dict(r) for r in rows]
+
+    def trend(self, name: str, program: str = "", run_ids: list[int] | None = None,
+              include_simulated: bool = False, limit: int = 500) -> list[dict]:
+        """Every recorded point for one test, oldest first.
+
+        Oldest first because a chart of it reads left to right, but the LIMIT has
+        to keep the *newest* rows -- so the query takes them newest-first and the
+        order is reversed here. Sorting ascending with a LIMIT would silently
+        chart the oldest 500 points and call them current.
+
+        ``value`` is the measurement parsed as a float, or None when the test
+        records something that is not a number (a colour triple, a barcode). The
+        caller decides what to do with those; the parse belongs here rather than
+        in three places in the UI.
+        """
+        clauses = ["p.name = ?"]
+        args: list = [name]
+        if not include_simulated:
+            clauses.append("r.simulated = 0")
+        if program:
+            clauses.append("r.program = ?")
+            args.append(program)
+        if run_ids is not None:
+            if not run_ids:
+                clauses.append("1 = 0")
+            else:
+                clauses.append(f"r.id IN ({','.join('?' * len(run_ids))})")
+                args += list(run_ids)
+        where = "WHERE " + " AND ".join(clauses)
+        rows = self._query(
+            f"SELECT p.id AS point_id, p.run_id, p.name, p.uut, p.result, "
+            f"       p.measured, p.low, p.high, p.barcode, "
+            f"       r.started, r.program "
+            f"FROM points p JOIN runs r ON r.id = p.run_id {where} "
+            f"ORDER BY r.started DESC, p.id DESC LIMIT ?", (*args, limit))
+
+        out = []
+        for r in reversed(rows):
+            row = dict(r)
+            row["value"] = _as_float(row["measured"])
+            row["low_value"] = _as_float(row["low"])
+            row["high_value"] = _as_float(row["high"])
+            out.append(row)
+        return out
+
+    def test_names(self, program: str = "", run_ids: list[int] | None = None,
+                   include_simulated: bool = False) -> list[str]:
+        """Distinct test names in scope, most-recorded first."""
+        where, args = self._scope(run_ids, include_simulated, program)
+        rows = self._query(
+            f"SELECT p.name AS name, COUNT(*) AS n "
+            f"FROM points p JOIN runs r ON r.id = p.run_id {where} "
+            f"GROUP BY p.name ORDER BY n DESC, p.name", args)
+        return [r["name"] for r in rows]
 
     def programs(self) -> list[str]:
         return [r["program"] for r in
@@ -274,13 +346,22 @@ class History:
     # -- helpers ----------------------------------------------------------
 
     @staticmethod
-    def _scope(run_ids: list[int] | None,
-               include_simulated: bool) -> tuple[str, tuple]:
-        """Build the shared WHERE clause. Every query aliases runs as `r`."""
+    def _scope(run_ids: list[int] | None, include_simulated: bool,
+               program: str = "") -> tuple[str, tuple]:
+        """Build the shared WHERE clause. Every query aliases runs as `r`.
+
+        ``program`` belongs here rather than in each caller: it used to be
+        threaded into search() only, so picking a program narrowed the result
+        table while the yield tile and the Pareto went on aggregating every
+        product in the file -- and said nothing about it.
+        """
         clauses = []
         args: list = []
         if not include_simulated:
             clauses.append("r.simulated = 0")
+        if program:
+            clauses.append("r.program = ?")
+            args.append(program)
         if run_ids is not None:
             if not run_ids:
                 clauses.append("1 = 0")          # an empty session matches nothing

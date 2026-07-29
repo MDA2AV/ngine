@@ -8,7 +8,7 @@ from .errors import (AbortRun, HardwareError, LoaderError, NgwartError,
 from .events import (AliveEvent, Event, FanOut, FieldEvent, GridEvent, Listener,
                      LogEvent, NullListener, ProgressEvent, RecordingListener,
                      ResultEvent, RunStateEvent, StatusEvent, StepEvent,
-                     TimerEvent)
+                     TimerEvent, VerdictEvent)
 from .program import Program, Row, Section
 from .registry import REGISTRY, Param, Registry, VerbSpec, p, verb
 from .runrecord import RunRecord, StepRecord, TestPoint
@@ -28,4 +28,5 @@ __all__ = [
     "Listener", "NullListener", "RecordingListener", "FanOut", "Event",
     "LogEvent", "StepEvent", "StatusEvent", "ProgressEvent", "TimerEvent",
     "GridEvent", "FieldEvent", "AliveEvent", "RunStateEvent", "ResultEvent",
+    "VerdictEvent",
 ]

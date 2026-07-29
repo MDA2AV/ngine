@@ -443,3 +443,99 @@ def test_a_diverted_run_does_not_report_pass():
     assert record.diverted
     assert not record.passed()          # overall verdict withheld
     assert record.summary()["diverted_steps"] >= 1
+
+
+# --- running a hand-picked selection of steps ----------------------------
+
+def _demo():
+    import os
+
+    from ngwart.engine.loaders import load
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    return load(os.path.join(here, "..", "programs", "demo.yaml"))
+
+
+def test_subset_keeps_everything_declarative():
+    """Config opens the ports the chosen steps need; Ehandling defines the
+    labels their error routes name; Teardown still powers the fixture down."""
+    program = _demo()
+    picks = [i for i in program.body("Exec")
+             if program.rows[i].module and program.rows[i].verb == "WRITE"][:2]
+    sub = program.subset(picks)
+
+    for section in ("Modules", "Vars", "Config", "Exec", "Ehandling", "Teardown"):
+        assert sub.section(section) is not None, section
+    assert sub.modules == program.modules
+    assert sub.vars == program.vars
+
+
+def test_subset_runs_only_the_chosen_steps():
+    program = _demo()
+    picks = [i for i in program.body("Exec")
+             if program.rows[i].module and program.rows[i].verb == "WRITE"][:2]
+    sub = program.subset(picks)
+
+    chosen = [str(program.rows[i]).split("] ", 1)[1] for i in picks]
+    body = [str(sub.rows[i]).split("] ", 1)[1] for i in sub.body("Exec")]
+    for step in chosen:
+        assert step in body
+    # Plus setup and the terminator, and nothing else.
+    assert len(body) == len(chosen) + 3
+
+
+def test_subset_brings_the_store_the_steps_write_into():
+    """Almost every verb writes to the data store; a step run without INITDATA
+    dies with 'data store not initialised'."""
+    program = _demo()
+    picks = [i for i in program.body("Exec")
+             if program.rows[i].module and program.rows[i].verb == "WRITE"][:1]
+    sub = program.subset(picks)
+    body_verbs = [sub.rows[i].verb.upper() for i in sub.body("Exec")]
+    assert "INITDATA" in body_verbs and "STARTALIVE" in body_verbs
+
+
+def test_subset_can_be_asked_not_to_add_setup():
+    program = _demo()
+    picks = [i for i in program.body("Exec")
+             if program.rows[i].module and program.rows[i].verb == "WRITE"][:1]
+    sub = program.subset(picks, with_setup=False)
+    body_verbs = [sub.rows[i].verb.upper() for i in sub.body("Exec")]
+    assert "INITDATA" not in body_verbs
+
+
+def test_a_step_run_stops_instead_of_falling_into_the_error_handlers():
+    """<Exec/> is not the end of the executable span -- <Teardown> is -- so a
+    selection that simply ends would run on into the first handler."""
+    import ngwart.drivers  # noqa: F401
+    from ngwart.engine import (REGISTRY, Context, RecordingListener, RunOptions,
+                               Sequencer)
+    from ngwart.engine.events import LogEvent
+
+    program = _demo()
+    picks = [i for i in program.body("Exec")
+             if program.rows[i].module and program.rows[i].verb == "WRITE"][:3]
+    sub = program.subset(picks)
+
+    listener = RecordingListener()
+    sequencer = Sequencer(REGISTRY, listener,
+                          RunOptions(simulate=True, strict=True))
+    record = sequencer.run(sub, Context(sub, listener, simulate=True))
+
+    messages = [e.message for e in listener.of_type(LogEvent)]
+    assert not record.summary()["aborted"], record.summary()["abort_reason"]
+    assert not any("_EX ==" in m for m in messages), "wandered into a handler"
+    assert any("Teardown" in m for m in messages), "teardown must still run"
+
+
+def test_subset_survives_a_program_that_renames_flow():
+    from ngwart.engine.loaders.native import from_dict
+
+    program = from_dict({
+        "modules": {"Fl": "FlowManager"},
+        "exec": [["Fl", "LABEL", "A"], ["Fl", "DELAY", "0.01"]],
+    }).finalize()
+    picks = list(program.body("Exec"))[1:]
+    sub = program.subset(picks, with_setup=False)
+    assert any(sub.rows[i].module == "Fl" and sub.rows[i].verb == "J"
+               for i in sub.body("Exec"))
