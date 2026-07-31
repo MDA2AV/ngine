@@ -95,12 +95,25 @@ def from_dict(doc: dict, source: str = "") -> Program:
         marker("<Modules/>")
 
     variables = doc.get("vars") or {}
-    if variables:
-        if not isinstance(variables, dict):
+    values_file = doc.get("values")
+    if variables or values_file:
+        if variables and not isinstance(variables, dict):
             raise LoaderError("'vars' must be a mapping of name -> 'l,c,p'")
         marker("<Vars>")
-        for name, coord in variables.items():
-            add([str(name), str(coord)] + [""] * (NCOLS - 2))
+        if values_file:
+            # Declared first so it reads as the header of the block it feeds.
+            add(["<values>", str(values_file)] + [""] * (NCOLS - 2))
+        for name, entry in (variables or {}).items():
+            # 'name: coord' or 'name: [coord, json_key]' -- the second form
+            # says this variable takes its value from that key of the values
+            # file, which is how a coordinate gets out of the table entirely.
+            if isinstance(entry, (list, tuple)):
+                if not entry:
+                    raise LoaderError(f"variable '{name}' has no coordinate")
+                cells = [str(name)] + [_cell(x) for x in entry[:2]]
+            else:
+                cells = [str(name), str(entry)]
+            add((cells + [""] * NCOLS)[:NCOLS])
         marker("<Vars/>")
 
     for key, tag in _SECTION_KEYS:
@@ -171,8 +184,13 @@ def to_dict(program: Program) -> dict:
         doc["meta"] = dict(program.meta)
     if program.modules:
         doc["modules"] = dict(program.modules)
+    if program.values_source:
+        doc["values"] = program.values_source
     if program.vars:
-        doc["vars"] = dict(program.vars)
+        doc["vars"] = {
+            name: ([coord, program.var_sources[name]]
+                   if name in program.var_sources else coord)
+            for name, coord in program.vars.items()}
 
     for key, tag in _SECTION_KEYS:
         section = program.section(tag)

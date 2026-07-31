@@ -220,6 +220,24 @@ class SimVisaInstrument:
 
 # --- camera -------------------------------------------------------------
 
+#: Pixel offset applied to every simulated capture, as (dx, dy).
+#:
+#: A moved camera is a *bench* condition, not something a test program declares,
+#: so it is set here rather than through SETPROPS. `ngwart teach --sim-shift`
+#: sets it, which is what makes the teach tool exercisable end to end: without a
+#: way to move the camera, every click lands on a coordinate that was already
+#: correct and nothing is proven.
+#:
+#: Only the simulated camera reads it. It cannot affect a real run.
+CAMERA_SHIFT: tuple[int, int] = (0, 0)
+
+
+def set_camera_shift(dx: int, dy: int) -> tuple[int, int]:
+    global CAMERA_SHIFT
+    CAMERA_SHIFT = (int(dx), int(dy))
+    return CAMERA_SHIFT
+
+
 class SimCamera:
     """Generates a synthetic scene with lit indicators.
 
@@ -229,13 +247,20 @@ class SimCamera:
     """
 
     def __init__(self, serial: str, width: int = 640, height: int = 480,
-                 lit: tuple[bool, ...] = (True, True, True, True), **_kw) -> None:
+                 lit: tuple[bool, ...] = (True, True, True, True),
+                 shift: tuple[int, int] | None = None, **_kw) -> None:
         self.serial = serial
         self.width = width
         self.height = height
         self.lit = list(lit)
+        self.shift = shift
         self.properties: dict[str, object] = {}
         self._open = False
+
+    @property
+    def offset(self) -> tuple[int, int]:
+        """Per-camera shift if one was given, else the bench-wide one."""
+        return self.shift if self.shift is not None else CAMERA_SHIFT
 
     def open(self) -> None:
         self._open = True
@@ -290,8 +315,9 @@ class SimCamera:
         step = self.width // (len(self.lit) + 1)
         radius = max(12, min(self.height, step) // 5)
         yy, xx = np.ogrid[: self.height, : self.width]
+        dx, dy = self.offset
         for i, on in enumerate(self.lit):
-            cx, cy = step * (i + 1), self.height // 2
+            cx, cy = step * (i + 1) + dx, self.height // 2 + dy
             mask = (xx - cx) ** 2 + (yy - cy) ** 2 <= radius ** 2
             img[mask] = (60, 220, 90) if on else (30, 30, 30)
         noise = np.random.default_rng(0).integers(0, 6, img.shape, dtype=np.uint8)

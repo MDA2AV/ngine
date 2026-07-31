@@ -34,7 +34,7 @@ py run.py check ../cargobay/src/TestTables/cargo.ods
 | Grid verbs | 24 copy-pasted functions | 1 implementation, registered per grid |
 | Program format | `.ods` only — binary, un-diffable, spawns lock files | `.ods` still loads; `.yaml` for review and history |
 | Dependencies | pandas + numpy to read a grid of strings; vendor SDKs imported at module scope | stdlib zip+XML; every SDK import deferred |
-| Testability | none — module-level globals, no hardware seam | 92 tests, simulated backends for every instrument |
+| Testability | none — module-level globals, no hardware seam | 296 tests, simulated backends for every instrument |
 
 ## Architecture
 
@@ -55,6 +55,7 @@ ngwart/
     legacy.py       adopt unported v1 managers as-is
   ui/               PySide6; bridge.py is the only Qt<->engine seam
   reports/          XML / JSON / CSV from the run record
+  teach.py          coordinate sites, click resolution, the teach file
 ```
 
 The engine never imports Qt and the UI never touches the data store. That seam
@@ -85,6 +86,55 @@ vars:
 Then `*uut0.vbat` works anywhere `*2,0,0` does. Both resolve through the same
 accessor, so a table can be migrated a line at a time. A leading `*` is accepted
 on destinations too.
+
+### Variables with a value
+
+A variable may also name a **JSON key it takes its value from**:
+
+```yaml
+values: programs/cargo-coords.json
+
+vars:
+  led.u0.a.cont:  ['0,0,30', 'led.u0.a.cont']    # cell, and the key that fills it
+  led.u0.a.leds:  ['0,1,30', 'led.u0.a.leds']
+```
+
+```json
+{ "led.u0.a.cont": "895,659,10,50,1",
+  "led.u0.a.leds": "895,659,10,50" }
+```
+
+The file is flat and keyed by variable name. `INITDATA` writes each value into
+its cell — **every time**, so the value is there before the first step runs and
+is back after the per-board re-init a fixture program does at the top of its
+loop. These are program constants: static for the whole session, with nothing in
+`<Config>` to set them up and nothing to forget.
+
+The mapping is written out rather than implied. It normally repeats the variable
+name, which looks redundant until a key is renamed and you want the link to be
+something the linter can check:
+
+```
+ERROR program: variable 'led.u2.d.cont' takes its value from key
+               'led.u2.d.cont', which is not in cargo-coords.json
+```
+
+That is `check`, with the fixture cold. A key the file has and no variable claims
+is a warning, not an error — usually a renamed variable that left its value
+behind.
+
+### Keeping data across a re-init
+
+`INITDATA` takes an optional fourth argument: the first page of a region it
+never clears.
+
+```yaml
+- [TestData, INITDATA, '40', '3', '32', '30']    # pages 30+ survive
+```
+
+Pages, because that is how real tables already organise the store — a page is a
+category (detection, paths, per-UUT results), not an index within one. Omit it
+and the behaviour is exactly v1's: everything is cleared.
 
 ### Guaranteed teardown
 
@@ -261,6 +311,144 @@ answer and images can:
 Send the whole folder. Off by default -- it writes images, so it costs disk and
 a little time per vision step.
 
+## Teaching LED coordinates
+
+```bash
+py run.py teach programs/teach_capture.yaml --target programs/cargo.yaml
+py run.py teach programs/teach_capture.yaml --target programs/cargo.yaml --list
+```
+
+Every optical test carries a nominal `cx,cy` in its arguments — `EVALCONT` and
+`EVALCONTN` as `cx,cy,tol,minarea,cal`, `EVALLEDS` as `cx,cy,crop,threshold`,
+`MEASCONT` as `cx,cy,tol`. In `cargo.ods` the tolerance is 10 px and the LEDs
+sit 17 px apart. Nudge the camera, re-seat the fixture or change a lens and
+every one of those windows misses at once:
+
+```
+INTENSITY_A: no contour within 10px of (895, 659)
+INTENSITY_B: no contour within 10px of (878, 659)
+...
+```
+
+which reads like a board full of dead LEDs rather than one moved camera.
+
+There are two ways in.
+
+**From the station, on the run that just failed** — the usual one. Run the
+program; if the optical tests come back NOT_FOUND, **Tools -> Teach
+coordinates** (`Ctrl+E`) opens the frame that run captured, with its contours
+drawn. The board has already produced the evidence; taking a second picture to
+look at it is a step nobody needs. The action is armed only once a run has left
+a frame behind.
+
+**Standalone**, when you would rather not run the whole product program:
+
+```bash
+py run.py teach programs/cargo_capture.yaml --target programs/cargo.yaml
+```
+
+That runs a **capture program** -- a small table that powers the fixture, takes
+one picture and thresholds it -- then opens the same window.
+`programs/cargo_capture.yaml` is one: its `<Config>` and power-up rows are
+copied from `cargo.yaml` verbatim, and it thresholds at the same 180, because
+teaching against a fixture powered or thresholded differently teaches the wrong
+geometry.
+
+Either way the fixture is energised only for the capture. Teardown runs before
+the window opens, so nobody clicks with the supply up.
+
+**A click stores the contour's centroid, not the pixel under the mouse.** It is
+computed with the same integer truncation and the same 50-pixel noise floor the
+runtime uses, so the taught value is exactly the number `EVALCONT` will compare
+against, and a site can never be taught to a speck the test would refuse to see.
+
+**Sites are grouped by location, not by test.** One LED is one place on the
+board even though an intensity check, a colour check and an off-check all point
+at it. On `cargo.yaml` that turns ~100 coordinate cells into **28 clicks**:
+
+```
+UUT0  INTENSITY_A / COLOR_A     895,659  +/-10px  rows 259, 266, 314, 374
+UUT0  INTENSITY_B / COLOR_B     878,659  +/-10px  rows 260, 267, 315, 375
+```
+
+The window shows the drift as you go — the old search window dashed, the taught
+point marked, and a line between them. A field of parallel arrows is a camera
+that shifted; one odd arrow is a site that was mis-taught.
+
+The fixture is energised only for the capture. Teardown runs before the window
+opens, so nobody is clicking with the supply on.
+
+### The file
+
+`teach` rewrites the values file the program already loads. **The table is never
+touched.**
+
+```json
+{ "led.u0.a.cont": "898,662,10,50,1",
+  "led.u0.a.leds": "898,662,10,50" }
+```
+
+Each key keeps its own tail — `EVALCONT` wants `cx,cy,tol,minarea,cal` and
+`EVALLEDS` wants `cx,cy,crop,threshold`; they are the same point in two shapes
+and only the point moves. Tolerances and areas were qualified against real
+boards and are not the teacher's to change.
+
+Every key the table declares is written, including sites nobody re-taught, whose
+value is carried across unchanged. A partial file would abort the next run on
+the first missing key — loud, but useless.
+
+A teach record is written alongside it, carrying the deltas, the rows that read
+each site, and what was left untaught. Nothing reads it at run time; it is what
+someone looks at to decide whether a re-teach was sane.
+
+### Rehearsing a re-teach
+
+`--sim-shift DX,DY` moves the simulated camera, so the whole loop can be
+exercised without touching the bench. Without it every click lands on a
+coordinate that was already correct and nothing is proven.
+
+```bash
+py run.py run   programs/demo.yaml --simulate                    # 8 points, 0 failed
+py run.py run   programs/demo.yaml --simulate --sim-shift 45,30  # 4 failed, both units
+py run.py teach programs/teach_capture.yaml --target programs/demo.yaml \
+                --simulate --sim-shift 45,30
+```
+
+The middle command produces exactly the failure this tool exists for:
+
+```
+ *   80  LED_A: no contour within 40.0px of (128.0, 240.0)
+XX   80  UUT 0 killed: LED_A
+```
+
+Four dead LEDs, apparently. In the teach window the same drift reads
+unambiguously: four search windows sitting empty, four LEDs off to one side,
+and four *parallel* drift lines. Boards do not fail in formation — that is a
+camera that moved.
+
+A camera shift is a bench condition, not something a program declares, so it is
+a simulation knob rather than a `SETPROPS` argument. Only `SimCamera` reads it;
+it cannot affect a real run.
+
+### Without a target table
+
+Omit `--target` and each click simply appends a named site. Useful for reading
+coordinates off a new fixture before any table exists.
+
+### What it will not teach
+
+Stated rather than skipped, because a site missing from the list is a test that
+quietly keeps its old coordinate:
+
+| | |
+|---|---|
+| `EVALCONTS` | keeps coordinates as parallel lists across columns 3 and 4 |
+| `*ref` in column 3 | the coordinate is computed at run time, so there is nothing static to replace |
+
+Both are reported by `--list` and printed when the window opens.
+
+There is no phase 2 to build: the file *is* what the program reads.
+
 ## Simulation
 
 `--simulate` swaps every backend for a model, not a stub: the supply tracks
@@ -306,7 +494,7 @@ v1's 27 names decode as four switches, so there is one function:
 ## Tests
 
 ```bash
-py -m pytest tests -q      # 92 passed
+py -m pytest tests -q      # 296 passed
 ```
 
 Headless, no hardware. Covers the alive-mask semantics (including the

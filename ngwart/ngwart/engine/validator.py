@@ -84,6 +84,24 @@ def validate(program: Program, registry: Registry | None = None) -> Report:
     # -- structure --------------------------------------------------------
     if program.section("Exec") is None:
         err(None, "program has no <Exec> section -- nothing would run")
+
+    # -- <values> ---------------------------------------------------------
+    # An error, not a warning: a variable whose value never arrived surfaces
+    # much later as "bad data reference ''" or as a test that silently measured
+    # the wrong place. The whole point of reading the file at load time is to
+    # find this while the fixture is still cold.
+    for problem in getattr(program, "value_problems", []):
+        err(None, problem,
+            "Variables take their value from the <values> file named in "
+            "<Vars>. Re-run `ngwart teach` to regenerate it, or fix the key.")
+    unclaimed = set(program.values_loaded) - set(program.var_sources.values())
+    if unclaimed:
+        listed = ", ".join(sorted(unclaimed)[:6])
+        warn(None,
+             f"{len(unclaimed)} key(s) in the values file match no variable: "
+             f"{listed}",
+             "Harmless, but usually a renamed variable that left its value "
+             "behind.")
     if not program.modules:
         warn(None, "program declares no <Modules>; only built-in verbs will resolve")
     if not program.has_teardown:

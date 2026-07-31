@@ -57,6 +57,9 @@ class Context:
         # Data store -- allocated by INITDATA, matching v1's lazy behaviour.
         self.data: list[list[list[Any]]] | None = None
         self.dims: tuple[int, int, int] = (0, 0, 0)
+        #: First page of the program region, which INITDATA does not clear.
+        #: None means the whole store is board data, as in v1.
+        self.preserve_from: int | None = None
 
         self.alive: list[int] = []
         self.pointer: int = 0
@@ -138,10 +141,58 @@ class Context:
 
     # -- data store -------------------------------------------------------
 
-    def init_data(self, lines: int, cols: int, pages: int) -> None:
+    def init_data(self, lines: int, cols: int, pages: int,
+                  preserve_from: int | None = None) -> None:
+        """Allocate the data store, optionally keeping the program region.
+
+        A fixture program loops: it tests a board, waits for it to be removed,
+        and jumps back to the top, where INITDATA clears the store for the next
+        one. That is right for measurements and wrong for anything the *program*
+        knows -- LED coordinates, limits, paths -- which is constant for the
+        whole session and would otherwise have to be reloaded per board.
+
+        ``preserve_from`` is a page index. Pages below it are board data and are
+        cleared; pages at or above it are program data and carry across. Pages
+        are the natural axis because that is how real tables already organise
+        the store -- a page is a category (detection, paths, per-UUT results),
+        not an index within one.
+        """
         with self._lock:
+            previous = self.data
+            previous_dims = self.dims
             self.dims = (lines, cols, pages)
-            self.data = [[[None] * pages for _ in range(cols)] for _ in range(lines)]
+            self.preserve_from = preserve_from
+            fresh = [[[None] * pages for _ in range(cols)] for _ in range(lines)]
+
+            if previous is not None and preserve_from is not None:
+                keep_from = max(0, min(preserve_from, pages))
+                for l in range(min(previous_dims[0], lines)):
+                    for c in range(min(previous_dims[1], cols)):
+                        for p in range(keep_from, min(previous_dims[2], pages)):
+                            fresh[l][c][p] = previous[l][c][p]
+            self.data = fresh
+
+        self._seed_variables()
+
+    def _seed_variables(self) -> None:
+        """Write every <Vars> initial value into its cell.
+
+        Runs on each INITDATA, which is what makes these constants *static in
+        runtime*: a fixture program clears the store at the top of its loop for
+        the next board, and these are back before the first step of it runs.
+        No <Config> rows, nothing to forget.
+        """
+        for name, value in self.program.var_values.items():
+            coord = self.program.vars.get(name)
+            if not coord:
+                continue
+            try:
+                l, c, p = self.parse_coord(coord)
+                self.data[l][c][p] = value
+            except (ProgramError, IndexError):
+                # Reported by the validator against the <Vars> row, where it can
+                # be read next to the coordinate that is wrong.
+                continue
 
     def resolve_name(self, ref: str) -> str:
         """Turn a friendly variable name into an ``l,c,p`` coordinate.

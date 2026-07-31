@@ -1,0 +1,94 @@
+meta:
+  name: teach_capture
+  product: DEMO-2UUT
+  revision: 1
+  notes: >
+    Capture-only program for `ngwart teach`. It powers the fixture, lights the
+    indicators, takes one picture and thresholds it -- then stops. There are no
+    EVALCONT rows here on purpose: this table exists to produce a frame and its
+    contours, and the coordinates being taught live in the real test table
+    passed as --target.
+
+    py run.py teach programs/teach_capture.yaml --target programs/demo.yaml --simulate
+
+    Copy this for a real fixture and change three things: the power-up rows, the
+    camera serial and geometry, and the threshold on the *2CONT row. The
+    threshold is the one that matters most -- it decides what counts as a
+    contour, and teaching against a different threshold from the one the test
+    uses would hand back coordinates for blobs the test never sees.
+
+modules:
+  Flow: FlowManager
+  UI: UIManager
+  Serial: WinSerialManager
+  VISA: GlobalVISAManager
+  Camera: BaluffManager
+  Vision: ImageProcessManager
+
+vars:
+  det.raw:      '0,0,0'
+  img.raw:      '4,0,0'
+  img.grey:     '4,1,0'
+  img.binary:   '4,2,0'
+  img.contours: '5,0,0'
+
+config:
+  - [TestData, initAlive, 2, '', '', '', '', '', '', gray]
+  - [TestData, updateLabels]
+  - [Serial, FINDPORT, '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', CONTROL]
+  - [Serial, FINDPORT, '9600,1', DAE006GCA, D1]
+  - [Serial, OPEN, CONTROL]
+  - [Serial, OPEN, D1]
+  - [VISA, OPENALL, '10000']
+  - [Camera, OPENALL]
+
+exec:
+  - [Flow, LABEL, START, 'TEACH CAPTURE', '', '#4C9AFF', '', '', '', yellow]
+  - [TestData, STARTALIVE]
+  - [TestData, INITDATA, 40, 3, 30]
+
+  # --- power up -------------------------------------------------------
+  # Whatever it takes to get the indicators lit. This is the part to replace
+  # for a real fixture; everything below it is generic.
+  - [Serial, EXCHANGEBYTES_LVS, D1, '48,49,43,47,47', '48,49,43,47,47', '5,5', '', SERIAL_EX, '', 'UUT1 supply relay']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '48,50,43,47,47', '48,50,43,47,47', '5,5', '', SERIAL_EX, '', 'UUT2 supply relay']
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'VOLT 13.5', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'CURR 2.0', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
+  # Let the indicators settle before the shutter. A frame taken mid-ramp gives
+  # dimmer blobs, a smaller area, and coordinates taught off-centre.
+  - [Flow, DELAY, '0.3', '', '', '', '', FLOW_EX]
+
+  # --- the picture ----------------------------------------------------
+  - [Flow, LABEL, CAPTURE, 'CAPTURING', '', '#4C9AFF', '', '', '', yellow]
+  - [Camera, CAPTURE, UB101256, '', '*img.raw', '', '', CAM_EX]
+  - [Vision, BGR2GRAY, '*img.raw', '', '*img.grey', '', '', VISION_EX]
+  - [Vision, GRAY2BIN, '*img.grey', '', '*img.binary', '', '100', VISION_EX]
+  # Column 4 holds the contours, column 6 the threshold. Match the threshold to
+  # the one the real table uses.
+  - [Vision, BIN2CONT, '*img.binary', '', '*img.contours', '', '', VISION_EX]
+  - [Flow, J, DONE]
+
+ehandling:
+  - [Flow, LABEL, FLOW_EX, 'FLOW FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, SERIAL_EX, 'SERIAL FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, VISA_EX, 'INSTRUMENT FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, CAM_EX, 'CAMERA FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, VISION_EX, 'VISION FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, STD_EX, 'SYSTEM FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, DONE, '', '', '', '', '', '', gray]
+
+# The fixture is energised to take the picture, and the operator then spends
+# minutes clicking. Teardown is what makes that safe.
+teardown:
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', '', '', 'select channel 1']
+  - [VISA, WRITE, DP2A243200206, 'OUTP OFF', '', '', '', '', '', 'de-energise supply']
+  - [VISA, WRITE, DP2A243200206, 'VOLT 0', '', '', '', '', '', 'zero the setpoint']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', '', '', 'open all relays']

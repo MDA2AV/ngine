@@ -5,6 +5,7 @@
     ngwart check <program>       validate without executing
     ngwart convert <in> <out>    .ods <-> .yaml <-> .csv
     ngwart verbs                 list the registered verbs
+    ngwart teach <capture>       re-teach contour coordinates by clicking them
     ngwart adopt <v1-src-dir>    report which legacy managers can be adopted
 """
 
@@ -45,6 +46,7 @@ def main(argv: list[str] | None = None) -> int:
     run = sub.add_parser("run", help="execute a program without a UI")
     run.add_argument("program")
     run.add_argument("--simulate", action="store_true")
+    run.add_argument("--sim-shift", metavar="DX,DY", help=_SIM_SHIFT_HELP)
     run.add_argument("--no-strict", action="store_true",
                      help="run even if validation reports errors (bench use only)")
     run.add_argument("--report", help="write a report here (.xml/.json/.csv)")
@@ -93,6 +95,28 @@ def main(argv: list[str] | None = None) -> int:
     web.add_argument("--station", default="")
     web.add_argument("--operator", default="")
 
+    teach = sub.add_parser("teach", help="teach contour coordinates by clicking")
+    teach.add_argument("program", help=_TEACH_PROGRAM_HELP)
+    teach.add_argument("--target", metavar="TABLE", help=_TEACH_TARGET_HELP)
+    teach.add_argument("--out", metavar="FILE", default="",
+                       help="where to write the coordinates "
+                            "(default <target>-coords.json)")
+    teach.add_argument("--contour-row", type=int, metavar="N",
+                       help="which *2CONT row to teach against, when the "
+                            "capture program has more than one")
+    teach.add_argument("--simulate", action="store_true")
+    teach.add_argument("--sim-shift", metavar="DX,DY", help=_SIM_SHIFT_HELP)
+    teach.add_argument("--light", action="store_true", help="use the light theme")
+    teach.add_argument("--quiet", action="store_true",
+                       help="do not echo the capture run's log")
+    teach.add_argument("--list", action="store_true",
+                       help="list the coordinate sites and exit, without "
+                            "running anything or opening a window")
+    teach.add_argument("--station", default="")
+    teach.add_argument("--operator", default="")
+    teach.add_argument("--legacy", metavar="V1_SRC_DIR", help=_LEGACY_HELP)
+    teach.add_argument("--legacy-only", metavar="MODULES", help=_LEGACY_ONLY_HELP)
+
     adopt = sub.add_parser("adopt", help="adopt legacy v1 manager modules")
     adopt.add_argument("directory", help="a v1 'src' directory")
 
@@ -113,6 +137,24 @@ _DEBUG_HELP = (
     "write a debug bundle: captures, binary images, contour overlays with the "
     "search window drawn, every data cell, the full log and the run record. "
     "Defaults to ./debug. This is what to send when a test fails unexpectedly."
+)
+
+_TEACH_PROGRAM_HELP = (
+    "a small program that powers the board, takes a picture and thresholds it. "
+    "It needs a CAPTURE and a *2CONT row; everything after that is ignored."
+)
+
+_TEACH_TARGET_HELP = (
+    "the real test table whose coordinates are being re-taught. Its EVALCONT / "
+    "EVALCONTN / EVALLEDS / MEASCONT rows become the site list, so each click "
+    "is bound to the rows it will update. Omit to teach free-form, naming the "
+    "sites yourself."
+)
+
+_SIM_SHIFT_HELP = (
+    "move the simulated camera by DX,DY pixels, so the taught coordinates have "
+    "something to correct. Simulation only -- this is how you rehearse a "
+    "re-teach without touching the bench. Ignored without --simulate."
 )
 
 _LEGACY_HELP = (
@@ -240,6 +282,7 @@ def _cmd_run(args) -> int:
 
     program = _load(args.program, getattr(args, "legacy", None),
                           getattr(args, "legacy_only", None))
+    _apply_sim_shift(getattr(args, "sim_shift", None), args.simulate)
 
     class Printer:
         def emit(self, event):
@@ -365,6 +408,95 @@ def _cmd_web(args) -> int:
                  token=args.token, debug_dir=getattr(args, "debug", None),
                  program_dir=args.programs, station=args.station,
                  operator=args.operator)
+
+
+def _apply_sim_shift(text: str | None, simulate: bool) -> None:
+    """Move the simulated camera, so a re-teach has something to correct."""
+    if not text:
+        return
+    if not simulate:
+        print("  --sim-shift ignored: it only moves the simulated camera.")
+        return
+    parts = [p.strip() for p in str(text).split(",")]
+    if len(parts) != 2:
+        raise SystemExit(f"--sim-shift must be 'DX,DY', got '{text}'")
+    try:
+        dx, dy = int(float(parts[0])), int(float(parts[1]))
+    except ValueError:
+        raise SystemExit(f"--sim-shift must be two numbers, got '{text}'") from None
+
+    from .drivers.backends import sim
+
+    sim.set_camera_shift(dx, dy)
+    print(f"  simulated camera shifted by {dx:+d},{dy:+d} px -- the table's "
+          f"coordinates are now wrong by that much, which is the point.")
+
+
+def _cmd_teach(args) -> int:
+    from . import teach as teachlib
+
+    capture = _load(args.program, getattr(args, "legacy", None),
+                    getattr(args, "legacy_only", None))
+    _apply_sim_shift(getattr(args, "sim_shift", None), args.simulate)
+    target = None
+    if args.target:
+        from .engine.loaders import load
+
+        target = load(args.target)
+
+    sites, notes = teachlib.sites_from_program(target or capture)
+    for note in notes:
+        print(f"  note: {note}")
+
+    if not sites and target is not None:
+        print(f"  {args.target} declares no teachable coordinates. Only "
+              f"EVALCONT, EVALCONTN, EVALLEDS and MEASCONT carry one.")
+        return 1
+
+    print(f"  {len(sites)} coordinate site(s) "
+          f"in {os.path.basename((target or capture).source)}")
+
+    rows = teachlib.contour_rows(capture)
+    if len(rows) > 1 and getattr(args, "contour_row", None) is None:
+        # Naming them beats picking one quietly: on cargo.ods the choice is
+        # between the LEDs-on frame and the LEDs-off frame, and teaching
+        # against the wrong one finds nothing at every site.
+        listed = ", ".join(f"{r.index} ({r.raw(4) or r.verb})" for r in rows)
+        print(f"  note: {len(rows)} contour rows -- using row {rows[0].index}. "
+              f"Choose another with --contour-row. Available: {listed}")
+
+    if args.list:
+        for site in sites:
+            print(f"    {site.label:<44} {site.cx},{site.cy}  "
+                  f"+/-{site.tol:g}px  rows {', '.join(str(r.row) for r in site.refs)}")
+        return 0
+
+    if not sites:
+        print("  no target table given -- teaching free-form; each click adds "
+              "a site you can name.")
+
+    out = args.out or _teach_out_path(target or capture)
+    from .ui import launch_teach
+
+    return launch_teach(capture=capture, target=target, out_path=out,
+                        simulate=args.simulate, dark=not args.light,
+                        station=args.station, operator=args.operator,
+                        quiet=args.quiet,
+                        row_index=getattr(args, "contour_row", None))
+
+
+def _teach_out_path(program) -> str:
+    """Where the teach *record* goes, beside the table it describes.
+
+    ``-teach``, deliberately not ``-coords``: a table's values file is
+    conventionally ``<name>-coords.json``, and naming the record the same thing
+    puts both at one path -- where the record, written second, silently
+    destroys every coordinate the program loads.
+    """
+    source = program.source or "program"
+    directory = os.path.dirname(os.path.abspath(source))
+    stem = os.path.splitext(os.path.basename(source))[0]
+    return os.path.join(directory, f"{stem}-teach.json")
 
 
 def _cmd_adopt(args) -> int:

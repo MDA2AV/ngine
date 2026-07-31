@@ -12,6 +12,8 @@ table inside resetPointer() and again in updateLabels()).
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
 
 from .errors import ProgramError
@@ -138,6 +140,17 @@ class Program:
     modules: dict[str, str] = field(default_factory=dict)
     #: friendly name -> "l,c,p" coordinate, from <Vars>. New in v2.
     vars: dict[str, str] = field(default_factory=dict)
+    #: variable name -> the JSON key it takes its value from (<Vars> column 2).
+    var_sources: dict[str, str] = field(default_factory=dict)
+    #: variable name -> the value INITDATA seeds its cell with, once resolved.
+    var_values: dict[str, str] = field(default_factory=dict)
+    #: <values> file as written in the table, and as actually opened.
+    values_source: str = ""
+    values_path: str = ""
+    #: Everything the file held, whether or not a variable claimed it.
+    values_loaded: dict[str, str] = field(default_factory=dict)
+    #: Anything wrong with the <values> file, filled in by finalize().
+    value_problems: list[str] = field(default_factory=list)
     sections: dict[str, Section] = field(default_factory=dict)
     #: label name -> row index, built once at load.
     labels: dict[str, int] = field(default_factory=dict)
@@ -313,10 +326,16 @@ class Program:
     # -- construction -----------------------------------------------------
 
     def finalize(self) -> "Program":
-        """Parse sections, modules and vars out of the row list."""
+        """Parse sections, modules and vars out of the row list.
+
+        The <values> file is read here, at load time, so that a missing file or
+        an unmatched key is a *loading* problem the validator can report -- not
+        something discovered mid-run.
+        """
         self._parse_sections()
         self._parse_modules()
         self._parse_vars()
+        self.value_problems = self.load_values()
         self.build_labels()
         return self
 
@@ -364,19 +383,92 @@ class Program:
             self.modules[alias] = target
 
     def _parse_vars(self) -> None:
-        """Read the <Vars> section: friendly name -> l,c,p coordinate.
+        """Read the <Vars> section: name -> l,c,p coordinate, and its value.
 
         This is the readability fix for ``data[39][0][29]``. It is additive --
         a program with no <Vars> section behaves exactly as it did in v1.
+
+        Column 2 is an optional **initial value**. A variable that has one is a
+        program constant: INITDATA writes it into the cell, every time, so it is
+        there before the first step runs and survives the per-board re-init a
+        fixture program does at the top of its loop. Nothing in <Config> has to
+        set it up.
+
+        The special name ``<values>`` names a JSON file those values are read
+        from instead of being written in the table -- see load_values().
         """
         for i in self.body("Vars"):
             row = self.rows[i]
             if row.is_blank or not row.module:
                 continue
             name, coord = row.module, row.verb
+
+            if name.lower() in ("<values>", "<values/>"):
+                if not coord:
+                    raise ProgramError("<values> needs a file path", row=row.index)
+                self.values_source = coord
+                continue
+
             if not coord:
                 raise ProgramError(f"variable '{name}' has no coordinate", row=row.index)
             if name.startswith("*"):
                 raise ProgramError(f"variable name '{name}' must not start with '*'",
                                    row=row.index)
             self.vars[name] = coord
+            if row.has(2):
+                self.var_sources[name] = row.raw(2)
+
+    # -- variable values --------------------------------------------------
+
+    def load_values(self, base: str | None = None) -> list[str]:
+        """Fill each variable that names a key from the <values> file.
+
+        A ``<Vars>`` row's column 2 names the JSON key that variable takes its
+        value from -- usually the same string as the variable itself, but
+        written out so the link is visible and checkable rather than implied.
+
+        Returns a list of problems, empty when all is well. It does not raise:
+        the validator reports these while the fixture is still cold, which is a
+        far better place to find out than row 400 with the supply at 13.5 V.
+        """
+        problems: list[str] = []
+        if not self.var_sources:
+            return problems
+        if not self.values_source:
+            return [f"{len(self.var_sources)} variable(s) take their value from "
+                    f"a JSON key, but no <values> file is declared"]
+
+        path = self.values_source
+        if not os.path.isabs(path) and not os.path.exists(path):
+            root = base or os.path.dirname(os.path.abspath(self.source or "."))
+            candidate = os.path.join(root, os.path.basename(path))
+            if os.path.exists(candidate):
+                path = candidate
+        self.values_path = path
+
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                doc = json.load(fh)
+        except OSError as exc:
+            return [f"<values> file '{path}' could not be read: {exc}"]
+        except ValueError as exc:
+            return [f"<values> file '{path}' is not valid JSON: {exc}"]
+
+        if not isinstance(doc, dict):
+            return [f"<values> file '{path}' must be a flat object of "
+                    f"variable name -> value"]
+
+        flat = {str(k): str(v) for k, v in doc.items()
+                if not str(k).startswith("_")}
+        self.values_loaded = dict(flat)
+
+        for name, key in self.var_sources.items():
+            if key in flat:
+                self.var_values[name] = flat[key]
+            else:
+                # Loud, and by name. A variable left empty here surfaces much
+                # later as "bad data reference ''" or a silently skipped test.
+                problems.append(
+                    f"variable '{name}' takes its value from key '{key}', "
+                    f"which is not in {os.path.basename(path)}")
+        return problems

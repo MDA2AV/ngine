@@ -194,7 +194,8 @@ def _centroid(cv2, contour):
     return m["m10"] / m["m00"], m["m01"] / m["m00"]
 
 
-def _find_at(cv2, contours, cx: float, cy: float, tol: float, cal: float = 1.0):
+def _find_at(cv2, contours, cx: float, cy: float, tol: float, cal: float = 1.0,
+             noise: float | None = None):
     """Largest in-window contour above the noise floor.
 
     Matches v1's ``_detect_contour_at``. Two details matter and are not
@@ -203,10 +204,17 @@ def _find_at(cv2, contours, cx: float, cy: float, tol: float, cal: float = 1.0):
     * Selection is by **area**, not proximity. An area test wants the blob it is
       measuring, and a stray speck closer to the nominal centre would otherwise
       win and fail the limit.
-    * Contours smaller than MIN_CONTOUR_PIXELS are noise and never considered.
+    * Contours smaller than the noise floor are never considered.
+
+    ``noise`` overrides MIN_CONTOUR_PIXELS for one site. It exists because one
+    floor does not fit every indicator: cargo's button LED is a far smaller blob
+    than its bar indicators, and at the shared 50 px floor it is invisible --
+    so an EVALCONTN on it finds nothing and passes, whatever is actually lit.
+    Omitted, the constant applies and behaviour is unchanged.
 
     Returns (area_calibrated, centroid) or (None, None).
     """
+    floor = MIN_CONTOUR_PIXELS if noise is None else noise
     if contours is None:
         contours = []
 
@@ -216,7 +224,7 @@ def _find_at(cv2, contours, cx: float, cy: float, tol: float, cal: float = 1.0):
     best_area, best_centroid = None, None
     for contour in contours:
         raw = cv2.contourArea(contour)
-        if raw < MIN_CONTOUR_PIXELS:
+        if raw < floor:
             continue
         moments = cv2.moments(contour)
         if moments["m00"] == 0:
@@ -244,8 +252,29 @@ def meascont(ctx, row):
     ctx.set_data(row.raw(4), area)
 
 
+def _noise_floor(ctx, cell: str) -> float | None:
+    """Optional sixth field of a contour spec: this site's noise floor.
+
+    ``cx,cy,tol,minarea,cal[,noise]``. Absent means MIN_CONTOUR_PIXELS, so every
+    row written before this existed behaves exactly as it did.
+
+    One floor does not fit every indicator. cargo's button LED is a far smaller
+    blob than its bar indicators, and at the shared 50 px floor it is invisible
+    -- so an EVALCONTN on it finds nothing and passes, whatever is lit.
+    """
+    parts = [x.strip() for x in str(ctx.text(cell)).split(",") if x.strip()]
+    if len(parts) < 6:
+        return None
+    try:
+        return float(parts[5])
+    except ValueError:
+        raise VerbError(
+            f"noise floor '{parts[5]}' is not a number (spec field 6)") from None
+
+
 @verb(MODULE, "EVALCONT",
-      params=[p(2, "contours"), p(3, "spec", doc="cx,cy,tol,minarea,cal"),
+      params=[p(2, "contours"),
+              p(3, "spec", doc="cx,cy,tol,minarea,cal[,noise]"),
               p(4, "dest"), p(5, "grid_style", required=False, doc="'min' or blank"),
               p(6, "kill_and_id", doc="kill_index,test_id")])
 def evalcont(ctx, row):
@@ -253,9 +282,10 @@ def evalcont(ctx, row):
     cv2 = _cv2()
     contours = ctx.content(row.raw(2)) or []
     cx, cy, tol, minarea, cal = _floats(ctx, row.raw(3), 5, "EVALCONT")
+    noise = _noise_floor(ctx, row.raw(3))
     kill_index, test_id = _kill_and_id(ctx, row)
 
-    area, centroid = _find_at(cv2, contours, cx, cy, tol, cal)
+    area, centroid = _find_at(cv2, contours, cx, cy, tol, cal, noise)
     found = area is not None
     if ctx.debug:
         near = [d for d in ctx.debug.describe_contours(contours, cal)
@@ -265,7 +295,7 @@ def evalcont(ctx, row):
             "target": {"cx": cx, "cy": cy, "tol": tol,
                        "minarea": minarea, "cal": cal},
             "found": found, "area": area, "centroid": centroid,
-            "noise_floor": MIN_CONTOUR_PIXELS,
+            "noise_floor": MIN_CONTOUR_PIXELS if noise is None else noise,
             "contours_total": len(contours),
             "contours_near_target": near,
         })
@@ -285,7 +315,7 @@ def evalcont(ctx, row):
 
 
 @verb(MODULE, "EVALCONTN",
-      params=[p(2, "contours"), p(3, "spec", doc="cx,cy,tol,minarea,cal"),
+      params=[p(2, "contours"), p(3, "spec", doc="cx,cy,tol,minarea,cal[,noise]"),
               p(4, "dest"), p(5, "grid_style", required=False),
               p(6, "kill_and_id")])
 def evalcontn(ctx, row):
@@ -293,9 +323,10 @@ def evalcontn(ctx, row):
     cv2 = _cv2()
     contours = ctx.content(row.raw(2)) or []
     cx, cy, tol, minarea, cal = _floats(ctx, row.raw(3), 5, "EVALCONTN")
+    noise = _noise_floor(ctx, row.raw(3))
     kill_index, test_id = _kill_and_id(ctx, row)
 
-    area, _ = _find_at(cv2, contours, cx, cy, tol, cal)
+    area, _ = _find_at(cv2, contours, cx, cy, tol, cal, noise)
     result = "PASS" if area is None or area <= minarea else "FAIL"
     measured = area if area is not None else "NOT_FOUND"
     _publish(ctx, row, kill_index, test_id, result, measured, minarea)

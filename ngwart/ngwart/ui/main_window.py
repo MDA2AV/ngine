@@ -49,6 +49,13 @@ class MainWindow(QMainWindow):
         self.debug_dir = debug_dir
         self.legacy_dir = legacy_dir
         self._last_record = None
+        #: Context of the last finished run. Holds the captured frame and the
+        #: contours, which is what "Teach coordinates" clicks on.
+        self._last_ctx = None
+        self._teach_window = None
+        #: (Calibration, target Program) while a calibration capture runs.
+        self._calibration = None
+        self._calibrations = []
         self._points = 0
         self._failed = 0
         self._program_ok = False
@@ -174,6 +181,20 @@ class MainWindow(QMainWindow):
             "Save captures, binary images, contour overlays, the data store "
             "and the full log to ./debug.")
         self.debug_action.toggled.connect(self._refresh_badges)
+
+        tools_menu = bar.addMenu("&Tools")
+        # Each calibration is a self-contained job: it powers the fixture, takes
+        # its own picture and opens the canvas. Nothing has to be loaded first,
+        # which is the point -- an operator picks "LEDs A-F", not a filename.
+        self.calibrate_menu = tools_menu.addMenu("&Calibrate")
+        self._build_calibrations()
+        tools_menu.addSeparator()
+        self.teach_action = self._action(
+            tools_menu, "&Teach from last run…", self._teach_coordinates, "Ctrl+E")
+        self.teach_action.setToolTip(
+            "Click each LED on the frame the last run captured, and write the "
+            "new coordinates back to the program's values file.")
+        self.teach_action.setEnabled(False)
 
         view_menu = bar.addMenu("&View")
         for index, (name, key) in enumerate(
@@ -743,6 +764,7 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(not idle)
         self.stop_action.setEnabled(not idle)
         self.step_action.setEnabled(loaded and idle and self._program_ok)
+        self._sync_teach_action()
 
     def _launch(self, program: Program, partial: int = 0) -> None:
         self._partial_run = partial
@@ -763,7 +785,9 @@ class MainWindow(QMainWindow):
             strict=True,
             operator=self.operator,
             station=self.station,
-            workdir=os.path.dirname(self.program.source or ".") or ".",
+            # From the program being run, not the loaded one: a calibration is
+            # launched with nothing loaded, and a subset carries the same source.
+            workdir=os.path.dirname(program.source or ".") or ".",
             debug_dir=(self.debug_dir or "debug") if self.debug_action.isChecked() else None,
             telemetry=self.telemetry,
         )
@@ -903,11 +927,33 @@ class MainWindow(QMainWindow):
                 f" · {summary['duration_s']}s"
                 + (f" · {summary['abort_reason']}" if summary["aborted"] else ""))
         self._active = False
+        # Keep the context: it still holds the captured frame and the contours,
+        # which is what "Teach coordinates" reads. The run that just failed its
+        # optical tests has already produced the evidence -- taking a second
+        # picture to look at it would be a step nobody needs.
+        self._last_ctx = self.thread.ctx if self.thread else None
         self.thread = None
         self._sync_run_actions()
         self._clock.stop()
         self._last_record = record
         self.save_report_action.setEnabled(self._last_record is not None)
+        self._sync_teach_action()
+
+        if self._calibration is not None:
+            # A calibration capture is not a board. It gets no verdict, no
+            # history row and no grid scoring -- it exists to produce a frame.
+            self.progress.setRange(0, 1000)
+            self.progress.setValue(1000)
+            aborted = record is not None and record.summary()["aborted"]
+            self.banner.show_status(
+                "CALIBRATION FAILED" if aborted else "CALIBRATION CAPTURED",
+                palette["fail"] if aborted else palette["warn"])
+            self._partial_run = 0
+            if not aborted:
+                self._finish_calibration()
+            else:
+                self._calibration = None
+            return
 
         partial, self._partial_run = self._partial_run, 0
         if partial:
@@ -946,6 +992,175 @@ class MainWindow(QMainWindow):
             self.banner.show_status("FAIL" if not detail else f"FAIL — {detail}"[:80],
                                     palette["fail"])
         self.progress.setValue(1000 if passed else self.progress.value())
+
+    # -- calibration ------------------------------------------------------
+
+    def _build_calibrations(self) -> None:
+        """Fill Tools -> Calibrate from the programs that offer themselves."""
+        from .. import teach as teachlib
+
+        self.calibrate_menu.clear()
+        directory = loaders.pick_program_dir(
+            None, self.program.source if self.program else None)
+        self._calibrations = teachlib.calibrations(directory)
+
+        if not self._calibrations:
+            empty = self.calibrate_menu.addAction("No calibrations found")
+            empty.setEnabled(False)
+            self.calibrate_menu.setToolTip(
+                f"A calibration is a program in {directory} whose meta names "
+                f"what it calibrates.")
+            return
+
+        for calibration in self._calibrations:
+            action = self.calibrate_menu.addAction(calibration.label + "…")
+            action.setToolTip(calibration.notes[:200])
+            action.triggered.connect(
+                lambda _=False, c=calibration: self._start_calibration(c))
+
+    def _start_calibration(self, calibration) -> None:
+        """Run a calibration capture, then open the canvas over it."""
+        if self.is_running:
+            return
+        try:
+            capture_program = load(calibration.path)
+            target_program = load(calibration.target)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.critical(self, "Cannot start calibration", str(exc))
+            return
+
+        report = validate(capture_program, REGISTRY)
+        if not report.ok:
+            QMessageBox.critical(
+                self, "Calibration program is invalid",
+                f"{calibration.path}\n\n"
+                + "\n".join(str(d) for d in report.errors[:6]))
+            return
+
+        self.log.append(
+            f"Calibration: {calibration.label} — powering the fixture and "
+            f"capturing. Teardown runs before the canvas opens.", "warn")
+        self._calibration = (calibration, target_program)
+        self.banner.show_status(f"CALIBRATING — {calibration.label}",
+                                theme.palette(self.dark)["warn"])
+        self._launch(capture_program)
+
+    def _finish_calibration(self) -> None:
+        """Open the teach canvas on what the calibration run captured."""
+        from .. import teach as teachlib
+
+        calibration, target = self._calibration
+        self._calibration = None
+
+        if self._last_ctx is None:
+            return
+        try:
+            capture = teachlib.capture_from_context(
+                load(calibration.path), self._last_ctx)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "Calibration failed", str(exc))
+            return
+        all_sites, notes = teachlib.sites_from_program(target)
+        # Only the sites this capture can actually show. Listing the rest gives
+        # an operator no way to tell "not clicked yet" from "not visible in this
+        # frame", and the untaught count never reaches zero.
+        sites = calibration.select(all_sites)
+        if len(sites) != len(all_sites):
+            self.log.append(
+                f"{calibration.label}: {len(sites)} of {len(all_sites)} site(s). "
+                f"The rest are calibrated by another capture.")
+
+        if not capture.ok:
+            # Logged and shown on the canvas rather than raised as a modal. An
+            # operator sees it either way, and nothing headless deadlocks on a
+            # dialog with no one to dismiss it.
+            self.log.append(
+                f"{calibration.label}: the capture produced no contours. The "
+                f"frames are in debug/teach — the thresholded one shows what "
+                f"the camera actually gave back.", "error")
+            notes = [f"No contours in this capture. Check debug/teach for the "
+                     f"thresholded frame; the threshold may not suit the "
+                     f"exposure."] + list(notes)
+        self._open_teach_window(
+            sites=sites, capture=capture, notes=notes, program=target,
+            context=self._last_ctx, title=calibration.label,
+            capture_program=calibration.path,
+            min_area=calibration.min_area)
+
+    # -- teaching ---------------------------------------------------------
+
+    def _open_teach_window(self, *, sites, capture, notes, program, context,
+                           title: str, capture_program: str,
+                           min_area: int | None = None) -> None:
+        from .teach_window import TeachWindow
+
+        source = program.source or "program"
+        out = os.path.join(os.path.dirname(os.path.abspath(source)),
+                           f"{os.path.splitext(os.path.basename(source))[0]}"
+                           f"-teach.json")
+        # A window rather than a modal dialog: an operator compares it against
+        # the log and the result grids while clicking.
+        self._teach_window = TeachWindow(
+            sites=sites, capture=capture, notes=notes, out_path=out,
+            dark=self.dark, program=program, parent=self,
+            meta={"capture_program": capture_program, "target_program": source,
+                  "simulated": self.simulate_action.isChecked(),
+                  "station": self.station, "operator": self.operator,
+                  "calibration": title})
+        if min_area:
+            self._teach_window.canvas.noise_floor = min_area
+        self._teach_window.set_capture(frame=capture.frame,
+                                       binary=capture.binary,
+                                       contours=capture.contours)
+        self._teach_window.offer_captures(context)
+        self._teach_window.setWindowFlag(Qt.Window, True)
+        self._teach_window.setWindowTitle(f"NGWART — calibrate: {title}")
+        self._teach_window.show()
+
+    def _sync_teach_action(self) -> None:
+        """Armed only when there is a frame to click on."""
+        ok = bool(self._last_ctx is not None and self.program is not None
+                  and not self._active)
+        self.teach_action.setEnabled(ok)
+
+    def _teach_coordinates(self) -> None:
+        """Open the teach canvas over the frame the last run captured."""
+        from .. import teach as teachlib
+
+        if self._last_ctx is None or self.program is None:
+            QMessageBox.information(
+                self, "Nothing to teach",
+                "Run the program first. Teaching works on the frame a run "
+                "captured, so there has to have been one.")
+            return
+
+        try:
+            capture = teachlib.capture_from_context(self.program, self._last_ctx)
+        except Exception as exc:  # noqa: BLE001
+            QMessageBox.warning(self, "No contours", str(exc))
+            return
+
+        if not capture.ok:
+            QMessageBox.warning(
+                self, "No contours",
+                "The last run produced no contours, so there is nothing to "
+                "click. Check that the capture reached the camera and that the "
+                "threshold suits the exposure.")
+            return
+
+        sites, notes = teachlib.sites_from_program(self.program)
+        if not sites:
+            QMessageBox.information(
+                self, "No coordinates",
+                "This program declares no teachable coordinates. Only "
+                "EVALCONT, EVALCONTN, EVALLEDS and MEASCONT carry one.")
+            return
+
+        source = self.program.source or "program"
+        self._open_teach_window(
+            sites=sites, capture=capture, notes=notes, program=self.program,
+            context=self._last_ctx, title=os.path.basename(source),
+            capture_program=source)
 
     # -- reports ----------------------------------------------------------
 

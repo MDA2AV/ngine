@@ -64,9 +64,18 @@ def akill(ctx, row):
         ctx.kill(index, reason=row.comment or "AKILL")
 
 
-@verb("TestData", "INITDATA", params=[p(2, "lines"), p(3, "cols"), p(4, "pages")])
+@verb("TestData", "INITDATA",
+      params=[p(2, "lines"), p(3, "cols"), p(4, "pages"),
+              p(5, "program_from", required=False,
+                doc="first page of the program region, which is never cleared")])
 def init_data(ctx, row):
-    """Allocate the data store."""
+    """Allocate the data store, optionally reserving a program region.
+
+    Column 5 is new in v2 and additive: a table that omits it behaves exactly
+    as v1 did, clearing everything. Giving it names the first page of the
+    *program* region -- constants the table loads once and needs for the whole
+    session, which a per-board re-init must not wipe.
+    """
     try:
         lines, cols, pages = (int(float(ctx.text(row.raw(i)))) for i in (2, 3, 4))
     except ValueError as exc:
@@ -74,8 +83,27 @@ def init_data(ctx, row):
     if min(lines, cols, pages) <= 0:
         raise VerbError(f"INITDATA: dimensions must be positive, got "
                         f"{lines}x{cols}x{pages}")
-    ctx.init_data(lines, cols, pages)
-    ctx.log(f"Data initialised: {lines} lines, {cols} cols, {pages} pages.")
+
+    preserve = None
+    if row.has(5):
+        try:
+            preserve = int(float(ctx.text(row.raw(5))))
+        except ValueError:
+            raise VerbError(
+                f"INITDATA: program region '{row.raw(5)}' is not a page number"
+            ) from None
+        if not 0 <= preserve <= pages:
+            raise VerbError(
+                f"INITDATA: program region starts at page {preserve}, outside "
+                f"the {pages} pages allocated")
+
+    ctx.init_data(lines, cols, pages, preserve)
+    detail = ""
+    if preserve is not None:
+        kept = pages - preserve
+        detail = (f"; pages {preserve}-{pages - 1} are program data "
+                  f"({kept} page(s) kept)")
+    ctx.log(f"Data initialised: {lines} lines, {cols} cols, {pages} pages{detail}.")
 
 
 @verb("TestData", "SETDATACODES",
