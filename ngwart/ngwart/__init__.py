@@ -6,7 +6,7 @@ frozen UI, string-typed errors, no validation, no guaranteed teardown).
 
     from ngwart import load, run
 
-    record = run(load("programs/demo.yaml"), simulate=True)
+    record = run(load("programs/demo/demo.yaml"), simulate=True)
     print(record.summary())
 """
 

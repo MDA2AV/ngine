@@ -9,7 +9,7 @@ meta:
     contours, and the coordinates being taught live in the real test table
     passed as --target.
 
-    py run.py teach programs/teach_capture.yaml --target programs/demo.yaml --simulate
+    py run.py teach programs/teach_capture.yaml --target programs/demo/demo.yaml --simulate
 
     Copy this for a real fixture and change three things: the power-up rows, the
     camera serial and geometry, and the threshold on the *2CONT row. The

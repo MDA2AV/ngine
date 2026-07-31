@@ -2,7 +2,7 @@ meta:
   name: cargo_cal_button_34
   product: CARGO
   revision: 1
-  calibrates: programs/cargo.yaml
+  calibrates: programs/cargo/cargo.yaml
   sites: 'led.u[23].g.*'
   # The button indicator is a much smaller blob than A-F. Lowered from the
   # runtime's 50 px so it can be clicked at all. Safe here because these

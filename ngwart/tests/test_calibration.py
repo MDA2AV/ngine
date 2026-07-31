@@ -355,7 +355,7 @@ def test_capture_run_yields_a_frame_and_clickable_contours():
 def test_teaching_the_demo_table_against_a_real_capture():
     from ngwart.engine.loaders import load
 
-    sites, notes = cal.sites_from_program(load("programs/demo.yaml"))
+    sites, notes = cal.sites_from_program(load("programs/demo/demo.yaml"))
     result = cal.run_capture(load("tools/calibration/demo_calibrate.yaml"), simulate=True)
 
     assert notes == []
@@ -498,7 +498,7 @@ def _capture():
 
 def _sites():
     from ngwart.engine.loaders import load
-    return cal.sites_from_program(load("programs/demo.yaml"))[0]
+    return cal.sites_from_program(load("programs/demo/demo.yaml"))[0]
 
 
 def test_unshifted_camera_needs_no_teaching():
@@ -744,7 +744,7 @@ def test_untaught_sites_keep_their_value_in_the_file(tmp_path):
 def test_cargo_is_valued_from_its_file():
     from ngwart.engine.loaders import load
 
-    program = load("programs/cargo.yaml")
+    program = load("programs/cargo/cargo.yaml")
     assert program.value_problems == []
     assert program.values_source.endswith("cargo-coords.json")
     assert len(program.var_values) == 52          # 28 LEDs, 24 with a colour check
@@ -770,7 +770,7 @@ def test_every_cargo_coordinate_row_resolves_to_a_usable_spec():
     from ngwart.engine.context import Context
     from ngwart.engine.loaders import load
 
-    program = load("programs/cargo.yaml")
+    program = load("programs/cargo/cargo.yaml")
     assert program.value_problems == []
 
     ctx = Context(program, simulate=True)
@@ -803,7 +803,7 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
     from ngwart.ui.main_window import MainWindow
 
     dx, dy = shifted(45, 30)
-    window = MainWindow(program_path="programs/demo.yaml", simulate=True,
+    window = MainWindow(program_path="programs/demo/demo.yaml", simulate=True,
                         history_path="")
     assert not window.calibrate_last_action.isEnabled()      # nothing captured yet
 
@@ -915,7 +915,7 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
     from ngwart.ui.main_window import MainWindow
 
     dx, dy = shifted(45, 30)
-    window = MainWindow(program_path="programs/demo.yaml", simulate=True,
+    window = MainWindow(program_path="programs/demo/demo.yaml", simulate=True,
                         history_path="")
     assert not window.calibrate_last_action.isEnabled()      # nothing captured yet
 
@@ -1022,7 +1022,7 @@ def test_each_calibration_claims_its_own_sites():
     """
     from ngwart.engine.loaders import load
 
-    sites, _ = cal.sites_from_program(load("programs/cargo.yaml"))
+    sites, _ = cal.sites_from_program(load("programs/cargo/cargo.yaml"))
     by_title = {c.title: c for c in cal.calibrations(CAL_DIR)}
 
     af = by_title["LEDs A-F"].select(sites)
@@ -1050,10 +1050,10 @@ def test_calibrating_one_group_leaves_the_others_alone(tmp_path):
     from ngwart.engine.loaders import load
 
     values = tmp_path / "cargo-coords.json"
-    shutil.copy("programs/cargo-coords.json", values)
+    shutil.copy("programs/cargo/cargo-coords.json", values)
     before = _json.loads(values.read_text())
 
-    sites, _ = cal.sites_from_program(load("programs/cargo.yaml"))
+    sites, _ = cal.sites_from_program(load("programs/cargo/cargo.yaml"))
     for site in sites:
         site.file_path = str(values)
 

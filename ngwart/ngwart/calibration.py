@@ -740,7 +740,7 @@ class Calibration:
     Declared in the program's own meta::
 
         meta:
-          calibrates: programs/cargo.yaml
+          calibrates: programs/cargo/cargo.yaml
           title: LEDs A-F
 
     The station lists these under Tools, so an operator picks "LEDs A-F" rather

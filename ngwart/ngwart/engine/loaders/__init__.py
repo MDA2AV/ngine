@@ -53,6 +53,12 @@ def pick_program_dir(explicit: str | None = None,
         return explicit
     if program:
         directory = os.path.dirname(os.path.abspath(program))
+        # A program in programs/<product>/ belongs to the whole tree. Returning
+        # its own folder would give a picker with exactly one entry in it --
+        # the program already open.
+        parent = os.path.dirname(directory)
+        if os.path.basename(parent).lower() in ("programs", "testtables"):
+            return parent
         if os.path.isdir(directory):
             return directory
     for candidate in ("programs", "TestTables"):
@@ -74,11 +80,23 @@ def program_names(directory: str) -> list[str]:
         return []
     known = LEGACY_EXTS | NATIVE_EXTS
     names = set()
-    try:
-        entries = os.listdir(directory)
-    except OSError:
-        return []
-    for entry in entries:
+
+    def scan(folder: str) -> list[str]:
+        try:
+            return os.listdir(folder)
+        except OSError:
+            return []
+
+    for entry in scan(directory):
+        full = os.path.join(directory, entry)
+        # One level down as well as flat: programs are kept a folder per
+        # product, so a flat listing would find nothing at all.
+        if os.path.isdir(full):
+            for inner in scan(full):
+                stem, ext = os.path.splitext(inner)
+                if ext.lower() in known and not inner.startswith(("~$", ".~")):
+                    names.add(stem)
+            continue
         stem, ext = os.path.splitext(entry)
         if ext.lower() in known and not entry.startswith(("~$", ".~")):
             names.add(stem)

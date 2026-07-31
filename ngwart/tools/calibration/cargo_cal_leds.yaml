@@ -4,7 +4,7 @@ meta:
   revision: 1
   # Read by the station: this program calibrates cargo.yaml, and appears under
   # Tools -> Calibrate with this title. Nothing has to be loaded first.
-  calibrates: programs/cargo.yaml
+  calibrates: programs/cargo/cargo.yaml
   # Which sites this capture can actually teach. The 24 bright indicators. G is invisible at this exposure and belongs to
   # cargo_cal_button.yaml, so it is not listed as something to click here.
   sites: 'led.*.[a-f].*'

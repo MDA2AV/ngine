@@ -13,8 +13,8 @@ and the lack of a guaranteed teardown.
 ```bash
 pip install -r requirements.txt
 
-py run.py ui programs/demo.yaml --simulate    # operator station
-py run.py run programs/demo.yaml --simulate   # headless
+py run.py ui programs/demo/demo.yaml --simulate    # operator station
+py run.py run programs/demo/demo.yaml --simulate   # headless
 py run.py check ../cargobay/src/TestTables/cargo.ods
 ```
 
@@ -57,7 +57,8 @@ ngwart/
   reports/          XML / JSON / CSV from the run record
   calibration.py    coordinate sites, click resolution, the values file
 tools/calibration/  capture programs offered under Tools -> Calibrate
-programs/           test programs, and the values they load
+programs/<product>/ one folder per product: the table and the values
+                    it loads, kept together
 ```
 
 The engine never imports Qt and the UI never touches the data store. That seam
@@ -94,7 +95,7 @@ on destinations too.
 A variable may also name a **JSON key it takes its value from**:
 
 ```yaml
-values: programs/cargo-coords.json
+values: programs/cargo/cargo-coords.json
 
 vars:
   led.u0.a.cont:  ['0,0,30', 'led.u0.a.cont']    # cell, and the key that fills it
@@ -157,7 +158,7 @@ registered.
 
 ```bash
 py run.py check TestTables/cargo.ods    # lint before anything else
-py run.py convert TestTables/cargo.ods programs/cargo.yaml   # optional
+py run.py convert TestTables/cargo.ods programs/cargo/cargo.yaml   # optional
 ```
 
 ### When the site driver should win
@@ -201,7 +202,7 @@ ones you touch most, in whatever order suits you.
 
 ```bash
 py run.py web                                  # read-only, localhost:8080
-py run.py web programs/demo.yaml --simulate --allow-control
+py run.py web programs/demo/demo.yaml --simulate --allow-control
 ```
 
 Open `http://localhost:8080`. The page shows the program, per-unit result
@@ -404,8 +405,8 @@ exercised without touching the bench. Without it every click lands on a
 coordinate that was already correct and nothing is proven.
 
 ```bash
-py run.py run   programs/demo.yaml --simulate                    # 8 points, 0 failed
-py run.py run   programs/demo.yaml --simulate --sim-shift 45,30  # 4 failed, both units
+py run.py run   programs/demo/demo.yaml --simulate                    # 8 points, 0 failed
+py run.py run   programs/demo/demo.yaml --simulate --sim-shift 45,30  # 4 failed, both units
                 --simulate --sim-shift 45,30
 ```
 
