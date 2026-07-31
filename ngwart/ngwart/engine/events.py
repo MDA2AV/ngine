@@ -71,6 +71,29 @@ class FieldEvent:
 
 
 @dataclass
+class FrameEvent:
+    """A frame worth showing the operator, as the vision step produced it.
+
+    Carries the array rather than a path: not every program saves its frames,
+    and the one that matters is the *thresholded* image the contours were
+    traced from. A bright LED that thresholds away is invisible in the colour
+    capture and obvious here, which is the whole reason to put it on screen.
+
+    The engine still knows nothing about Qt -- this is a plain object, and the
+    UI decides what to do with it.
+    """
+
+    image: object
+    #: 'binary' or 'capture'.
+    kind: str = "binary"
+    #: The alive mask of the row that produced it, so the UI can say which
+    #: units are in shot.
+    units: str = ""
+    row: int | None = None
+    label: str = ""
+
+
+@dataclass
 class AliveEvent:
     alive: list[int]
 

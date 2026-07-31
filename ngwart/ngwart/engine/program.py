@@ -204,7 +204,8 @@ class Program:
     #: run on its own dies with "data store not initialised".
     SETUP_VERBS = ("INITDATA", "STARTALIVE")
 
-    def subset(self, indices, with_setup: bool = True) -> "Program":
+    def subset(self, indices, with_setup: bool = True,
+               with_config: bool = True) -> "Program":
         """A runnable program holding only the given <Exec> rows.
 
         Everything declarative is carried over verbatim -- <Modules> so verbs
@@ -216,6 +217,11 @@ class Program:
         ``with_setup`` prepends the program's own INITDATA and STARTALIVE rows
         when the selection does not already include them. They are idempotent
         setup, and without them a single selected step has nowhere to write.
+
+        ``with_config`` carries <Config>. Turn it off when the hardware is
+        already open -- a bench session opens the ports once and then runs
+        selections against them, and re-running <Config> would try to open
+        ports it is already holding.
         """
         exec_section = self.sections.get("Exec")
         if exec_section is None:
@@ -237,7 +243,8 @@ class Program:
 
         carry("Modules")
         carry("Vars")
-        carry("Config")
+        if with_config:
+            carry("Config")
 
         flow = self._flow_alias()
 

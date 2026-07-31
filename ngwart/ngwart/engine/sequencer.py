@@ -62,6 +62,13 @@ class RunOptions:
     #: A live TelemetryServer, or None. Owned by the caller so it outlives
     #: individual runs -- a dashboard stays connected between boards.
     telemetry: object | None = None
+    #: Run <Teardown> when the run ends. Off only for a bench session, where
+    #: the fixture is meant to stay powered between hand-picked steps and the
+    #: teardown happens once, when the session is closed.
+    teardown: bool = True
+    #: Close the ports, instruments and cameras the run opened. Off for the
+    #: same reason, and for the same duration.
+    release: bool = True
 
 
 class Sequencer:
@@ -161,7 +168,8 @@ class Sequencer:
             aborted, reason = True, f"internal error: {exc!r}"
             ctx.log(f"Run aborted, internal error: {exc!r}", "error")
         finally:
-            self._run_teardown(ctx, program)
+            if self.options.teardown:
+                self._run_teardown(ctx, program)
             record.finish(ctx.alive, aborted=aborted, reason=reason)
             if bundle:
                 try:
@@ -170,6 +178,12 @@ class Sequencer:
                     ctx.log(f"Debug bundle written: {bundle.dir}")
                 except Exception as exc:  # noqa: BLE001 - never fail a run for this
                     ctx.log(f"Debug bundle incomplete: {exc}", "warn")
+            if self.options.release:
+                # After teardown, so the last thing on the wire is the safe
+                # state and not a closed port. Nothing here can fail the run:
+                # the board's verdict is already decided.
+                for problem in ctx.release():
+                    ctx.log(f"Could not release {problem}", "warn")
             self._running.clear()
             self._emit(RunStateEvent("idle"))
             self._emit(ResultEvent(

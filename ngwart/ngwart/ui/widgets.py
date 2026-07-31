@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
+from PySide6.QtGui import (QColor, QFont, QImage, QPixmap, QTextCharFormat,
+                           QTextCursor)
 from PySide6.QtWidgets import (QAbstractItemView, QFrame, QHBoxLayout, QLabel,
-                               QHeaderView, QPlainTextEdit, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+                               QHeaderView, QPlainTextEdit, QSizePolicy,
+                               QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QWidget)
 
 from . import theme
 
@@ -472,3 +474,84 @@ class ScanField(QWidget):
 
     def set_value(self, text: str) -> None:
         self.value.setText(text or "—")
+
+
+class FrameView(Card):
+    """The thresholded frame the vision step just produced.
+
+    Put on screen so an operator can see what the test saw, while it is
+    happening. A verdict of NOT_FOUND has two very different causes -- a dark
+    indicator, or a threshold that erased a lit one -- and they look identical
+    in a log. Here they do not.
+
+    Deliberately the *binary* frame: it is what the contours were traced from,
+    so it is what the verdict is actually about.
+    """
+
+    #: Longest edge the frame is scaled to. A 1296x972 capture repainted at
+    #: full size on every vision step is wasted work on a station that is also
+    #: driving serial ports.
+    MAX_EDGE = 520
+
+    def __init__(self, parent=None) -> None:
+        super().__init__("Vision", parent)
+        self._buffer = None                 # keeps the QImage backing alive
+
+        self.caption = QLabel("Nothing captured yet.")
+        self.caption.setObjectName("CardSubtle")
+        self.caption.setWordWrap(True)
+        self.add(self.caption)
+
+        self.view = QLabel()
+        self.view.setAlignment(Qt.AlignCenter)
+        self.view.setMinimumHeight(180)
+        self.view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.add(self.view, 1)
+
+    def clear_frame(self) -> None:
+        self._buffer = None
+        self.view.clear()
+        self.caption.setText("Nothing captured yet.")
+
+    def show_frame(self, image, kind: str = "binary", units: str = "",
+                   row=None) -> None:
+        """Display one frame. Never raises -- this is a readout, not a test."""
+        try:
+            pixmap = self._to_pixmap(image)
+        except Exception:  # noqa: BLE001
+            return
+        if pixmap is None:
+            return
+
+        edge = min(self.MAX_EDGE, max(self.view.width(), 200))
+        self.view.setPixmap(pixmap.scaled(
+            edge, edge, Qt.KeepAspectRatio, Qt.FastTransformation))
+
+        where = ""
+        if units and units.strip() not in ("", "-"):
+            listed = ", ".join(u.strip() for u in units.split(",")
+                               if u.strip() and u.strip() != "-")
+            if listed:
+                where = f"  ·  UUT {listed}"
+        at = f"  ·  row {row}" if row is not None else ""
+        self.caption.setText(
+            f"{kind}  ·  {pixmap.width()}x{pixmap.height()}{where}{at}")
+
+    def _to_pixmap(self, image):
+        import numpy as np
+
+        array = np.ascontiguousarray(image)
+        if array.ndim == 2:
+            height, width = array.shape
+            fmt = QImage.Format_Grayscale8
+        elif array.ndim == 3 and array.shape[2] >= 3:
+            array = np.ascontiguousarray(array[:, :, 2::-1])   # BGR -> RGB
+            height, width = array.shape[:2]
+            fmt = QImage.Format_RGB888
+        else:
+            return None
+        # QImage wraps the buffer rather than copying it, so the array has to
+        # outlive the image; copy() cuts that tie once the pixmap is made.
+        self._buffer = array
+        return QPixmap.fromImage(
+            QImage(array.data, width, height, array.strides[0], fmt).copy())

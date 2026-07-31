@@ -19,7 +19,7 @@ import functools
 import os
 
 from ..engine.errors import VerbError
-from ..engine.events import GridEvent
+from ..engine.events import FrameEvent, GridEvent
 from ..engine.registry import REGISTRY, Param, VerbSpec, p, verb
 from ..engine.runrecord import TestPoint
 
@@ -144,6 +144,11 @@ def _convert(ctx, row, *, source: str, stage: str) -> None:
     # lands even when contour extraction is what fails.
     if row.has(5):
         _write(ctx, row, binary, 5)
+
+    # Show the operator what the threshold produced, before the contours are
+    # traced from it. This is the frame the verdicts are about.
+    ctx.emit(FrameEvent(image=binary, kind="binary", units=row.alive,
+                        row=row.index, label=row.comment or row.verb))
 
     contours, _ = cv2.findContours(binary.astype(_np().uint8), cv2.RETR_TREE,
                                    cv2.CHAIN_APPROX_NONE)
@@ -402,7 +407,8 @@ def evalleds(ctx, row):
         raise VerbError(f"EVALLEDS: target colour '{row.raw(5)}' is not numeric") from None
 
     kill_index, test_id = _kill_and_id(ctx, row)
-    cells = [c.strip() for c in ctx.text(row.raw(4)).split(";") if c.strip()]
+    cells = [ctx.resolve_name(c.strip())
+             for c in ctx.text(row.raw(4)).split(";") if c.strip()]
 
     overall_pass = True
     centres = None
@@ -578,7 +584,11 @@ def _store_triplet(ctx, row, measured, result, test_id) -> None:
     raw = ctx.text(row.raw(4)).strip()
     if not raw:
         return
-    cells = [c.strip() for c in raw.split(";") if c.strip()]
+    # Resolve <Vars> names to their coordinate first. The triple below is
+    # derived by incrementing the column, which needs an l,c,p to work on --
+    # a named destination would otherwise store the measurement and silently
+    # drop the verdict and the test id.
+    cells = [ctx.resolve_name(c.strip()) for c in raw.split(";") if c.strip()]
     if len(cells) == 1:
         parts = [x.strip() for x in cells[0].split(",")]
         if len(parts) == 3 and parts[1].lstrip("-").isdigit():

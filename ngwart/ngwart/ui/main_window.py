@@ -22,7 +22,7 @@ from ..engine.program import Program
 from . import theme
 from .bridge import QtBridge
 from .stats import StatsTab
-from .widgets import (Badge, Card, LogView, ScanField, Stat,
+from .widgets import (Badge, Card, FrameView, LogView, ScanField, Stat,
                       StatusBanner, UutGrid)
 
 MAX_UUTS = 4
@@ -62,6 +62,10 @@ class MainWindow(QMainWindow):
         self._active = False
         #: Step count when the current run is a hand-picked selection, else 0.
         self._partial_run = 0
+        #: Live bench session: the context hand-picked steps run against,
+        #: holding the open ports and the data store between selections.
+        self._session_ctx = None
+        self._session_run = False
 
         # What this station offers, which is what the statistics should be
         # scoped to -- not every product name the history file has accumulated.
@@ -169,6 +173,12 @@ class MainWindow(QMainWindow):
             "Execute only the rows selected in the Program tab. "
             "Available while stopped.")
         self.step_action.setEnabled(False)
+        self.end_session_action = self._action(
+            run_menu, "&End bench session", self.end_session, "Ctrl+Shift+Return")
+        self.end_session_action.setToolTip(
+            "Run <Teardown> and release the ports the hand-picked steps have "
+            "been using. Until this, the fixture stays powered.")
+        self.end_session_action.setEnabled(False)
         run_menu.addSeparator()
 
         self.simulate_action = self._toggle(
@@ -210,6 +220,12 @@ class MainWindow(QMainWindow):
         self.log_action.setChecked(True)
         self.log_action.setShortcut("Ctrl+L")
         self.log_action.toggled.connect(self._toggle_log)
+        self.vision_action = self._toggle(
+            view_menu, "Show &vision",
+            "The thresholded frame each optical step produced. Off for a "
+            "fixture with no vision tests, where it is dead space.")
+        self.vision_action.setChecked(True)
+        self.vision_action.toggled.connect(self._toggle_vision)
         view_menu.addSeparator()
         self._action(view_menu, "Toggle &theme", self._toggle_theme, "Ctrl+T")
 
@@ -352,10 +368,22 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Horizontal)
         self.op_splitter = splitter
 
+        left = QSplitter(Qt.Vertical)
         self.log_card = Card("Log")
         self.log = LogView()
         self.log_card.add(self.log, 1)
-        splitter.addWidget(self.log_card)
+        left.addWidget(self.log_card)
+
+        # Under the log, in the column you watch rather than read verdicts
+        # from. Collapsible: on a fixture with no optical tests it is dead
+        # space, and the results should have the width.
+        self.frame_view = FrameView()
+        left.addWidget(self.frame_view)
+        left.setStretchFactor(0, 3)
+        left.setStretchFactor(1, 2)
+        left.setCollapsible(1, True)
+        self.left_split = left
+        splitter.addWidget(left)
 
         self.grid_host = QWidget()
         self.grid_layout = QGridLayout(self.grid_host)
@@ -389,9 +417,28 @@ class MainWindow(QMainWindow):
         return splitter
 
     def _toggle_log(self, show: bool) -> None:
+        self.log_card.setVisible(show)
+        self._sync_left_column()
+
+    def _toggle_vision(self, show: bool) -> None:
+        self.frame_view.setVisible(show)
+        self._sync_left_column()
+
+    def _sync_left_column(self) -> None:
+        """Give the results the width when nothing is left to watch.
+
+        The log and the vision panel share a column. Each toggle hides its own
+        panel -- "Show log" that also blanked the frame would be lying -- and
+        when both are gone the column itself collapses rather than sitting
+        there empty.
+        """
         sizes = self.op_splitter.sizes()
         total = sum(sizes) or 1470
-        if show:
+        # From the actions, not the widgets: isVisible() is False for
+        # everything until the window is first shown, which would collapse
+        # the column on startup.
+        wanted = self.log_action.isChecked() or self.vision_action.isChecked()
+        if wanted:
             width = self._log_width or 420
             self.op_splitter.setSizes([width, max(total - width, 200)])
         else:
@@ -606,6 +653,11 @@ class MainWindow(QMainWindow):
             self.open_program(self.program.source)
 
     def open_program(self, path: str) -> None:
+        # A session holds this program's ports. Loading another one while
+        # it is open leaves the fixture powered and every port taken, and
+        # the new program's <Config> then fails on hardware that is fine.
+        self.end_session()
+
         try:
             program = load(path)
         except Exception as exc:  # noqa: BLE001
@@ -740,7 +792,51 @@ class MainWindow(QMainWindow):
                 "Section markers, blank rows and rows with no module in "
                 "column 0 are not steps.")
             return
-        self._launch(self.program.subset(rows), partial=len(rows))
+
+        # The first selection of a session carries <Config>, which opens the
+        # ports and instruments; later ones do not, because those are still
+        # open and re-running <Config> would fail trying to take them again.
+        # The data store carries across too, so a step can use what an earlier
+        # selection produced -- which is the whole point of picking steps by
+        # hand. Run one row that reads *img.contours with a fresh store every
+        # time and it can only ever report NOT_FOUND.
+        first = self._session_ctx is None
+        # INITDATA goes in only on the first selection. It reallocates the data
+        # store, so adding it again would wipe what the previous selection
+        # produced -- and a step reading *img.contours could then only ever
+        # report NOT_FOUND, which is what made this feature look broken.
+        program = self.program.subset(rows, with_setup=first, with_config=first)
+        if first:
+            self.log.append(
+                "Bench session started. <Config> has run, so the fixture is "
+                "powered and its ports are open. Further selections reuse "
+                "them. End the session to run <Teardown> and release.", "warn")
+        self._launch(program, partial=len(rows), session=True)
+
+    def end_session(self) -> None:
+        """Close a bench session: run <Teardown>, then release the hardware.
+
+        A session deliberately leaves the fixture powered between selections,
+        so something has to put it back. This is that something -- and it also
+        runs when the program changes or the window closes, because a supply
+        left at 13.5 V because someone opened a different table is exactly the
+        failure <Teardown> exists to prevent.
+        """
+        if self._session_ctx is None or self.is_running:
+            return
+        ctx, self._session_ctx = self._session_ctx, None
+
+        options = RunOptions(simulate=self.simulate_action.isChecked(),
+                             workdir=os.path.dirname(ctx.program.source or ".") or ".")
+        sequencer = Sequencer(REGISTRY, self.bridge, options)
+        try:
+            sequencer._run_teardown(ctx, ctx.program)      # noqa: SLF001
+        except Exception as exc:  # noqa: BLE001 - releasing still has to happen
+            self.log.append(f"Teardown during session close: {exc}", "error")
+        for problem in ctx.release():
+            self.log.append(f"Could not release {problem}", "warn")
+        self.log.append("Bench session ended: teardown run, ports released.")
+        self._sync_run_actions()
 
     def _selected_exec_rows(self) -> list[int]:
         """Selected rows that are actually steps inside <Exec>."""
@@ -764,10 +860,13 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(not idle)
         self.stop_action.setEnabled(not idle)
         self.step_action.setEnabled(loaded and idle and self._program_ok)
+        self.end_session_action.setEnabled(self._session_ctx is not None and idle)
         self._sync_calibrate_action()
 
-    def _launch(self, program: Program, partial: int = 0) -> None:
+    def _launch(self, program: Program, partial: int = 0,
+                session: bool = False) -> None:
         self._partial_run = partial
+        self._session_run = session
 
         self.log.clear_log()
         for panel in self.uut_grids:
@@ -779,6 +878,8 @@ class MainWindow(QMainWindow):
         self._points = self._failed = 0
         self._retally_units()
         self.stat_elapsed.set_value("0.0s")
+        if not session:
+            self.frame_view.clear_frame()
 
         options = RunOptions(
             simulate=self.simulate_action.isChecked(),
@@ -790,10 +891,20 @@ class MainWindow(QMainWindow):
             workdir=os.path.dirname(program.source or ".") or ".",
             debug_dir=(self.debug_dir or "debug") if self.debug_action.isChecked() else None,
             telemetry=self.telemetry,
+            # A session leaves the fixture powered and its ports open, so
+            # the next selection can use them. Both happen when it ends.
+            teardown=not session,
+            release=not session,
         )
         self.sequencer = Sequencer(REGISTRY, self.bridge, options)
-        ctx = Context(program, self.bridge, simulate=options.simulate,
-                      workdir=options.workdir)
+        # Reuse the session's context so its data store, alive mask and
+        # open handles survive from one selection to the next.
+        ctx = self._session_ctx if session and self._session_ctx else Context(
+            program, self.bridge, simulate=options.simulate,
+            workdir=options.workdir)
+        ctx.program = program
+        if session:
+            self._session_ctx = ctx
         self.thread = RunThread(self.sequencer, program, ctx)
 
         if partial:
@@ -837,6 +948,7 @@ class MainWindow(QMainWindow):
         b.grid_changed.connect(self._on_grid)
         b.field_changed.connect(self._on_field)
         b.alive_changed.connect(self._on_alive)
+        b.frame_ready.connect(self._on_frame)
         b.state_changed.connect(self._on_state)
         b.verdict_reached.connect(self._on_verdict)
         b.finished.connect(self._on_finished)
@@ -905,6 +1017,9 @@ class MainWindow(QMainWindow):
         elif name == "log" and colour == "clear":
             self.log.clear_log()
 
+    def _on_frame(self, image, kind: str, units: str, row) -> None:
+        self.frame_view.show_frame(image, kind, units, row)
+
     def _on_alive(self, alive: list) -> None:
         self._set_uut_count(len(alive))
         for i, panel in enumerate(self.uut_grids):
@@ -956,11 +1071,14 @@ class MainWindow(QMainWindow):
             return
 
         partial, self._partial_run = self._partial_run, 0
+        session, self._session_run = self._session_run, False
         if partial:
             # A hand-picked set of steps is not a board. Folding it into the
             # history would put a fictional unit into the yield figure.
+            note = (" The fixture is still powered; end the session when "
+                    "you are done.") if session else ""
             self.log.append(f"Step run finished ({partial} step(s)). "
-                            f"Not recorded in history.", "warn")
+                            f"Not recorded in history.{note}", "warn")
         elif self.history is not None and self._last_record is not None:
             run_id = self.history.add_run(self._last_record)
             if run_id is None and self.history.error:
@@ -1187,6 +1305,9 @@ class MainWindow(QMainWindow):
     # -- shutdown ---------------------------------------------------------
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt name
+        # A session leaves the fixture powered by design. Closing the window
+        # is not a reason to leave it that way.
+        self.end_session()
         if self.telemetry is not None and not (self.thread and self.thread.is_alive()):
             self.telemetry.stop()
         if self.thread and self.thread.is_alive():

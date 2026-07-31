@@ -178,6 +178,119 @@ vars:
   led.u3.f.leds:        ['26,1,30', 'led.u3.f.leds']
   led.u3.g.cont:        ['27,0,30', 'led.u3.g.cont']      # INTENSITY_G
 
+  # --- LED results ------------------------------------------------------
+  # Where each optical check writes its value / verdict / test-id triple.
+  # One name per (board, phase, indicator); the phase is which frame the
+  # row reads -- on, off, on2 for the re-check, btn for the button, and
+  # color for the EVALLEDS pass over the same frame as `on`.
+  #
+  # The verb derives the other two cells by incrementing the column, so
+  # these name the first of the three.
+
+  res.u0.btn.intensity_g:   '18,0,1'
+  res.u0.color.color_a:     '6,0,1'
+  res.u0.color.color_b:     '7,0,1'
+  res.u0.color.color_c:     '8,0,1'
+  res.u0.color.color_d:     '9,0,1'
+  res.u0.color.color_e:     '10,0,1'
+  res.u0.color.color_f:     '11,0,1'
+  res.u0.off.intensity_a:   '12,0,1'
+  res.u0.off.intensity_b:   '13,0,1'
+  res.u0.off.intensity_c:   '14,0,1'
+  res.u0.off.intensity_d:   '15,0,1'
+  res.u0.off.intensity_e:   '16,0,1'
+  res.u0.off.intensity_f:   '17,0,1'
+  res.u0.on.intensity_a:    '0,0,1'
+  res.u0.on.intensity_b:    '1,0,1'
+  res.u0.on.intensity_c:    '2,0,1'
+  res.u0.on.intensity_d:    '3,0,1'
+  res.u0.on.intensity_e:    '4,0,1'
+  res.u0.on.intensity_f:    '5,0,1'
+  res.u0.on2.intensity_a:   '19,0,1'
+  res.u0.on2.intensity_b:   '20,0,1'
+  res.u0.on2.intensity_c:   '21,0,1'
+  res.u0.on2.intensity_d:   '22,0,1'
+  res.u0.on2.intensity_e:   '23,0,1'
+  res.u0.on2.intensity_f:   '24,0,1'
+
+  res.u1.btn.intensity_g:   '18,0,2'
+  res.u1.color.color_a:     '6,0,2'
+  res.u1.color.color_b:     '7,0,2'
+  res.u1.color.color_c:     '8,0,2'
+  res.u1.color.color_d:     '9,0,2'
+  res.u1.color.color_e:     '10,0,2'
+  res.u1.color.color_f:     '11,0,2'
+  res.u1.off.intensity_a:   '12,0,2'
+  res.u1.off.intensity_b:   '13,0,2'
+  res.u1.off.intensity_c:   '14,0,2'
+  res.u1.off.intensity_d:   '15,0,2'
+  res.u1.off.intensity_e:   '16,0,2'
+  res.u1.off.intensity_f:   '17,0,2'
+  res.u1.on.intensity_a:    '0,0,2'
+  res.u1.on.intensity_b:    '1,0,2'
+  res.u1.on.intensity_c:    '2,0,2'
+  res.u1.on.intensity_d:    '3,0,2'
+  res.u1.on.intensity_e:    '4,0,2'
+  res.u1.on.intensity_f:    '5,0,2'
+  res.u1.on2.intensity_a:   '19,0,2'
+  res.u1.on2.intensity_b:   '20,0,2'
+  res.u1.on2.intensity_c:   '21,0,2'
+  res.u1.on2.intensity_d:   '22,0,2'
+  res.u1.on2.intensity_e:   '23,0,2'
+  res.u1.on2.intensity_f:   '24,0,2'
+
+  res.u2.btn.intensity_g:   '18,0,3'
+  res.u2.color.color_a:     '6,0,3'
+  res.u2.color.color_b:     '7,0,3'
+  res.u2.color.color_c:     '8,0,3'
+  res.u2.color.color_d:     '9,0,3'
+  res.u2.color.color_e:     '10,0,3'
+  res.u2.color.color_f:     '11,0,3'
+  res.u2.off.intensity_a:   '12,0,3'
+  res.u2.off.intensity_b:   '13,0,3'
+  res.u2.off.intensity_c:   '14,0,3'
+  res.u2.off.intensity_d:   '15,0,3'
+  res.u2.off.intensity_e:   '16,0,3'
+  res.u2.off.intensity_f:   '17,0,3'
+  res.u2.on.intensity_a:    '0,0,3'
+  res.u2.on.intensity_b:    '1,0,3'
+  res.u2.on.intensity_c:    '2,0,3'
+  res.u2.on.intensity_d:    '3,0,3'
+  res.u2.on.intensity_e:    '4,0,3'
+  res.u2.on.intensity_f:    '5,0,3'
+  res.u2.on2.intensity_a:   '19,0,3'
+  res.u2.on2.intensity_b:   '20,0,3'
+  res.u2.on2.intensity_c:   '21,0,3'
+  res.u2.on2.intensity_d:   '22,0,3'
+  res.u2.on2.intensity_e:   '23,0,3'
+  res.u2.on2.intensity_f:   '24,0,3'
+
+  res.u3.btn.intensity_g:   '18,0,4'
+  res.u3.color.color_a:     '6,0,4'
+  res.u3.color.color_b:     '7,0,4'
+  res.u3.color.color_c:     '8,0,4'
+  res.u3.color.color_d:     '9,0,4'
+  res.u3.color.color_e:     '10,0,4'
+  res.u3.color.color_f:     '11,0,4'
+  res.u3.off.intensity_a:   '12,0,4'
+  res.u3.off.intensity_b:   '13,0,4'
+  res.u3.off.intensity_c:   '14,0,4'
+  res.u3.off.intensity_d:   '15,0,4'
+  res.u3.off.intensity_e:   '16,0,4'
+  res.u3.off.intensity_f:   '17,0,4'
+  res.u3.on.intensity_a:    '0,0,4'
+  res.u3.on.intensity_b:    '1,0,4'
+  res.u3.on.intensity_c:    '2,0,4'
+  res.u3.on.intensity_d:    '3,0,4'
+  res.u3.on.intensity_e:    '4,0,4'
+  res.u3.on.intensity_f:    '5,0,4'
+  res.u3.on2.intensity_a:   '19,0,4'
+  res.u3.on2.intensity_b:   '20,0,4'
+  res.u3.on2.intensity_c:   '21,0,4'
+  res.u3.on2.intensity_d:   '22,0,4'
+  res.u3.on2.intensity_e:   '23,0,4'
+  res.u3.on2.intensity_f:   '24,0,4'
+
 config:
   - [TestData, initAlive, '4', '', '', '', '', '', '', gray]
   - [TestData, updateLabels, '', '', '', '', '', '', '', gray]
@@ -386,33 +499,33 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u12_on.color', img.u12_on.contours, '*img.u12_on.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.a.cont', '0,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.b.cont', '1,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.c.cont', '2,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.d.cont', '3,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.e.cont', '4,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.f.cont', '5,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.a.cont', 'res.u0.on.intensity_a', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.b.cont', 'res.u0.on.intensity_b', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.c.cont', 'res.u0.on.intensity_c', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.d.cont', 'res.u0.on.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.e.cont', 'res.u0.on.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.f.cont', 'res.u0.on.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.a.leds', '6,0,1', '240,240,240', '0,COLOR_A,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.b.leds', '7,0,1', '240,240,240', '0,COLOR_B,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.c.leds', '8,0,1', '240,240,240', '0,COLOR_C,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.d.leds', '9,0,1', '240,240,240', '0,COLOR_D,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.e.leds', '10,0,1', '240,240,240', '0,COLOR_E,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.f.leds', '11,0,1', '240,240,240', '0,COLOR_F,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.a.leds', 'res.u0.color.color_a', '240,240,240', '0,COLOR_A,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.b.leds', 'res.u0.color.color_b', '240,240,240', '0,COLOR_B,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.c.leds', 'res.u0.color.color_c', '240,240,240', '0,COLOR_C,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.d.leds', 'res.u0.color.color_d', '240,240,240', '0,COLOR_D,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.e.leds', 'res.u0.color.color_e', '240,240,240', '0,COLOR_E,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.f.leds', 'res.u0.color.color_f', '240,240,240', '0,COLOR_F,min', IMPRO_EX, '0']
   - []
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.a.cont', '0,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.b.cont', '1,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.c.cont', '2,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.d.cont', '3,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.e.cont', '4,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.f.cont', '5,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.a.cont', 'res.u1.on.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.b.cont', 'res.u1.on.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.c.cont', 'res.u1.on.intensity_c', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.d.cont', 'res.u1.on.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.e.cont', 'res.u1.on.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.f.cont', 'res.u1.on.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.a.leds', '6,0,2', '240,240,240', '1,COLOR_A,min', IMPRO_EX, '1']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.b.leds', '7,0,2', '240,240,240', '1,COLOR_B,min', IMPRO_EX, '1']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.c.leds', '8,0,2', '240,240,240', '1,COLOR_C,min', IMPRO_EX, '1']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.d.leds', '9,0,2', '240,240,240', '1,COLOR_D,min', IMPRO_EX, '1']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.e.leds', '10,0,2', '240,240,240', '1,COLOR_E,min', IMPRO_EX, '1']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.f.leds', '11,0,2', '240,240,240', '1,COLOR_F,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.a.leds', 'res.u1.color.color_a', '240,240,240', '1,COLOR_A,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.b.leds', 'res.u1.color.color_b', '240,240,240', '1,COLOR_B,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.c.leds', 'res.u1.color.color_c', '240,240,240', '1,COLOR_C,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.d.leds', 'res.u1.color.color_d', '240,240,240', '1,COLOR_D,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.e.leds', 'res.u1.color.color_e', '240,240,240', '1,COLOR_E,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.f.leds', 'res.u1.color.color_f', '240,240,240', '1,COLOR_F,min', IMPRO_EX, '1']
   - []
 
   # ----------------------------------------------------------------------
@@ -453,19 +566,19 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u12_off.color', img.u12_off.contours, '*img.u12_off.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.a.cont', '12,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.b.cont', '13,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.c.cont', '14,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.d.cont', '15,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.e.cont', '16,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.f.cont', '17,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.a.cont', 'res.u0.off.intensity_a', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.b.cont', 'res.u0.off.intensity_b', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.c.cont', 'res.u0.off.intensity_c', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.d.cont', 'res.u0.off.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.e.cont', 'res.u0.off.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.f.cont', 'res.u0.off.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.a.cont', '12,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.b.cont', '13,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.c.cont', '14,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.d.cont', '15,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.e.cont', '16,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.f.cont', '17,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.a.cont', 'res.u1.off.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.b.cont', 'res.u1.off.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.c.cont', 'res.u1.off.intensity_c', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.d.cont', 'res.u1.off.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.e.cont', 'res.u1.off.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.f.cont', 'res.u1.off.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - []
 
   # ----------------------------------------------------------------------
@@ -490,8 +603,8 @@ exec:
   - [ImageProcess, BGR2CONT, '', '*img.u12_btn.color', img.u12_btn.contours, '*img.u12_btn.binary', '100', IMPRO_EX, '0,1', Extract Contours from image]
   - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
   - []
-  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u0.g.cont', '18,0,1', min, '0,INTENSITY_G', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u1.g.cont', '18,0,2', min, '1,INTENSITY_G', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u0.g.cont', 'res.u0.btn.intensity_g', min, '0,INTENSITY_G', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u1.g.cont', 'res.u1.btn.intensity_g', min, '1,INTENSITY_G', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - []
 
   # ----------------------------------------------------------------------
@@ -521,19 +634,19 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u12_on2.color', img.u12_on2.contours, '*img.u12_on2.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.a.cont', '19,0,1', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.b.cont', '20,0,1', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.c.cont', '21,0,1', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.d.cont', '22,0,1', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.e.cont', '23,0,1', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.f.cont', '24,0,1', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.a.cont', 'res.u0.on2.intensity_a', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.b.cont', 'res.u0.on2.intensity_b', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.c.cont', 'res.u0.on2.intensity_c', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.d.cont', 'res.u0.on2.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.e.cont', 'res.u0.on2.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.f.cont', 'res.u0.on2.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.a.cont', '19,0,2', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.b.cont', '20,0,2', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.c.cont', '21,0,2', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.d.cont', '22,0,2', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.e.cont', '23,0,2', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.f.cont', '24,0,2', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.a.cont', 'res.u1.on2.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.b.cont', 'res.u1.on2.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.c.cont', 'res.u1.on2.intensity_c', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.d.cont', 'res.u1.on2.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.e.cont', 'res.u1.on2.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.f.cont', 'res.u1.on2.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - []
   - []
 
@@ -568,33 +681,33 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u34_on.color', img.u34_on.contours, '*img.u34_on.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.a.cont', '0,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.b.cont', '1,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.c.cont', '2,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.d.cont', '3,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.e.cont', '4,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.f.cont', '5,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.a.cont', 'res.u2.on.intensity_a', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.b.cont', 'res.u2.on.intensity_b', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.c.cont', 'res.u2.on.intensity_c', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.d.cont', 'res.u2.on.intensity_d', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.e.cont', 'res.u2.on.intensity_e', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u2.f.cont', 'res.u2.on.intensity_f', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.a.leds', '6,0,3', '240,240,240', '2,COLOR_A,min', IMPRO_EX, '2']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.b.leds', '7,0,3', '240,240,240', '2,COLOR_B,min', IMPRO_EX, '2']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.c.leds', '8,0,3', '240,240,240', '2,COLOR_C,min', IMPRO_EX, '2']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.d.leds', '9,0,3', '240,240,240', '2,COLOR_D,min', IMPRO_EX, '2']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.e.leds', '10,0,3', '240,240,240', '2,COLOR_E,min', IMPRO_EX, '2']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.f.leds', '11,0,3', '240,240,240', '2,COLOR_F,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.a.leds', 'res.u2.color.color_a', '240,240,240', '2,COLOR_A,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.b.leds', 'res.u2.color.color_b', '240,240,240', '2,COLOR_B,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.c.leds', 'res.u2.color.color_c', '240,240,240', '2,COLOR_C,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.d.leds', 'res.u2.color.color_d', '240,240,240', '2,COLOR_D,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.e.leds', 'res.u2.color.color_e', '240,240,240', '2,COLOR_E,min', IMPRO_EX, '2']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u2.f.leds', 'res.u2.color.color_f', '240,240,240', '2,COLOR_F,min', IMPRO_EX, '2']
   - []
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.a.cont', '0,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.b.cont', '1,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.c.cont', '2,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.d.cont', '3,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.e.cont', '4,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.f.cont', '5,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.a.cont', 'res.u3.on.intensity_a', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.b.cont', 'res.u3.on.intensity_b', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.c.cont', 'res.u3.on.intensity_c', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.d.cont', 'res.u3.on.intensity_d', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.e.cont', 'res.u3.on.intensity_e', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on.contours', '*led.u3.f.cont', 'res.u3.on.intensity_f', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.a.leds', '6,0,4', '240,240,240', '3,COLOR_A,min', IMPRO_EX, '3']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.b.leds', '7,0,4', '240,240,240', '3,COLOR_B,min', IMPRO_EX, '3']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.c.leds', '8,0,4', '240,240,240', '3,COLOR_C,min', IMPRO_EX, '3']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.d.leds', '9,0,4', '240,240,240', '3,COLOR_D,min', IMPRO_EX, '3']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.e.leds', '10,0,4', '240,240,240', '3,COLOR_E,min', IMPRO_EX, '3']
-  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.f.leds', '11,0,4', '240,240,240', '3,COLOR_F,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.a.leds', 'res.u3.color.color_a', '240,240,240', '3,COLOR_A,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.b.leds', 'res.u3.color.color_b', '240,240,240', '3,COLOR_B,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.c.leds', 'res.u3.color.color_c', '240,240,240', '3,COLOR_C,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.d.leds', 'res.u3.color.color_d', '240,240,240', '3,COLOR_D,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.e.leds', 'res.u3.color.color_e', '240,240,240', '3,COLOR_E,min', IMPRO_EX, '3']
+  - [ImageProcess, EVALLEDS, '*img.u34_on.color', '*led.u3.f.leds', 'res.u3.color.color_f', '240,240,240', '3,COLOR_F,min', IMPRO_EX, '3']
   - []
   - []
 
@@ -635,19 +748,19 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u34_off.color', img.u34_off.contours, '*img.u34_off.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.a.cont', '12,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.b.cont', '13,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.c.cont', '14,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.d.cont', '15,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.e.cont', '16,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.f.cont', '17,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.a.cont', 'res.u2.off.intensity_a', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.b.cont', 'res.u2.off.intensity_b', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.c.cont', 'res.u2.off.intensity_c', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.d.cont', 'res.u2.off.intensity_d', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.e.cont', 'res.u2.off.intensity_e', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u2.f.cont', 'res.u2.off.intensity_f', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.a.cont', '12,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.b.cont', '13,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.c.cont', '14,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.d.cont', '15,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.e.cont', '16,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.f.cont', '17,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.a.cont', 'res.u3.off.intensity_a', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.b.cont', 'res.u3.off.intensity_b', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.c.cont', 'res.u3.off.intensity_c', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.d.cont', 'res.u3.off.intensity_d', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.e.cont', 'res.u3.off.intensity_e', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.f.cont', 'res.u3.off.intensity_f', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - []
 
   # ----------------------------------------------------------------------
@@ -672,8 +785,8 @@ exec:
   - [ImageProcess, BGR2CONT, '', '*img.u34_btn.color', img.u34_btn.contours, '*img.u34_btn.binary', '100', IMPRO_EX, '2,3', Extract Contours from image]
   - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
   - []
-  - [ImageProcess, EVALCONT, '*img.u34_btn.contours', '*led.u2.g.cont', '18,0,3', min, '2,INTENSITY_G', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_btn.contours', '*led.u3.g.cont', '18,0,4', min, '3,INTENSITY_G', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_btn.contours', '*led.u2.g.cont', 'res.u2.btn.intensity_g', min, '2,INTENSITY_G', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_btn.contours', '*led.u3.g.cont', 'res.u3.btn.intensity_g', min, '3,INTENSITY_G', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - []
 
   # ----------------------------------------------------------------------
@@ -703,19 +816,19 @@ exec:
   - []
   - [ImageProcess, BGR2CONT, '', '*img.u34_on2.color', img.u34_on2.contours, '*img.u34_on2.binary', '180', IMPRO_EX, '2,3', Extract Contours from image]
   - []
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.a.cont', '19,0,3', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.b.cont', '20,0,3', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.c.cont', '21,0,3', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.d.cont', '22,0,3', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.e.cont', '23,0,3', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.f.cont', '24,0,3', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.a.cont', 'res.u2.on2.intensity_a', min, '2,INTENSITY_A', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.b.cont', 'res.u2.on2.intensity_b', min, '2,INTENSITY_B', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.c.cont', 'res.u2.on2.intensity_c', min, '2,INTENSITY_C', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.d.cont', 'res.u2.on2.intensity_d', min, '2,INTENSITY_D', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.e.cont', 'res.u2.on2.intensity_e', min, '2,INTENSITY_E', IMPRO_EX, '2', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u2.f.cont', 'res.u2.on2.intensity_f', min, '2,INTENSITY_F', IMPRO_EX, '2', Evaluate if any contour matches criteria]
   - []
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.a.cont', '19,0,4', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.b.cont', '20,0,4', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.c.cont', '21,0,4', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.d.cont', '22,0,4', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.e.cont', '23,0,4', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.f.cont', '24,0,4', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.a.cont', 'res.u3.on2.intensity_a', min, '3,INTENSITY_A', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.b.cont', 'res.u3.on2.intensity_b', min, '3,INTENSITY_B', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.c.cont', 'res.u3.on2.intensity_c', min, '3,INTENSITY_C', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.d.cont', 'res.u3.on2.intensity_d', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.e.cont', 'res.u3.on2.intensity_e', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.f.cont', 'res.u3.on2.intensity_f', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - []
 
   # ----------------------------------------------------------------------

@@ -13,7 +13,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal
 
-from ..engine.events import (AliveEvent, FieldEvent, GridEvent, LogEvent,
+from ..engine.events import (AliveEvent, FieldEvent, FrameEvent, GridEvent,
+                             LogEvent,
                              ProgressEvent, ResultEvent, RunStateEvent,
                              StatusEvent, StepEvent, TimerEvent, VerdictEvent)
 
@@ -29,6 +30,7 @@ class QtBridge(QObject):
     grid_changed = Signal(int, str, list, str, object)
     field_changed = Signal(str, str, object)
     alive_changed = Signal(list)
+    frame_ready = Signal(object, str, str, object)   # image, kind, units, row
     state_changed = Signal(str, str)
     verdict_reached = Signal(int, bool, str)   # uut, passed, detail
     finished = Signal(bool, object, str)
@@ -77,6 +79,10 @@ def _alive(self, e):
     self.alive_changed.emit(list(e.alive))
 
 
+def _frame(self, e):
+    self.frame_ready.emit(e.image, e.kind, e.units, e.row)
+
+
 def _state(self, e):
     self.state_changed.emit(e.state, e.detail)
 
@@ -98,6 +104,7 @@ QtBridge._DISPATCH = {
     GridEvent: _grid,
     FieldEvent: _field,
     AliveEvent: _alive,
+    FrameEvent: _frame,
     RunStateEvent: _state,
     VerdictEvent: _verdict,
     ResultEvent: _result,

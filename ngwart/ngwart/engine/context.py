@@ -98,6 +98,38 @@ class Context:
         with self._lock:
             return self.store.setdefault(name, {})
 
+    def release(self) -> list[str]:
+        """Close every instrument a run opened. Returns what could not be closed.
+
+        A COM port, a VISA session and a camera handle are all owned by the OS,
+        not by this object -- dropping the Context does not free them. Without
+        this, the next run's FINDPORT hits a port the previous run still holds,
+        and the operator sees a config failure on hardware that is working
+        perfectly. Changing program or starting a calibration is exactly when
+        that bites.
+
+        Deliberately forgiving: a handle that will not close is logged and the
+        rest are still released. One stuck camera must not strand three ports.
+        """
+        problems: list[str] = []
+        with self._lock:
+            state = {name: dict(bag) for name, bag in self.store.items()}
+
+        for driver, bag in state.items():
+            for kind, held in bag.items():
+                if not isinstance(held, dict):
+                    continue
+                for key, handle in held.items():
+                    closer = getattr(handle, "close", None)
+                    if not callable(closer):
+                        continue
+                    try:
+                        closer()
+                    except Exception as exc:  # noqa: BLE001
+                        problems.append(f"{driver}.{kind}[{key}]: {exc}")
+                held.clear()
+        return problems
+
     # -- events -----------------------------------------------------------
 
     def emit(self, event: Event) -> None:

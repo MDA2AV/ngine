@@ -54,6 +54,9 @@ ngwart/
     backends/       sim + real behind one protocol
     legacy.py       adopt unported v1 managers as-is
   ui/               PySide6; bridge.py is the only Qt<->engine seam
+                    the Operator tab shows the thresholded frame live, so a
+                    NOT_FOUND can be told from a threshold that erased a
+                    lit indicator
   reports/          XML / JSON / CSV from the run record
   calibration.py    coordinate sites, click resolution, the values file
 tools/calibration/  capture programs offered under Tools -> Calibrate
@@ -125,6 +128,26 @@ ERROR program: variable 'led.u2.d.cont' takes its value from key
 That is `check`, with the fixture cold. A key the file has and no variable claims
 is a warning, not an error — usually a renamed variable that left its value
 behind.
+
+### Bench sessions
+
+`Run selected step(s)` (`Ctrl+Return`) executes only the rows picked in the
+Program tab. The first selection carries `<Config>`, so the ports open and the
+fixture powers up; later ones do not, and run against the same context — so a
+step can use what an earlier selection produced. `INITDATA` is not repeated
+either, since it would clear the store.
+
+The fixture stays powered between selections. **End bench session**
+(`Ctrl+Shift+Return`) runs `<Teardown>` and releases the hardware; so does
+loading a different program, or closing the window.
+
+### Releasing the hardware
+
+A run closes every port, instrument and camera it opened, after teardown. A COM
+port is owned by the OS, not by the run — without this the next `FINDPORT` hits
+a port the previous run still holds, and the operator sees a config failure on
+hardware that is working perfectly. Changing program or starting a calibration
+is exactly when that used to bite.
 
 ### Keeping data across a re-init
 
