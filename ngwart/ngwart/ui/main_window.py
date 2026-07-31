@@ -996,20 +996,20 @@ class MainWindow(QMainWindow):
     # -- calibration ------------------------------------------------------
 
     def _build_calibrations(self) -> None:
-        """Fill Tools -> Calibrate from the programs that offer themselves."""
+        """Fill Tools -> Calibrate from the captures that offer themselves."""
         from .. import calibration as cal
 
         self.calibrate_menu.clear()
-        directory = loaders.pick_program_dir(
-            None, self.program.source if self.program else None)
+        directory = cal.calibration_dir(
+            self.program.source if self.program else None)
         self._calibrations = cal.calibrations(directory)
 
         if not self._calibrations:
             empty = self.calibrate_menu.addAction("No calibrations found")
             empty.setEnabled(False)
             self.calibrate_menu.setToolTip(
-                f"A calibration is a program in {directory} whose meta names "
-                f"what it calibrates.")
+                f"A calibration is a capture program in {directory} whose meta "
+                f"names what it calibrates.")
             return
 
         for calibration in self._calibrations:

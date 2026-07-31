@@ -21,6 +21,10 @@ cv2 = pytest.importorskip("cv2")
 
 import pathlib  # noqa: E402
 
+#: Calibration captures are tools, not test programs, so they live
+#: outside programs/.
+CAL_DIR = "tools/calibration"
+
 
 def build(**sections):
     doc = {"modules": {"Flow": "FlowManager", "Vision": "ImageProcessManager",
@@ -334,7 +338,7 @@ def test_capture_run_yields_a_frame_and_clickable_contours():
     """The whole phase-1 path, against the simulated camera."""
     from ngwart.engine.loaders import load
 
-    program = load("programs/demo_calibrate.yaml")
+    program = load("tools/calibration/demo_calibrate.yaml")
     result = cal.run_capture(program, simulate=True)
 
     assert result.ok
@@ -352,7 +356,7 @@ def test_teaching_the_demo_table_against_a_real_capture():
     from ngwart.engine.loaders import load
 
     sites, notes = cal.sites_from_program(load("programs/demo.yaml"))
-    result = cal.run_capture(load("programs/demo_calibrate.yaml"), simulate=True)
+    result = cal.run_capture(load("tools/calibration/demo_calibrate.yaml"), simulate=True)
 
     assert notes == []
     assert len(sites) == 4
@@ -489,7 +493,7 @@ def shifted():
 
 def _capture():
     from ngwart.engine.loaders import load
-    return cal.run_capture(load("programs/demo_calibrate.yaml"), simulate=True)
+    return cal.run_capture(load("tools/calibration/demo_calibrate.yaml"), simulate=True)
 
 
 def _sites():
@@ -860,7 +864,7 @@ def test_the_record_never_overwrites_the_values_file(tmp_path):
 
 def test_calibrations_are_discovered_from_their_own_meta():
     """A calibration declares itself; the station does not hold a list."""
-    found = cal.calibrations("programs")
+    found = cal.calibrations(CAL_DIR)
     titles = {c.title for c in found}
 
     assert {"LEDs A-F", "Button LED (G)"} <= titles
@@ -878,7 +882,7 @@ def test_each_calibration_is_one_exposure():
     from ngwart.engine.loaders import load
 
     settings = {}
-    for c in cal.calibrations("programs"):
+    for c in cal.calibrations(CAL_DIR):
         program = load(c.path)
         stages = cal.contour_rows(program)
         assert len(stages) == 1, f"{c.title} should take exactly one frame"
@@ -894,7 +898,7 @@ def test_each_calibration_is_one_exposure():
 def test_a_calibration_powers_every_board_and_leaves_no_magnet_on():
     from ngwart.engine.loaders import load
 
-    for c in cal.calibrations("programs"):
+    for c in cal.calibrations(CAL_DIR):
         program = load(c.path)
         assert not [r for r in program.rows if "EIMAN" in r.comment.upper()],             f"{c.title} energises the magnet"
         # Six relay closes: two positives per channel plus the shared returns.
@@ -1019,7 +1023,7 @@ def test_each_calibration_claims_its_own_sites():
     from ngwart.engine.loaders import load
 
     sites, _ = cal.sites_from_program(load("programs/cargo.yaml"))
-    by_title = {c.title: c for c in cal.calibrations("programs")}
+    by_title = {c.title: c for c in cal.calibrations(CAL_DIR)}
 
     af = by_title["LEDs A-F"].select(sites)
     g = by_title["Button LED (G)"].select(sites)
@@ -1053,7 +1057,7 @@ def test_calibrating_one_group_leaves_the_others_alone(tmp_path):
     for site in sites:
         site.file_path = str(values)
 
-    af = next(c for c in cal.calibrations("programs")
+    af = next(c for c in cal.calibrations(CAL_DIR)
               if c.title == "LEDs A-F").select(sites)
     for site in af:
         site.teach(site.cx + 4, site.cy + 3, area=1900.0)

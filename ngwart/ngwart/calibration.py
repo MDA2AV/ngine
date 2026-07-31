@@ -791,6 +791,30 @@ class Calibration:
         return [s for s in sites if self.covers(s)]
 
 
+#: Where calibration captures live, relative to where the station runs.
+#:
+#: Separate from programs/ on purpose: a calibration is a tool, not a test. It
+#: never produces a board result, and listing it in the program picker would
+#: invite someone to run it as one.
+CALIBRATION_DIR = os.path.join("tools", "calibration")
+
+
+def calibration_dir(program: str | None = None) -> str:
+    """The folder holding calibration captures.
+
+    ``tools/calibration`` beside the station, or beside the loaded program when
+    the station was launched from somewhere else.
+    """
+    if os.path.isdir(CALIBRATION_DIR):
+        return CALIBRATION_DIR
+    if program:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(program)))
+        candidate = os.path.join(root, CALIBRATION_DIR)
+        if os.path.isdir(candidate):
+            return candidate
+    return CALIBRATION_DIR
+
+
 def calibrations(directory: str) -> list[Calibration]:
     """Every calibration program in a directory, by title.
 

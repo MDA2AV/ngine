@@ -56,6 +56,8 @@ ngwart/
   ui/               PySide6; bridge.py is the only Qt<->engine seam
   reports/          XML / JSON / CSV from the run record
   calibration.py    coordinate sites, click resolution, the values file
+tools/calibration/  capture programs offered under Tools -> Calibrate
+programs/           test programs, and the values they load
 ```
 
 The engine never imports Qt and the UI never touches the data store. That seam
