@@ -1,6 +1,6 @@
-"""The teach window: click a contour, keep its centroid.
+"""The calibration window: click a contour, keep its centroid.
 
-A view over ``ngwart.teach``. It holds no rules of its own -- which blob a click
+A view over ``ngwart.calibration``. It holds no rules of its own -- which blob a click
 means, what a site is and what gets written are all decided there, so the same
 behaviour is under test headlessly.
 
@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox,
                                QMainWindow, QMessageBox, QPushButton,
                                QTableWidget, QTableWidgetItem, QWidget)
 
-from .. import teach as teachlib
+from .. import calibration as cal
 from . import theme
 from .widgets import Card
 
@@ -103,7 +103,7 @@ class ImageCanvas(QWidget):
         #: Smallest contour a click may select. Defaults to the runtime's floor;
         #: a calibration can lower it where the test does not have to find the
         #: blob (see Calibration.min_area).
-        self.noise_floor = teachlib.MIN_CONTOUR_PIXELS
+        self.noise_floor = cal.MIN_CONTOUR_PIXELS
 
         self._zoom = 1.0
         self._pan = QPointF(0, 0)
@@ -143,7 +143,7 @@ class ImageCanvas(QWidget):
 
     def set_contours(self, contours) -> None:
         self._contours = list(contours or [])
-        self._blobs = teachlib.measure(self._contours, self.noise_floor)
+        self._blobs = cal.measure(self._contours, self.noise_floor)
         self._polygons = []
         for contour in self._contours:
             points = [QPointF(float(p[0][0]), float(p[0][1])) for p in contour]
@@ -248,7 +248,7 @@ class ImageCanvas(QWidget):
         if event.button() != Qt.LeftButton:
             return
         point = self.to_image(QPointF(event.position()))
-        blob = teachlib.blob_at(self._contours, point.x(), point.y(),
+        blob = cal.blob_at(self._contours, point.x(), point.y(),
                                 PICK_RADIUS, self.noise_floor)
         if blob is not None:
             self.picked.emit(blob.cx, blob.cy, blob.area)
@@ -281,7 +281,7 @@ class ImageCanvas(QWidget):
                 self.rect(), Qt.AlignCenter,
                 "No frame to show.\n\n"
                 "The capture ran but its image could not be read.\n"
-                "Look in debug/teach for what it wrote.")
+                "Look in debug/calibration for what it wrote.")
             painter.end()
             return
 
@@ -350,7 +350,7 @@ class ImageCanvas(QWidget):
                 painter.drawEllipse(QPointF(site.cx, site.cy), reach, reach)
 
 
-class TeachWindow(QMainWindow):
+class CalibrationWindow(QMainWindow):
     """Teach every coordinate site in a program, then write the file."""
 
     def __init__(self, sites: list, capture, notes: list[str],
@@ -368,7 +368,7 @@ class TeachWindow(QMainWindow):
         self._free_form = not sites
         self._saved_to = ""
 
-        self.setWindowTitle(f"NGWART -- teach coordinates "
+        self.setWindowTitle(f"NGWART -- calibrate coordinates "
                             f"[{meta.get('capture_program', '')}]")
         self.setStyleSheet(theme.stylesheet(dark))
         self.resize(1360, 860)
@@ -548,14 +548,14 @@ class TeachWindow(QMainWindow):
 
         Everything a run captured is still in its data store, so switching is a
         re-read rather than another picture. Without this, a table that captures
-        per board pair can only ever teach the pair that happened to be lit in
+        per board pair can only ever calibrate the pair that was lit in
         the first frame.
         """
-        from .. import teach as teachlib
+        from .. import calibration as cal
 
         if self.program is None or context is None:
             return
-        rows = teachlib.contour_rows(self.program)
+        rows = cal.contour_rows(self.program)
         if len(rows) < 2:
             return
 
@@ -573,14 +573,14 @@ class TeachWindow(QMainWindow):
         self.capture_label.setVisible(True)
 
     def _choose_capture(self, index: int) -> None:
-        from .. import teach as teachlib
+        from .. import calibration as cal
 
         context = getattr(self, "_context", None)
         if context is None or index < 0:
             return
         row_index = self.capture_pick.itemData(index)
         try:
-            capture = teachlib.capture_from_context(
+            capture = cal.capture_from_context(
                 self.program, context, row_index=row_index)
         except Exception as exc:  # noqa: BLE001
             self.status.setText(f"Could not read that capture: {exc}")
@@ -663,7 +663,7 @@ class TeachWindow(QMainWindow):
             # No table to teach against, so each click is a new site. Recording
             # `was` as the clicked point keeps the delta honest at zero rather
             # than inventing a drift against a coordinate nobody declared.
-            site = teachlib.Site(uut=None, cx=cx, cy=cy, tol=PICK_RADIUS / 4)
+            site = cal.Site(uut=None, cx=cx, cy=cy, tol=PICK_RADIUS / 4)
             site.teach(cx, cy, area)
             site.note = f"SITE_{len(self.sites) + 1}"
             self.sites.append(site)
@@ -730,24 +730,24 @@ class TeachWindow(QMainWindow):
     # -- output -----------------------------------------------------------
 
     def _announce(self) -> None:
-        text = teachlib.summarise(self.sites)
+        text = cal.summarise(self.sites)
         blobs = len(self.canvas.blobs)
         floor = self.canvas.noise_floor
         text += f"  {blobs} contour(s) at or above {floor}px."
-        if floor < teachlib.MIN_CONTOUR_PIXELS:
+        if floor < cal.MIN_CONTOUR_PIXELS:
             # Said out loud, because it is a deliberate relaxation of the
             # rule that stops a site being taught to a blob the test skips.
-            text += (f"  Floor lowered from {teachlib.MIN_CONTOUR_PIXELS} "
+            text += (f"  Floor lowered from {cal.MIN_CONTOUR_PIXELS} "
                      f"for this calibration.")
 
         if self.capture_pick.isVisible() and self.sites:
-            # Which sites this frame can actually teach. A capture taken with
+            # Which sites this frame can actually cal. A capture taken with
             # one board pair powered has nothing to click for the other, and
             # silence about that reads as "these LEDs are dead".
             reach = max((s.tol for s in self.sites), default=40) * 4
             visible = sum(
                 1 for s in self.sites
-                if teachlib.blob_at(self.capture.contours, s.cx, s.cy, reach,
+                if cal.blob_at(self.capture.contours, s.cx, s.cy, reach,
                                     self.canvas.noise_floor))
             text += (f"  {visible} of {len(self.sites)} site(s) have a contour "
                      f"in this capture.")
@@ -774,7 +774,7 @@ class TeachWindow(QMainWindow):
                                     "No site has been taught yet.")
             return
         try:
-            written = teachlib.save(path, self.sites, meta=self.meta,
+            written = cal.save(path, self.sites, meta=self.meta,
                                     notes=self.notes, program=self.program)
         except OSError as exc:
             QMessageBox.critical(self, "Could not save", str(exc))

@@ -45,9 +45,9 @@ exec:
   - [Flow, LABEL, START, 'LEDS A-F', '', '#4C9AFF', '', '', '', yellow]
   - [TestData, STARTALIVE]
   - [TestData, INITDATA, '40', '3', '32']
-  - [Flow, CREATEDIR, 'debug/teach', '', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/teach/leds_af.jpg', '*img.path', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/teach/leds_af_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
+  - [Flow, CREATEDIR, 'debug/calibration', '', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/leds_af.jpg', '*img.path', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/leds_af_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
 
   # Clear the fixture, then power all four boards. Reset only, no EIMAN:
   # nothing needs actuating to see an indicator, and an unenergised magnet keeps

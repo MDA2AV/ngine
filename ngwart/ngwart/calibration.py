@@ -25,7 +25,7 @@ clicking instead:
   test would then refuse to see;
 * it writes what was taught, against which rows, in a file phase 2 applies.
 
-Nothing here imports Qt. ``ui/teach_window.py`` is a view over these objects and
+Nothing here imports Qt. ``ui/calibration_window.py`` is a view over these objects and
 the tests drive them headlessly.
 """
 
@@ -132,7 +132,7 @@ class Ref:
     #: Index within a ';'-separated cell; 0 for the single-group verbs.
     group: int
     #: The cell exactly as it stands, so phase 2 can diff against it and refuse
-    #: to write if the table changed under the teach file.
+    #: to write if the table changed under the calibration.
     cell: str
     test_id: str
     uut: int | None
@@ -170,7 +170,7 @@ class Site:
     file_key: str = ""
     file_path: str = ""
     #: False when the table declares this site but the file has no entry yet --
-    #: a first teach. cx/cy are then 0 and mean nothing.
+    #: a first cal. cx/cy are then 0 and mean nothing.
     known: bool = True
 
     #: Filled in by the operator. None until the site has been taught.
@@ -524,7 +524,7 @@ def write_coords(path: str, sites: list, meta: dict | None = None) -> str:
             doc[ref.cell_key] = (ref.rewritten(*point) if point else ref.cell)
 
     if meta:
-        doc["_teach"] = dict(meta)
+        doc["_calibration"] = dict(meta)
 
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
@@ -554,7 +554,7 @@ def sites_from_program(program: Program) -> tuple[list[Site], list[str]]:
         if verb in LIST_VERBS:
             notes.append(
                 f"row {row.index}: {row.verb} keeps its coordinates as parallel "
-                f"lists across columns 3 and 4 -- teach those by hand for now")
+                f"lists across columns 3 and 4 -- set those by hand for now")
             continue
 
         layout = COORD_VERBS.get(verb)
@@ -668,7 +668,7 @@ def _resolve_path(program: Program, path: str) -> str:
 
     Tables name it relative to where the station runs, which is normally the
     package root. Falling back to a path relative to the program itself means
-    `teach` works when it is invoked from somewhere else.
+    calibration works when it is invoked from somewhere else.
     """
     if not path or os.path.isabs(path):
         return path
@@ -755,7 +755,7 @@ class Calibration:
     product: str = ""
     notes: str = ""
     #: Glob over variable keys, naming the sites this capture can actually
-    #: teach. Without it the window lists every site in the table, including
+    #: cal. Without it the window lists every site in the table, including
     #: the ones invisible at this exposure -- which an operator has no way to
     #: tell apart from ones they simply have not clicked yet.
     sites: str = ""
@@ -992,7 +992,7 @@ def capture_from_context(program: Program, ctx, *, row_index: int | None = None,
                          record=None) -> Capture:
     """Pull the frame and contours a finished run left in its data store.
 
-    Split out from run_capture so the operator station can teach from the run
+    Split out from run_capture so the operator station can calibrate from the run
     it *just did* -- which is the better moment for it. A board whose optical
     tests all reported NOT_FOUND has already produced the evidence; taking a
     second picture to look at it is a step nobody needs.
@@ -1128,7 +1128,7 @@ def blob_at(contours, x: float, y: float, radius: float = 40.0,
 
 def to_dict(sites: list[Site], *, meta: dict | None = None,
             notes: list[str] | None = None) -> dict:
-    """The teach result, in the shape phase 2 reads.
+    """The calibration result, in the shape an applier reads.
 
     Every ref carries the cell as it stood when the site was taught. That is
     what lets an applier refuse to write into a table someone edited in the
@@ -1182,14 +1182,14 @@ def to_dict(sites: list[Site], *, meta: dict | None = None,
 
 def save(path: str, sites: list[Site], *, meta: dict | None = None,
          notes: list[str] | None = None, program=None) -> list[str]:
-    """Write what a teach produced. Returns every path written.
+    """Write what a calibration produced. Returns every path written.
 
     Two outputs, because they answer different questions:
 
     * the **coordinates file** the program loads -- written only when the table
       actually reads one, and written in full so the next run cannot hit a
       missing key;
-    * the **teach record**, which carries the deltas, the rows that read each
+    * the **calibration record**, which carries the deltas, the rows that read each
       site, and what was left untaught. Nothing reads it at run time; it is
       what someone looks at to decide whether a re-teach was sane.
     """
@@ -1199,7 +1199,7 @@ def save(path: str, sites: list[Site], *, meta: dict | None = None,
         resolved = _resolve_path(program, target) if program is not None else target
         written.append(write_coords(
             resolved, [s for s in sites if s.file_path == target],
-            meta={"written_by": "ngwart teach",
+            meta={"written_by": "ngwart calibrate",
                   "at": datetime.now().isoformat(timespec="seconds"),
                   **{k: v for k, v in (meta or {}).items()
                      if k in ("capture_program", "target_program", "simulated",
@@ -1224,13 +1224,13 @@ def save(path: str, sites: list[Site], *, meta: dict | None = None,
 
 
 def load(path: str) -> dict:
-    """Read a teach file, checking the version rather than trusting it."""
+    """Read a calibration record, checking the version rather than trusting it."""
     with open(path, "r", encoding="utf-8") as fh:
         payload = json.load(fh)
     version = payload.get("version")
     if version != FORMAT_VERSION:
         raise LoaderError(
-            f"{path} is teach format version {version!r}, this build reads "
+            f"{path} is calibration format version {version!r}, this build reads "
             f"{FORMAT_VERSION}")
     return payload
 

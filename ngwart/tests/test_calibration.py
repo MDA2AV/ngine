@@ -12,7 +12,7 @@ import json
 import pytest
 
 import ngwart.drivers  # noqa: F401 - registers verbs
-from ngwart import teach
+from ngwart import calibration as cal
 from ngwart.drivers import imageproc
 from ngwart.engine.errors import LoaderError
 from ngwart.engine.loaders.native import from_dict
@@ -20,10 +20,6 @@ from ngwart.engine.loaders.native import from_dict
 cv2 = pytest.importorskip("cv2")
 
 import pathlib  # noqa: E402
-
-#: The pre-refactor table, kept by the working tree only while this change is
-#: unmerged. The equivalence test skips without it.
-OLD_CARGO = pathlib.Path(__file__).parent / "data" / "cargo_before_values.yaml"
 
 
 def build(**sections):
@@ -38,7 +34,7 @@ def build(**sections):
 def test_evalcont_row_becomes_a_site():
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "895,659,10,50,1", "*d", "min", "0,LED_A"]])
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert notes == []
     assert len(sites) == 1
@@ -59,7 +55,7 @@ def test_verbs_sharing_a_coordinate_make_one_site():
         ["Vision", "EVALLEDS", "*i", "895,659,10,50", "*d", "240,240,240", "0,COLOR_A"],
         ["Vision", "EVALCONTN", "*c", "895,659,10,50,1", "*d", "min", "0,INTENSITY_A"],
     ])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
     assert len(sites) == 1
     assert sites[0].tests == ["INTENSITY_A", "COLOR_A"]
@@ -72,7 +68,7 @@ def test_same_coordinate_on_different_units_stays_separate():
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "100,100,10,50,1", "*d", "min", "0,LED_A"],
         ["Vision", "EVALCONT", "*c", "100,100,10,50,1", "*d", "min", "1,LED_A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
     assert len(sites) == 2
     assert [s.uut for s in sites] == [0, 1]
@@ -83,7 +79,7 @@ def test_tightest_tolerance_wins():
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "50,50,20,50,1", "*d", "min", "0,A"],
         ["Vision", "EVALCONT", "*c", "50,50,5,50,1", "*d", "min", "0,A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     assert sites[0].tol == 5.0
 
 
@@ -91,7 +87,7 @@ def test_computed_coordinate_is_reported_not_dropped():
     """A site missing from the list is a test that silently keeps its old value."""
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "*where", "*d", "min", "0,LED_A"]])
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert sites == []
     assert any("cannot be taught" in n for n in notes)
@@ -100,7 +96,7 @@ def test_computed_coordinate_is_reported_not_dropped():
 def test_evalconts_is_reported_as_unsupported():
     program = build(exec=[
         ["Vision", "EVALCONTS", "*c", "10;20", "30;40", "5", "50;50"]])
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert sites == []
     assert any("EVALCONTS" in n for n in notes)
@@ -110,7 +106,7 @@ def test_evalleds_accepts_several_leds_in_one_cell():
     program = build(exec=[
         ["Vision", "EVALLEDS", "*i", "10,20,5,50;30,40,5,50", "*d",
          "240,240,240", "0,COLOR_A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
     assert [(s.cx, s.cy) for s in sites] == [(10, 20), (30, 40)]
     assert [r.group for s in sites for r in s.refs] == [0, 1]
@@ -122,7 +118,7 @@ def test_rewrite_keeps_everything_but_the_coordinate():
     """Tolerance, minimum area and calibration were qualified against boards."""
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "895,659,10,50,1.5", "*d", "min", "0,LED_A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
     assert sites[0].refs[0].rewritten(900, 662) == "900,662,10,50,1.5"
 
@@ -131,7 +127,7 @@ def test_rewrite_touches_only_its_own_group():
     program = build(exec=[
         ["Vision", "EVALLEDS", "*i", "10,20,5,50;30,40,5,50", "*d",
          "240,240,240", "0,COLOR_A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
     assert sites[1].refs[0].rewritten(99, 88) == "10,20,5,50;99,88,5,50"
 
@@ -141,7 +137,7 @@ def test_rewrite_touches_only_its_own_group():
 def test_delta_and_tolerance_verdict():
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "100,100,10,50,1", "*d", "min", "0,LED_A"]])
-    site = teach.sites_from_program(program)[0][0]
+    site = cal.sites_from_program(program)[0][0]
 
     assert site.delta is None
     site.teach(104, 97, area=1890.0)
@@ -161,7 +157,7 @@ def test_pipeline_is_walked_back_to_the_colour_frame():
         ["Vision", "BGR2GRAY", "*img.raw", "", "*img.grey"],
         ["Vision", "GRAY2BIN", "*img.grey", "", "*img.binary", "", "100"],
         ["Vision", "BIN2CONT", "*img.binary", "", "*img.contours"]])
-    cells = teach.find_capture(program)
+    cells = cal.find_capture(program)
 
     assert cells.contours == "*img.contours"
     assert cells.binary.cell == "*img.binary"
@@ -180,7 +176,7 @@ def test_walk_stops_at_the_capture_not_the_camera_serial():
         ["Vision", "BGR2GRAY", "*img.raw", "", "*img.grey"],
         ["Vision", "BIN2CONT", "*img.grey", "", "*img.contours"]])
 
-    assert teach.find_capture(program).frame.cell == "*img.raw"
+    assert cal.find_capture(program).frame.cell == "*img.raw"
 
 
 def test_path_based_pipeline_is_recognised():
@@ -189,7 +185,7 @@ def test_path_based_pipeline_is_recognised():
         ["Camera", "CAPTURE", "UB101256", "*img.color"],
         ["Vision", "BGR2CONT", "", "*img.color", "img.contours", "*img.binary",
          "180"]])
-    cells = teach.find_capture(program)
+    cells = cal.find_capture(program)
 
     assert (cells.frame.cell, cells.frame.is_path) == ("*img.color", True)
     assert (cells.binary.cell, cells.binary.is_path) == ("*img.binary", True)
@@ -199,7 +195,7 @@ def test_path_based_pipeline_is_recognised():
 def test_program_without_contours_says_so():
     program = build(exec=[["Camera", "CAPTURE", "UB101256", "", "*img.raw"]])
     with pytest.raises(LoaderError, match="no \\*2CONT row"):
-        teach.find_capture(program)
+        cal.find_capture(program)
 
 
 def test_contour_row_can_be_chosen():
@@ -207,12 +203,12 @@ def test_contour_row_can_be_chosen():
     program = build(exec=[
         ["Vision", "BIN2CONT", "*a", "", "*ca"],
         ["Vision", "BIN2CONT", "*b", "", "*cb"]])
-    first, second = (r.index for r in teach.contour_rows(program))
+    first, second = (r.index for r in cal.contour_rows(program))
 
-    assert teach.find_capture(program).contours == "*ca"
-    assert teach.find_capture(program, row_index=second).contours == "*cb"
+    assert cal.find_capture(program).contours == "*ca"
+    assert cal.find_capture(program, row_index=second).contours == "*cb"
     with pytest.raises(LoaderError, match="not a \\*2CONT row"):
-        teach.find_capture(program, row_index=first - 1)
+        cal.find_capture(program, row_index=first - 1)
 
 
 # --- clicking -----------------------------------------------------------
@@ -231,7 +227,7 @@ def _discs(centres, radius=18, size=(240, 640)):
 def test_measure_matches_the_runtime_centroid():
     """The taught value must be the number _find_at will compare against."""
     _, contours = _discs([(128, 120)])
-    blob = teach.measure(contours)[0]
+    blob = cal.measure(contours)[0]
 
     moments = cv2.moments(contours[0])
     assert (blob.cx, blob.cy) == (int(moments["m10"] / moments["m00"]),
@@ -241,13 +237,13 @@ def test_measure_matches_the_runtime_centroid():
 def test_specks_below_the_noise_floor_are_invisible():
     """The runtime skips them, so a site must never be teachable to one."""
     _, contours = _discs([(100, 100), (200, 100)], radius=2)
-    assert teach.measure(contours) == []
-    assert teach.blob_at(contours, 100, 100) is None
+    assert cal.measure(contours) == []
+    assert cal.blob_at(contours, 100, 100) is None
 
 
 def test_click_inside_a_contour_snaps_to_its_centroid():
     _, contours = _discs([(128, 120)])
-    blob = teach.blob_at(contours, 133, 126)
+    blob = cal.blob_at(contours, 133, 126)
 
     assert blob is not None
     assert (blob.cx, blob.cy) == (128, 120)
@@ -255,18 +251,18 @@ def test_click_inside_a_contour_snaps_to_its_centroid():
 
 def test_click_near_a_contour_still_finds_it():
     _, contours = _discs([(128, 120)])
-    assert teach.blob_at(contours, 150, 120) is not None
+    assert cal.blob_at(contours, 150, 120) is not None
 
 
 def test_click_in_empty_space_finds_nothing():
     _, contours = _discs([(128, 120)])
-    assert teach.blob_at(contours, 500, 20) is None
+    assert cal.blob_at(contours, 500, 20) is None
 
 
 def test_click_between_two_blobs_takes_the_nearer():
     _, contours = _discs([(100, 120), (200, 120)])
-    assert teach.blob_at(contours, 130, 120).cx == 100
-    assert teach.blob_at(contours, 170, 120).cx == 200
+    assert cal.blob_at(contours, 130, 120).cx == 100
+    assert cal.blob_at(contours, 170, 120).cx == 200
 
 
 # --- the file -----------------------------------------------------------
@@ -275,16 +271,16 @@ def test_saved_file_carries_what_phase_two_needs(tmp_path):
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "895,659,10,50,1", "*d", "min", "0,INTENSITY_A"],
         ["Vision", "EVALLEDS", "*i", "895,659,10,50", "*d", "240,240,240", "0,COLOR_A"]])
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
     # Further than the 10px window, so this is a site the old table could not
     # have found -- which is the case the file exists to fix.
     sites[0].teach(910, 675, area=1890.0)
 
     path = tmp_path / "coords.json"
-    teach.save(str(path), sites, meta={"capture_program": "cap.yaml"}, notes=notes)
+    cal.save(str(path), sites, meta={"capture_program": "cap.yaml"}, notes=notes)
     payload = json.loads(path.read_text())
 
-    assert payload["version"] == teach.FORMAT_VERSION
+    assert payload["version"] == cal.FORMAT_VERSION
     entry = payload["sites"][0]
     assert entry["was"] == {"cx": 895, "cy": 659}
     assert entry["now"] == {"cx": 910, "cy": 675}
@@ -304,11 +300,11 @@ def test_untaught_sites_are_left_out_of_the_file(tmp_path):
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "10,10,5,50,1", "*d", "min", "0,A"],
         ["Vision", "EVALCONT", "*c", "20,20,5,50,1", "*d", "min", "0,B"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     sites[0].teach(11, 11)
 
     path = tmp_path / "coords.json"
-    teach.save(str(path), sites)
+    cal.save(str(path), sites)
 
     payload = json.loads(path.read_text())
     assert [s["tests"] for s in payload["sites"]] == [["A"]]
@@ -318,18 +314,18 @@ def test_load_rejects_a_future_format(tmp_path):
     path = tmp_path / "coords.json"
     path.write_text(json.dumps({"version": 99, "sites": []}))
     with pytest.raises(LoaderError, match="format version"):
-        teach.load(str(path))
+        cal.load(str(path))
 
 
 def test_round_trip(tmp_path):
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "10,10,5,50,1", "*d", "min", "0,A"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     sites[0].teach(12, 9, area=400.0)
 
     path = tmp_path / "coords.json"
-    teach.save(str(path), sites)
-    assert teach.load(str(path))["sites"][0]["now"] == {"cx": 12, "cy": 9}
+    cal.save(str(path), sites)
+    assert cal.load(str(path))["sites"][0]["now"] == {"cx": 12, "cy": 9}
 
 
 # --- end to end ---------------------------------------------------------
@@ -338,30 +334,30 @@ def test_capture_run_yields_a_frame_and_clickable_contours():
     """The whole phase-1 path, against the simulated camera."""
     from ngwart.engine.loaders import load
 
-    program = load("programs/teach_capture.yaml")
-    result = teach.run_capture(program, simulate=True)
+    program = load("programs/demo_calibrate.yaml")
+    result = cal.run_capture(program, simulate=True)
 
     assert result.ok
     assert result.frame is not None and result.frame.ndim == 3   # colour
     assert result.binary is not None and result.binary.ndim == 2  # thresholded
 
-    blobs = teach.measure(result.contours)
+    blobs = cal.measure(result.contours)
     assert len(blobs) == 4
     # Every blob the operator can see is one a click resolves to.
     for blob in blobs:
-        assert teach.blob_at(result.contours, blob.cx, blob.cy) == blob
+        assert cal.blob_at(result.contours, blob.cx, blob.cy) == blob
 
 
 def test_teaching_the_demo_table_against_a_real_capture():
     from ngwart.engine.loaders import load
 
-    sites, notes = teach.sites_from_program(load("programs/demo.yaml"))
-    result = teach.run_capture(load("programs/teach_capture.yaml"), simulate=True)
+    sites, notes = cal.sites_from_program(load("programs/demo.yaml"))
+    result = cal.run_capture(load("programs/demo_calibrate.yaml"), simulate=True)
 
     assert notes == []
     assert len(sites) == 4
     for site in sites:
-        blob = teach.blob_at(result.contours, site.cx, site.cy)
+        blob = cal.blob_at(result.contours, site.cx, site.cy)
         assert blob is not None, f"{site.label} has no contour to teach to"
         site.teach(blob.cx, blob.cy, blob.area)
 
@@ -369,7 +365,7 @@ def test_teaching_the_demo_table_against_a_real_capture():
     # teach must report no drift at all -- a non-zero delta here would mean the
     # centroid rule had drifted from the runtime's.
     assert all(s.delta == (0, 0) for s in sites)
-    assert "4 of 4" in teach.summarise(sites)
+    assert "4 of 4" in cal.summarise(sites)
 
 
 # --- the window ---------------------------------------------------------
@@ -390,10 +386,10 @@ def app():
 
 
 def _window(app, sites=None, capture=None):
-    from ngwart.ui.teach_window import TeachWindow
+    from ngwart.ui.teach_window import CalibrationWindow
 
     frame, contours = _discs([(100, 120), (300, 120)])
-    window = TeachWindow(sites=sites if sites is not None else [],
+    window = CalibrationWindow(sites=sites if sites is not None else [],
                          capture=None, notes=[], meta={}, out_path="unused.json")
     window.set_capture(frame=frame, binary=frame, contours=contours)
     return window, contours
@@ -408,7 +404,7 @@ def test_click_teaches_the_selected_site_and_advances(app):
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "100,120,10,50,1", "*d", "min", "0,A"],
         ["Vision", "EVALCONT", "*c", "300,120,10,50,1", "*d", "min", "0,B"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     window, _ = _window(app, sites)
 
     window._select(0)
@@ -435,15 +431,15 @@ def test_saving_writes_only_taught_sites(app, tmp_path):
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "100,120,10,50,1", "*d", "min", "0,A"],
         ["Vision", "EVALCONT", "*c", "300,120,10,50,1", "*d", "min", "0,B"]])
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     window, _ = _window(app, sites)
     window.out_path = str(tmp_path / "coords.json")
 
     window._select(0)
     window._on_pick(100, 120, 900.0)
-    teach.save(window.out_path, window.sites, meta=window.meta)
+    cal.save(window.out_path, window.sites, meta=window.meta)
 
-    payload = teach.load(window.out_path)
+    payload = cal.load(window.out_path)
     assert [s["tests"] for s in payload["sites"]] == [["A"]]
 
 
@@ -460,14 +456,14 @@ def test_free_form_name_survives_a_table_refresh(app):
 
 
 def test_free_form_site_is_named_in_the_file(tmp_path):
-    site = teach.Site(uut=None, cx=100, cy=120, tol=10)
+    site = cal.Site(uut=None, cx=100, cy=120, tol=10)
     site.teach(100, 120, 900.0)
     site.note = "D14 POWER LED"
 
     path = tmp_path / "coords.json"
-    teach.save(str(path), [site])
+    cal.save(str(path), [site])
 
-    assert teach.load(str(path))["sites"][0]["name"] == "D14 POWER LED"
+    assert cal.load(str(path))["sites"][0]["name"] == "D14 POWER LED"
 
 
 # --- the whole point ----------------------------------------------------
@@ -493,19 +489,19 @@ def shifted():
 
 def _capture():
     from ngwart.engine.loaders import load
-    return teach.run_capture(load("programs/teach_capture.yaml"), simulate=True)
+    return cal.run_capture(load("programs/demo_calibrate.yaml"), simulate=True)
 
 
 def _sites():
     from ngwart.engine.loaders import load
-    return teach.sites_from_program(load("programs/demo.yaml"))[0]
+    return cal.sites_from_program(load("programs/demo.yaml"))[0]
 
 
 def test_unshifted_camera_needs_no_teaching():
     """The baseline: demo.yaml's coordinates are already right."""
     result = _capture()
     for site in _sites():
-        blob = teach.blob_at(result.contours, site.cx, site.cy)
+        blob = cal.blob_at(result.contours, site.cx, site.cy)
         assert blob is not None
         assert (blob.cx, blob.cy) == (site.cx, site.cy)
 
@@ -535,7 +531,7 @@ def test_teaching_recovers_a_moved_camera(shifted):
     # What an operator does: click each blob. Resolve the click from where the
     # LED now is, which is what they would see on the canvas.
     for site in sites:
-        blob = teach.blob_at(result.contours, site.cx + dx, site.cy + dy)
+        blob = cal.blob_at(result.contours, site.cx + dx, site.cy + dy)
         assert blob is not None, f"{site.label}: nothing to click"
         site.teach(blob.cx, blob.cy, blob.area)
 
@@ -560,7 +556,7 @@ def test_a_shift_inside_tolerance_is_reported_as_such(shifted):
     sites = _sites()
 
     for site in sites:
-        blob = teach.blob_at(result.contours, site.cx + 6, site.cy + 4)
+        blob = cal.blob_at(result.contours, site.cx + 6, site.cy + 4)
         site.teach(blob.cx, blob.cy, blob.area)
 
     assert {s.delta for s in sites} == {(6, 4)}
@@ -587,7 +583,7 @@ def build_factored():
 
 def test_a_referenced_coordinate_is_traced_to_its_store_row():
     program = build_factored()
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert notes == []
     assert len(sites) == 1
@@ -599,7 +595,7 @@ def test_a_referenced_coordinate_is_traced_to_its_store_row():
 def test_only_the_store_row_is_rewritten():
     """Four verbs read it; one row holds it. That ratio is the whole point."""
     program = build_factored()
-    site = teach.sites_from_program(program)[0][0]
+    site = cal.sites_from_program(program)[0][0]
 
     store_row = next(i for i in program.body("Exec")
                      if program.rows[i].verb == "STORE")
@@ -610,14 +606,14 @@ def test_only_the_store_row_is_rewritten():
 
 def test_tolerance_comes_from_the_composed_spec_not_the_store():
     """A STORE row holds only cx,cy -- the window is in the STOREF template."""
-    site = teach.sites_from_program(build_factored())[0][0]
+    site = cal.sites_from_program(build_factored())[0][0]
     assert site.tol == 10.0
 
 
 def test_a_chain_that_never_reaches_a_literal_is_reported():
     program = build(exec=[
         ["Vision", "EVALCONT", "*c", "*computed", "*d", "min", "0,LED_A"]])
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert sites == []
     assert any("cannot be taught" in n for n in notes)
@@ -703,7 +699,7 @@ def test_both_keys_of_one_led_are_one_site(tmp_path):
     """EVALCONT and EVALLEDS read different keys for the same physical LED."""
     program = build_valued(tmp_path, {"led.a.cont": "895,659,10,50,1",
                                       "led.a.leds": "895,659,10,50"})
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
 
     assert notes == []
     assert len(sites) == 1
@@ -717,11 +713,11 @@ def test_teaching_rewrites_the_file_keeping_each_tail(tmp_path):
     """One click moves both keys; the tolerances stay where they were."""
     program = build_valued(tmp_path, {"led.a.cont": "895,659,10,50,1",
                                       "led.a.leds": "895,659,10,50"})
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     sites[0].teach(898, 662, area=1900.0)
 
-    written = teach.save(str(tmp_path / "record.json"), sites, program=program)
-    values = teach.read_coords(written[0])
+    written = cal.save(str(tmp_path / "record.json"), sites, program=program)
+    values = cal.read_coords(written[0])
 
     assert values["led.a.cont"] == "898,662,10,50,1"
     assert values["led.a.leds"] == "898,662,10,50"
@@ -731,10 +727,10 @@ def test_untaught_sites_keep_their_value_in_the_file(tmp_path):
     """A partial file would abort the next run on the first missing key."""
     program = build_valued(tmp_path, {"led.a.cont": "895,659,10,50,1",
                                       "led.a.leds": "895,659,10,50"})
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
 
-    written = teach.save(str(tmp_path / "record.json"), sites, program=program)
-    values = teach.read_coords(written[0])
+    written = cal.save(str(tmp_path / "record.json"), sites, program=program)
+    values = cal.read_coords(written[0])
     assert values["led.a.cont"] == "895,659,10,50,1"
     assert len(values) == 2
 
@@ -749,7 +745,7 @@ def test_cargo_is_valued_from_its_file():
     assert program.values_source.endswith("cargo-coords.json")
     assert len(program.var_values) == 52          # 28 LEDs, 24 with a colour check
 
-    sites, notes = teach.sites_from_program(program)
+    sites, notes = cal.sites_from_program(program)
     assert notes == []
     assert len(sites) == 28
     assert sum(len(s.uses) for s in sites) == 100
@@ -759,32 +755,40 @@ def test_cargo_is_valued_from_its_file():
     assert sorted({s.tol for s in sites}) == [5.0, 10.0]
 
 
-def test_cargo_specs_resolve_to_what_they_replaced():
-    """The refactor must not have moved a single pixel."""
+def test_every_cargo_coordinate_row_resolves_to_a_usable_spec():
+    """The wiring from <Vars> through the values file to each verb.
+
+    The one-time migration off literals was verified against the pre-refactor
+    table at the time; git holds that. What is worth guarding from here on is
+    that every row still resolves to a spec of the shape its verb expects --
+    which is what breaks if someone renames a key or edits the file by hand.
+    """
     from ngwart.engine.context import Context
     from ngwart.engine.loaders import load
 
-    old = load(str(OLD_CARGO)) if OLD_CARGO.exists() else None
-    if old is None:
-        pytest.skip("original cargo.yaml not available")
+    program = load("programs/cargo.yaml")
+    assert program.value_problems == []
 
-    new = load("programs/cargo.yaml")
-    ctx = Context(new, simulate=True)
-    ctx.init_data(40, 3, 32)
+    ctx = Context(program, simulate=True)
+    ctx.init_data(40, 3, 32)                      # seeds every <Vars> value
 
-    def coord_rows(p):
-        return [r for r in p.rows if r.verb.upper() in teach.COORD_VERBS]
+    sites, _ = cal.sites_from_program(program)
+    by_row = {u.row: s for s in sites for u in s.uses}
 
-    a, b = coord_rows(old), coord_rows(new)
-    assert len(a) == len(b) == 100
-    for ra, rb in zip(a, b):
-        for col in range(10):
-            if col != 3:
-                assert ra.cells[col] == rb.cells[col]
-        assert ctx.text(rb.raw(3)) == ra.raw(3)
-
-
-# --- teaching from the operator station ---------------------------------
+    checked = 0
+    for row in program.rows:
+        verb = row.verb.upper()
+        if verb not in cal.COORD_VERBS:
+            continue
+        site = by_row[row.index]
+        fields = [f.strip() for f in ctx.text(row.raw(3)).split(",")]
+        assert (int(fields[0]), int(fields[1])) == (site.cx, site.cy)
+        # EVALLEDS wants four fields; the contour verbs five, or six with a
+        # per-site noise floor.
+        assert len(fields) in ((4,) if verb == "EVALLEDS" else (5, 6))
+        assert all(f.replace(".", "").replace("-", "").isdigit() for f in fields)
+        checked += 1
+    assert checked == 100
 
 def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
     """The whole point of putting it in the station.
@@ -797,7 +801,7 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
     dx, dy = shifted(45, 30)
     window = MainWindow(program_path="programs/demo.yaml", simulate=True,
                         history_path="")
-    assert not window.teach_action.isEnabled()      # nothing captured yet
+    assert not window.calibrate_last_action.isEnabled()      # nothing captured yet
 
     # The engine runs on a worker thread and reports through queued signals, so
     # the GUI thread has to actually sit in its event loop for them to arrive.
@@ -814,16 +818,16 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
         if not window.is_running and window._last_ctx is not None:
             break
     assert window._last_ctx is not None
-    assert window.teach_action.isEnabled()
+    assert window.calibrate_last_action.isEnabled()
 
-    window._teach_coordinates()
-    teach_window = window._teach_window
+    window._calibrate_from_last_run()
+    teach_window = window._calibration_window
     assert teach_window is not None
     assert len(teach_window.sites) == 4
     assert len(teach_window.canvas.blobs) == 4     # the frame from that run
 
     site = teach_window.sites[0]
-    blob = teach.blob_at(teach_window.capture.contours,
+    blob = cal.blob_at(teach_window.capture.contours,
                          site.cx + dx, site.cy + dy)
     teach_window._select(0)
     teach_window._on_pick(blob.cx, blob.cy, blob.area)
@@ -842,21 +846,21 @@ def test_the_record_never_overwrites_the_values_file(tmp_path):
     """
     program = build_valued(tmp_path, {"led.a.cont": "895,659,10,50,1",
                                       "led.a.leds": "895,659,10,50"})
-    sites, _ = teach.sites_from_program(program)
+    sites, _ = cal.sites_from_program(program)
     sites[0].teach(898, 662, area=1900.0)
 
     values_file = sites[0].file_path
-    written = teach.save(values_file, sites, program=program)   # same path!
+    written = cal.save(values_file, sites, program=program)   # same path!
 
     assert written[0] == values_file
     assert written[1] != values_file
     # The values survived and are still loadable.
-    assert teach.read_coords(values_file)["led.a.cont"] == "898,662,10,50,1"
+    assert cal.read_coords(values_file)["led.a.cont"] == "898,662,10,50,1"
 
 
 def test_calibrations_are_discovered_from_their_own_meta():
     """A calibration declares itself; the station does not hold a list."""
-    found = teach.calibrations("programs")
+    found = cal.calibrations("programs")
     titles = {c.title for c in found}
 
     assert {"LEDs A-F", "Button LED (G)"} <= titles
@@ -874,14 +878,14 @@ def test_each_calibration_is_one_exposure():
     from ngwart.engine.loaders import load
 
     settings = {}
-    for c in teach.calibrations("programs"):
+    for c in cal.calibrations("programs"):
         program = load(c.path)
-        stages = teach.contour_rows(program)
+        stages = cal.contour_rows(program)
         assert len(stages) == 1, f"{c.title} should take exactly one frame"
         exposures = [r.raw(3) for r in program.rows
                      if r.verb.upper() == "SETEXPOSURE" and r.module]
         settings[c.title] = (exposures[0],
-                             teach.find_capture(program).threshold)
+                             cal.find_capture(program).threshold)
 
     assert settings["LEDs A-F"] == ("120", 180.0)
     assert settings["Button LED (G)"] == ("20000", 100.0)
@@ -890,7 +894,7 @@ def test_each_calibration_is_one_exposure():
 def test_a_calibration_powers_every_board_and_leaves_no_magnet_on():
     from ngwart.engine.loaders import load
 
-    for c in teach.calibrations("programs"):
+    for c in cal.calibrations("programs"):
         program = load(c.path)
         assert not [r for r in program.rows if "EIMAN" in r.comment.upper()],             f"{c.title} energises the magnet"
         # Six relay closes: two positives per channel plus the shared returns.
@@ -909,7 +913,7 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
     dx, dy = shifted(45, 30)
     window = MainWindow(program_path="programs/demo.yaml", simulate=True,
                         history_path="")
-    assert not window.teach_action.isEnabled()      # nothing captured yet
+    assert not window.calibrate_last_action.isEnabled()      # nothing captured yet
 
     # The engine runs on a worker thread and reports through queued signals, so
     # the GUI thread has to actually sit in its event loop for them to arrive.
@@ -926,16 +930,16 @@ def test_the_station_teaches_from_the_run_it_just_did(app, shifted):
         if not window.is_running and window._last_ctx is not None:
             break
     assert window._last_ctx is not None
-    assert window.teach_action.isEnabled()
+    assert window.calibrate_last_action.isEnabled()
 
-    window._teach_coordinates()
-    teach_window = window._teach_window
+    window._calibrate_from_last_run()
+    teach_window = window._calibration_window
     assert teach_window is not None
     assert len(teach_window.sites) == 4
     assert len(teach_window.canvas.blobs) == 4     # the frame from that run
 
     site = teach_window.sites[0]
-    blob = teach.blob_at(teach_window.capture.contours,
+    blob = cal.blob_at(teach_window.capture.contours,
                          site.cx + dx, site.cy + dy)
     teach_window._select(0)
     teach_window._on_pick(blob.cx, blob.cy, blob.area)
@@ -979,11 +983,11 @@ def test_the_station_offers_each_calibration_and_runs_it(app):
     # A calibration is not a board: it gets its own banner, never a verdict.
     assert "CALIBRAT" in window.banner.text().upper()
     # It opened the canvas against cargo.yaml, whatever the frame held.
-    assert window._teach_window is not None
-    assert len(window._teach_window.sites) == 28
+    assert window._calibration_window is not None
+    assert len(window._calibration_window.sites) == 28
 
-    if window._teach_window is not None:
-        window._teach_window.close()
+    if window._calibration_window is not None:
+        window._calibration_window.close()
     window.close()
 
 
@@ -997,7 +1001,7 @@ def test_a_capture_frame_is_found_whatever_the_working_directory():
 
     program = load("programs/cargo_cal_leds.yaml")
     for workdir in (".", "programs", "tests"):
-        result = teach.run_capture(program, simulate=True, workdir=workdir)
+        result = cal.run_capture(program, simulate=True, workdir=workdir)
         assert result.frame is not None, f"no frame with workdir={workdir!r}"
         assert result.frame.ndim == 3
         assert result.binary is not None, f"no binary with workdir={workdir!r}"
@@ -1014,8 +1018,8 @@ def test_each_calibration_claims_its_own_sites():
     """
     from ngwart.engine.loaders import load
 
-    sites, _ = teach.sites_from_program(load("programs/cargo.yaml"))
-    by_title = {c.title: c for c in teach.calibrations("programs")}
+    sites, _ = cal.sites_from_program(load("programs/cargo.yaml"))
+    by_title = {c.title: c for c in cal.calibrations("programs")}
 
     af = by_title["LEDs A-F"].select(sites)
     g = by_title["Button LED (G)"].select(sites)
@@ -1045,15 +1049,15 @@ def test_calibrating_one_group_leaves_the_others_alone(tmp_path):
     shutil.copy("programs/cargo-coords.json", values)
     before = _json.loads(values.read_text())
 
-    sites, _ = teach.sites_from_program(load("programs/cargo.yaml"))
+    sites, _ = cal.sites_from_program(load("programs/cargo.yaml"))
     for site in sites:
         site.file_path = str(values)
 
-    af = next(c for c in teach.calibrations("programs")
+    af = next(c for c in cal.calibrations("programs")
               if c.title == "LEDs A-F").select(sites)
     for site in af:
         site.teach(site.cx + 4, site.cy + 3, area=1900.0)
-    teach.write_coords(str(values), af)
+    cal.write_coords(str(values), af)
 
     after = _json.loads(values.read_text())
     assert set(after) >= set(before), "keys were dropped"
@@ -1063,6 +1067,6 @@ def test_calibrating_one_group_leaves_the_others_alone(tmp_path):
 
 def test_a_calibration_without_a_sites_pattern_takes_everything():
     """Omitting `sites:` keeps the old behaviour rather than silently hiding."""
-    everything = teach.Calibration(path="x", title="all", target="y")
-    site = teach.Site(uut=0, cx=1, cy=2, tol=10, file_key="anything")
+    everything = cal.Calibration(path="x", title="all", target="y")
+    site = cal.Site(uut=0, cx=1, cy=2, tol=10, file_key="anything")
     assert everything.covers(site)

@@ -55,7 +55,7 @@ ngwart/
     legacy.py       adopt unported v1 managers as-is
   ui/               PySide6; bridge.py is the only Qt<->engine seam
   reports/          XML / JSON / CSV from the run record
-  teach.py          coordinate sites, click resolution, the teach file
+  calibration.py    coordinate sites, click resolution, the values file
 ```
 
 The engine never imports Qt and the UI never touches the data store. That seam
@@ -311,12 +311,7 @@ answer and images can:
 Send the whole folder. Off by default -- it writes images, so it costs disk and
 a little time per vision step.
 
-## Teaching LED coordinates
-
-```bash
-py run.py teach programs/teach_capture.yaml --target programs/cargo.yaml
-py run.py teach programs/teach_capture.yaml --target programs/cargo.yaml --list
-```
+## Calibrating LED coordinates
 
 Every optical test carries a nominal `cx,cy` in its arguments — `EVALCONT` and
 `EVALCONTN` as `cx,cy,tol,minarea,cal`, `EVALLEDS` as `cx,cy,crop,threshold`,
@@ -344,7 +339,6 @@ a frame behind.
 **Standalone**, when you would rather not run the whole product program:
 
 ```bash
-py run.py teach programs/cargo_capture.yaml --target programs/cargo.yaml
 ```
 
 That runs a **capture program** -- a small table that powers the fixture, takes
@@ -380,7 +374,7 @@ opens, so nobody is clicking with the supply on.
 
 ### The file
 
-`teach` rewrites the values file the program already loads. **The table is never
+A calibration rewrites the values file the program already loads. **The table is never
 touched.**
 
 ```json
@@ -410,7 +404,6 @@ coordinate that was already correct and nothing is proven.
 ```bash
 py run.py run   programs/demo.yaml --simulate                    # 8 points, 0 failed
 py run.py run   programs/demo.yaml --simulate --sim-shift 45,30  # 4 failed, both units
-py run.py teach programs/teach_capture.yaml --target programs/demo.yaml \
                 --simulate --sim-shift 45,30
 ```
 

@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
         #: Context of the last finished run. Holds the captured frame and the
         #: contours, which is what "Teach coordinates" clicks on.
         self._last_ctx = None
-        self._teach_window = None
+        self._calibration_window = None
         #: (Calibration, target Program) while a calibration capture runs.
         self._calibration = None
         self._calibrations = []
@@ -189,12 +189,12 @@ class MainWindow(QMainWindow):
         self.calibrate_menu = tools_menu.addMenu("&Calibrate")
         self._build_calibrations()
         tools_menu.addSeparator()
-        self.teach_action = self._action(
-            tools_menu, "&Teach from last run…", self._teach_coordinates, "Ctrl+E")
-        self.teach_action.setToolTip(
+        self.calibrate_last_action = self._action(
+            tools_menu, "Calibrate from &last run…", self._calibrate_from_last_run, "Ctrl+E")
+        self.calibrate_last_action.setToolTip(
             "Click each LED on the frame the last run captured, and write the "
             "new coordinates back to the program's values file.")
-        self.teach_action.setEnabled(False)
+        self.calibrate_last_action.setEnabled(False)
 
         view_menu = bar.addMenu("&View")
         for index, (name, key) in enumerate(
@@ -764,7 +764,7 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(not idle)
         self.stop_action.setEnabled(not idle)
         self.step_action.setEnabled(loaded and idle and self._program_ok)
-        self._sync_teach_action()
+        self._sync_calibrate_action()
 
     def _launch(self, program: Program, partial: int = 0) -> None:
         self._partial_run = partial
@@ -937,7 +937,7 @@ class MainWindow(QMainWindow):
         self._clock.stop()
         self._last_record = record
         self.save_report_action.setEnabled(self._last_record is not None)
-        self._sync_teach_action()
+        self._sync_calibrate_action()
 
         if self._calibration is not None:
             # A calibration capture is not a board. It gets no verdict, no
@@ -997,12 +997,12 @@ class MainWindow(QMainWindow):
 
     def _build_calibrations(self) -> None:
         """Fill Tools -> Calibrate from the programs that offer themselves."""
-        from .. import teach as teachlib
+        from .. import calibration as cal
 
         self.calibrate_menu.clear()
         directory = loaders.pick_program_dir(
             None, self.program.source if self.program else None)
-        self._calibrations = teachlib.calibrations(directory)
+        self._calibrations = cal.calibrations(directory)
 
         if not self._calibrations:
             empty = self.calibrate_menu.addAction("No calibrations found")
@@ -1047,7 +1047,7 @@ class MainWindow(QMainWindow):
 
     def _finish_calibration(self) -> None:
         """Open the teach canvas on what the calibration run captured."""
-        from .. import teach as teachlib
+        from .. import calibration as cal
 
         calibration, target = self._calibration
         self._calibration = None
@@ -1055,12 +1055,12 @@ class MainWindow(QMainWindow):
         if self._last_ctx is None:
             return
         try:
-            capture = teachlib.capture_from_context(
+            capture = cal.capture_from_context(
                 load(calibration.path), self._last_ctx)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "Calibration failed", str(exc))
             return
-        all_sites, notes = teachlib.sites_from_program(target)
+        all_sites, notes = cal.sites_from_program(target)
         # Only the sites this capture can actually show. Listing the rest gives
         # an operator no way to tell "not clicked yet" from "not visible in this
         # frame", and the untaught count never reaches zero.
@@ -1076,12 +1076,12 @@ class MainWindow(QMainWindow):
             # dialog with no one to dismiss it.
             self.log.append(
                 f"{calibration.label}: the capture produced no contours. The "
-                f"frames are in debug/teach — the thresholded one shows what "
+                f"frames are in debug/calibration — the thresholded one shows what "
                 f"the camera actually gave back.", "error")
-            notes = [f"No contours in this capture. Check debug/teach for the "
+            notes = [f"No contours in this capture. Check debug/calibration for the "
                      f"thresholded frame; the threshold may not suit the "
                      f"exposure."] + list(notes)
-        self._open_teach_window(
+        self._open_calibration_window(
             sites=sites, capture=capture, notes=notes, program=target,
             context=self._last_ctx, title=calibration.label,
             capture_program=calibration.path,
@@ -1089,18 +1089,18 @@ class MainWindow(QMainWindow):
 
     # -- teaching ---------------------------------------------------------
 
-    def _open_teach_window(self, *, sites, capture, notes, program, context,
+    def _open_calibration_window(self, *, sites, capture, notes, program, context,
                            title: str, capture_program: str,
                            min_area: int | None = None) -> None:
-        from .teach_window import TeachWindow
+        from .calibration_window import CalibrationWindow
 
         source = program.source or "program"
         out = os.path.join(os.path.dirname(os.path.abspath(source)),
                            f"{os.path.splitext(os.path.basename(source))[0]}"
-                           f"-teach.json")
+                           f"-cal.json")
         # A window rather than a modal dialog: an operator compares it against
         # the log and the result grids while clicking.
-        self._teach_window = TeachWindow(
+        self._calibration_window = CalibrationWindow(
             sites=sites, capture=capture, notes=notes, out_path=out,
             dark=self.dark, program=program, parent=self,
             meta={"capture_program": capture_program, "target_program": source,
@@ -1108,24 +1108,24 @@ class MainWindow(QMainWindow):
                   "station": self.station, "operator": self.operator,
                   "calibration": title})
         if min_area:
-            self._teach_window.canvas.noise_floor = min_area
-        self._teach_window.set_capture(frame=capture.frame,
+            self._calibration_window.canvas.noise_floor = min_area
+        self._calibration_window.set_capture(frame=capture.frame,
                                        binary=capture.binary,
                                        contours=capture.contours)
-        self._teach_window.offer_captures(context)
-        self._teach_window.setWindowFlag(Qt.Window, True)
-        self._teach_window.setWindowTitle(f"NGWART — calibrate: {title}")
-        self._teach_window.show()
+        self._calibration_window.offer_captures(context)
+        self._calibration_window.setWindowFlag(Qt.Window, True)
+        self._calibration_window.setWindowTitle(f"NGWART — calibrate: {title}")
+        self._calibration_window.show()
 
-    def _sync_teach_action(self) -> None:
+    def _sync_calibrate_action(self) -> None:
         """Armed only when there is a frame to click on."""
         ok = bool(self._last_ctx is not None and self.program is not None
                   and not self._active)
-        self.teach_action.setEnabled(ok)
+        self.calibrate_last_action.setEnabled(ok)
 
-    def _teach_coordinates(self) -> None:
+    def _calibrate_from_last_run(self) -> None:
         """Open the teach canvas over the frame the last run captured."""
-        from .. import teach as teachlib
+        from .. import calibration as cal
 
         if self._last_ctx is None or self.program is None:
             QMessageBox.information(
@@ -1135,7 +1135,7 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            capture = teachlib.capture_from_context(self.program, self._last_ctx)
+            capture = cal.capture_from_context(self.program, self._last_ctx)
         except Exception as exc:  # noqa: BLE001
             QMessageBox.warning(self, "No contours", str(exc))
             return
@@ -1148,7 +1148,7 @@ class MainWindow(QMainWindow):
                 "threshold suits the exposure.")
             return
 
-        sites, notes = teachlib.sites_from_program(self.program)
+        sites, notes = cal.sites_from_program(self.program)
         if not sites:
             QMessageBox.information(
                 self, "No coordinates",
@@ -1157,7 +1157,7 @@ class MainWindow(QMainWindow):
             return
 
         source = self.program.source or "program"
-        self._open_teach_window(
+        self._open_calibration_window(
             sites=sites, capture=capture, notes=notes, program=self.program,
             context=self._last_ctx, title=os.path.basename(source),
             capture_program=source)

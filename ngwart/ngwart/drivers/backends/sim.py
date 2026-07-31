@@ -223,8 +223,8 @@ class SimVisaInstrument:
 #: Pixel offset applied to every simulated capture, as (dx, dy).
 #:
 #: A moved camera is a *bench* condition, not something a test program declares,
-#: so it is set here rather than through SETPROPS. `ngwart teach --sim-shift`
-#: sets it, which is what makes the teach tool exercisable end to end: without a
+#: so it is set here rather than through SETPROPS. `ngwart run --sim-shift`
+#: sets it, which is what makes calibration exercisable end to end: without a
 #: way to move the camera, every click lands on a coordinate that was already
 #: correct and nothing is proven.
 #:

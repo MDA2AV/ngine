@@ -25,3 +25,10 @@ build/
 dist/
 .venv/
 venv/
+
+# Calibration and debug output -- produced by a run, not source.
+# The values file a program *loads* (e.g. programs/cargo-coords.json) is
+# source and is tracked; the record a calibration writes beside it is not.
+debug/
+*-teach.json
+*-calibration.json

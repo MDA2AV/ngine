@@ -47,9 +47,9 @@ exec:
   - [Flow, LABEL, START, 'BUTTON LED - UUT 1+2', '', '#4C9AFF', '', '', '', yellow]
   - [TestData, STARTALIVE]
   - [TestData, INITDATA, '40', '3', '32']
-  - [Flow, CREATEDIR, 'debug/teach', '', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/teach/button_12.jpg', '*img.path', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/teach/button_12_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
+  - [Flow, CREATEDIR, 'debug/calibration', '', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/button_12.jpg', '*img.path', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/button_12_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
 
   # --- EIMAN to its initial position (cargo INITIAL_CONDITIONS) ---------
   # Drives 3+4 -- the lift coil for this pair -- then the reset releases it.

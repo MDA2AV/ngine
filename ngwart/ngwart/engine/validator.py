@@ -93,7 +93,7 @@ def validate(program: Program, registry: Registry | None = None) -> Report:
     for problem in getattr(program, "value_problems", []):
         err(None, problem,
             "Variables take their value from the <values> file named in "
-            "<Vars>. Re-run `ngwart teach` to regenerate it, or fix the key.")
+            "<Vars>. Re-run the calibration to regenerate it, or fix the key.")
     unclaimed = set(program.values_loaded) - set(program.var_sources.values())
     if unclaimed:
         listed = ", ".join(sorted(unclaimed)[:6])
