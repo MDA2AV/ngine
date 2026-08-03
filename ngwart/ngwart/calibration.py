@@ -494,6 +494,54 @@ def read_coords(path: str) -> dict:
     return flat
 
 
+#: Where the values file records who measured what.
+PROVENANCE = "_calibrated"
+
+
+def _stamp(doc: dict, keys, meta: dict | None) -> None:
+    """Attribute `keys` to this calibration, in place.
+
+    Grouped by calibration rather than nested under each value, for two
+    reasons. The values stay a flat name -> string map, which is the contract
+    the program reads. And the block does not grow with the number of values:
+    a run is described once and its keys listed on one line, so a file with
+    four coordinates and one with four hundred cost the same handful of lines.
+
+    Keys move between groups as they are re-measured, and a group that ends up
+    with none is dropped -- otherwise a calibration that was re-run under a new
+    name would leave its old attribution behind, claiming values it no longer
+    produced.
+    """
+    keys = sorted(str(k) for k in keys)
+    if not keys:
+        return
+
+    label = str((meta or {}).get("calibration") or (meta or {}).get("written_by")
+                or "unknown")
+    book = doc.get(PROVENANCE)
+    book = dict(book) if isinstance(book, dict) else {}
+
+    claimed = set(keys)
+    for name, entry in list(book.items()):
+        if not isinstance(entry, dict):
+            book.pop(name, None)
+            continue
+        held = [k for k in str(entry.get("keys", "")).split() if k not in claimed]
+        if held:
+            entry["keys"] = " ".join(held)
+        else:
+            book.pop(name, None)
+
+    stamp = {"at": datetime.now().isoformat(timespec="seconds"),
+             "keys": " ".join(keys)}
+    for field_name in ("station", "operator", "simulated", "capture_program"):
+        value = (meta or {}).get(field_name)
+        if value not in (None, ""):
+            stamp[field_name] = value
+    book[label] = stamp
+    doc[PROVENANCE] = book
+
+
 def read_measured(ctx, names: list[str]) -> dict[str, str]:
     """What a calibration measured, read out of its finished context.
 
@@ -526,14 +574,16 @@ def write_values(path: str, values: dict[str, str],
             with open(path, "r", encoding="utf-8") as fh:
                 existing = json.load(fh)
             if isinstance(existing, dict):
+                # Values are the flat part; the provenance book is kept and
+                # updated. Any other underscore key is a stamp from an older
+                # format and is dropped rather than carried forever.
                 doc = {k: v for k, v in existing.items()
-                       if not str(k).startswith("_")}
+                       if not str(k).startswith("_") or k == PROVENANCE}
         except (OSError, ValueError):
             doc = {}
 
     doc.update({str(k): str(v) for k, v in values.items()})
-    if meta:
-        doc["_calibration"] = dict(meta)
+    _stamp(doc, values, meta)
 
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
@@ -564,8 +614,11 @@ def write_coords(path: str, sites: list, meta: dict | None = None) -> str:
             with open(path, "r", encoding="utf-8") as fh:
                 existing = json.load(fh)
             if isinstance(existing, dict):
+                # Values are the flat part; the provenance book is kept and
+                # updated. Any other underscore key is a stamp from an older
+                # format and is dropped rather than carried forever.
                 doc = {k: v for k, v in existing.items()
-                       if not str(k).startswith("_")}
+                       if not str(k).startswith("_") or k == PROVENANCE}
         except (OSError, ValueError):
             doc = {}
 
@@ -576,8 +629,8 @@ def write_coords(path: str, sites: list, meta: dict | None = None) -> str:
                 continue
             doc[ref.cell_key] = (ref.rewritten(*point) if point else ref.cell)
 
-    if meta:
-        doc["_calibration"] = dict(meta)
+    _stamp(doc, [r.cell_key for site in sites for r in site.refs if r.cell_key],
+           meta)
 
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
@@ -1291,9 +1344,13 @@ def save(path: str, sites: list[Site], *, meta: dict | None = None,
             resolved, [s for s in sites if s.file_path == target],
             meta={"written_by": "ngwart calibrate",
                   "at": datetime.now().isoformat(timespec="seconds"),
+                  # "calibration" is what names the group in the provenance
+                  # book -- leave it out and every run is filed under the
+                  # generic writer, which attributes nothing to anything.
                   **{k: v for k, v in (meta or {}).items()
-                     if k in ("capture_program", "target_program", "simulated",
-                              "station", "operator")}}))
+                     if k in ("calibration", "capture_program",
+                              "target_program", "simulated", "station",
+                              "operator")}}))
 
     # The record must never land on a values file. They are both JSON next to
     # the same table, so a careless default puts them at one path and the record

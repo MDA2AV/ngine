@@ -1,13 +1,4 @@
 {
-  "_teach": {
-    "at": "2026-07-31T19:55:00",
-    "capture_program": "programs\\cargo_cal_button_34.yaml",
-    "operator": "",
-    "simulated": false,
-    "station": "",
-    "target_program": "programs/cargo.yaml",
-    "written_by": "ngwart teach"
-  },
   "cam.wb": "1.0000,1.0000,1.0000",
   "led.u0.a.cont": "1016,698,10,50,1",
   "led.u0.a.leds": "1016,698,10,50",

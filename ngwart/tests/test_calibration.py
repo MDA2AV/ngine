@@ -1263,3 +1263,75 @@ def test_getwb_writes_what_setwb_reads():
                 REGISTRY.require("BaluffManager", row.verb).fn(ctx, row)
 
     assert ctx.get_data("wb") == "2.5000,1.0000,1.7500"
+
+
+# --- who measured what ---------------------------------------------------
+
+def test_provenance_attributes_every_value_without_flooding_the_file(tmp_path):
+    """Grouped by calibration, not nested under each value.
+
+    Nesting would triple a file the program has to read as a flat map, and
+    grow with every coordinate. A run is described once and its keys listed on
+    one line, so four values and four hundred cost the same few lines.
+    """
+    import json as _json
+    import shutil
+
+    values = tmp_path / "cargo-values.json"
+    shutil.copy("programs/cargo/cargo-values.json", values)
+    before_lines = len(values.read_text().splitlines())
+
+    cal.write_values(str(values), {"cam.wb": "2.0,1.0,1.9"},
+                     meta={"calibration": "White balance", "station": "BENCH1"})
+    doc = _json.loads(values.read_text())
+
+    book = doc[cal.PROVENANCE]
+    assert "White balance" in book
+    assert book["White balance"]["keys"] == "cam.wb"
+    assert book["White balance"]["station"] == "BENCH1"
+    # The values themselves stay a flat name -> string map.
+    assert isinstance(doc["cam.wb"], str)
+    assert len(values.read_text().splitlines()) - before_lines < 12
+
+
+def test_a_re_run_replaces_its_own_attribution(tmp_path):
+    import json as _json
+
+    values = tmp_path / "v.json"
+    cal.write_values(str(values), {"a": "1", "b": "2"},
+                     meta={"calibration": "First"})
+    cal.write_values(str(values), {"a": "9"}, meta={"calibration": "First"})
+
+    book = _json.loads(values.read_text())[cal.PROVENANCE]
+    assert list(book) == ["First"]
+    assert sorted(book["First"]["keys"].split()) == ["a"]
+
+
+def test_a_key_moves_to_whoever_measured_it_last(tmp_path):
+    """Otherwise an old group keeps claiming values it no longer produced."""
+    import json as _json
+
+    values = tmp_path / "v.json"
+    cal.write_values(str(values), {"a": "1", "b": "2"},
+                     meta={"calibration": "Wide"})
+    cal.write_values(str(values), {"a": "9"}, meta={"calibration": "Narrow"})
+
+    book = _json.loads(values.read_text())[cal.PROVENANCE]
+    assert book["Wide"]["keys"] == "b"
+    assert book["Narrow"]["keys"] == "a"
+    claimed = [k for e in book.values() for k in e["keys"].split()]
+    assert sorted(claimed) == ["a", "b"], "a value is claimed twice or not at all"
+
+
+def test_an_older_stamp_is_dropped_rather_than_carried(tmp_path):
+    """The file used to carry one whole-file _teach block. It is not kept."""
+    import json as _json
+
+    values = tmp_path / "v.json"
+    values.write_text(_json.dumps({"a": "1", "_teach": {"written_by": "old"}}))
+
+    cal.write_values(str(values), {"a": "2"}, meta={"calibration": "Now"})
+    doc = _json.loads(values.read_text())
+
+    assert "_teach" not in doc
+    assert set(k for k in doc if k.startswith("_")) == {cal.PROVENANCE}
