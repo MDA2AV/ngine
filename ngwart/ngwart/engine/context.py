@@ -248,6 +248,15 @@ class Context:
 
     def get_data(self, ref: str) -> Any:
         if self.data is None:
+            # A <Vars> value is declared by the program, so it is readable
+            # before INITDATA has allocated anywhere to mirror it. <Config>
+            # runs first and legitimately reads these: cargo applies its stored
+            # white-balance gains there, which is the one place a camera can be
+            # set up before anything is powered.
+            name = ref.strip().lstrip("*").strip()
+            declared = self.program.var_values.get(name)
+            if declared is not None:
+                return declared
             raise VerbError("data store not initialised -- call INITDATA first")
         l, c, p = self.parse_coord(ref)
         try:

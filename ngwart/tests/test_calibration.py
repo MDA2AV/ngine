@@ -1384,3 +1384,54 @@ def test_the_menu_follows_the_loaded_program(app):
     window.open_program("programs/demo/demo.yaml")
     assert offered(window) == [], "cargo's calibrations survived a program change"
     window.close()
+
+
+def test_a_declared_value_is_readable_before_initdata(tmp_path):
+    """<Config> runs before INITDATA and legitimately reads these.
+
+    cargo applies its stored white-balance gains there -- the one place a
+    camera can be set up before anything is powered. Without this the run
+    aborted at the SETWB row with "data store not initialised".
+    """
+    from ngwart.engine.context import Context
+    from ngwart.engine.errors import VerbError
+
+    program = build_valued(tmp_path, {"led.a.cont": "895,659,10,50,1",
+                                      "led.a.leds": "895,659,10,50"})
+    ctx = Context(program, simulate=True)
+    assert ctx.data is None
+    assert ctx.text("*led.a.cont") == "895,659,10,50,1"
+
+    # A variable with no declared value, and a bare coordinate, still say so.
+    for ref in ("*c", "*1,0,0"):
+        with pytest.raises(VerbError, match="not initialised"):
+            ctx.text(ref)
+
+    # Once the store exists it is the truth: a value written there wins over
+    # the declaration, or nothing a step wrote would ever be read back.
+    ctx.init_data(40, 3, 32)
+    assert ctx.text("*led.a.cont") == "895,659,10,50,1"
+    ctx.set_data("led.a.cont", "1,2,3,4,5")
+    assert ctx.text("*led.a.cont") == "1,2,3,4,5"
+
+
+def test_cargo_config_runs_to_the_end():
+    """The whole block, in order, as a run does it."""
+    from ngwart.engine import REGISTRY
+    from ngwart.engine.context import Context
+    from ngwart.engine.loaders import load
+
+    program = load("programs/cargo/cargo.yaml")
+    ctx = Context(program, simulate=True)
+
+    for i in program.body("Config"):
+        row = program.rows[i]
+        if not row.module or not row.verb:
+            continue
+        module = program.modules.get(row.module, row.module)
+        REGISTRY.require(module, row.verb).fn(ctx, row)
+
+    camera = list(ctx.store["camera"]["cameras"].values())[0]
+    expected = tuple(float(x)
+                     for x in program.var_values["cam.wb"].split(","))
+    assert camera.white_balance_gains() == expected
