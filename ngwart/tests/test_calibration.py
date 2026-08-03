@@ -746,7 +746,7 @@ def test_cargo_is_valued_from_its_file():
 
     program = load("programs/cargo/cargo.yaml")
     assert program.value_problems == []
-    assert program.values_source.endswith("cargo-coords.json")
+    assert program.values_source.endswith("cargo-values.json")
     assert len(program.var_values) == 52          # 28 LEDs, 24 with a colour check
 
     sites, notes = cal.sites_from_program(program)
@@ -1049,8 +1049,8 @@ def test_calibrating_one_group_leaves_the_others_alone(tmp_path):
 
     from ngwart.engine.loaders import load
 
-    values = tmp_path / "cargo-coords.json"
-    shutil.copy("programs/cargo/cargo-coords.json", values)
+    values = tmp_path / "cargo-values.json"
+    shutil.copy("programs/cargo/cargo-values.json", values)
     before = _json.loads(values.read_text())
 
     sites, _ = cal.sites_from_program(load("programs/cargo/cargo.yaml"))
@@ -1203,8 +1203,8 @@ def test_measured_values_merge_without_losing_the_coordinates(tmp_path):
     import json as _json
     import shutil
 
-    values = tmp_path / "cargo-coords.json"
-    shutil.copy("programs/cargo/cargo-coords.json", values)
+    values = tmp_path / "cargo-values.json"
+    shutil.copy("programs/cargo/cargo-values.json", values)
     before = {k: v for k, v in _json.loads(values.read_text()).items()
               if not k.startswith("_")}
 

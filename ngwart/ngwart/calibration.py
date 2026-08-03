@@ -324,8 +324,8 @@ class Origin:
 
     * ``cell`` -- a STORE row in the table carries the literal. Re-teaching
       edits the table.
-    * ``file`` -- a JSON Get pulls it from a coordinates file loaded at
-      startup. Re-teaching rewrites the file and the table is never touched.
+    * ``file`` -- it comes from the values file loaded at startup.
+      Re-calibrating rewrites the file and the table is never touched.
     """
 
     kind: str                 # "cell" | "file"
@@ -463,7 +463,10 @@ def _json_source_path(doc_cell: str, writers: dict) -> str:
 
 
 def read_coords(path: str) -> dict:
-    """The coordinates file as a flat {dotted key: 'cx,cy'} map.
+    """The values file as a flat {key: value} map.
+
+    Not only coordinates: a calibration may measure a camera setting into the
+    same file, keyed the same way.
 
     Missing or unreadable is not an error here: teaching a fixture for the
     first time is exactly the case where the file does not exist yet.
@@ -1273,7 +1276,7 @@ def save(path: str, sites: list[Site], *, meta: dict | None = None,
 
     Two outputs, because they answer different questions:
 
-    * the **coordinates file** the program loads -- written only when the table
+    * the **values file** the program loads -- written only when the table
       actually reads one, and written in full so the next run cannot hit a
       missing key;
     * the **calibration record**, which carries the deltas, the rows that read each

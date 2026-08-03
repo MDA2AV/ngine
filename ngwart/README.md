@@ -98,7 +98,7 @@ on destinations too.
 A variable may also name a **JSON key it takes its value from**:
 
 ```yaml
-values: programs/cargo/cargo-coords.json
+values: programs/cargo/cargo-values.json
 
 vars:
   led.u0.a.cont:  ['0,0,30', 'led.u0.a.cont']    # cell, and the key that fills it
@@ -122,7 +122,7 @@ something the linter can check:
 
 ```
 ERROR program: variable 'led.u2.d.cont' takes its value from key
-               'led.u2.d.cont', which is not in cargo-coords.json
+               'led.u2.d.cont', which is not in cargo-values.json
 ```
 
 That is `check`, with the fixture cold. A key the file has and no variable claims

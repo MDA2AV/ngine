@@ -30,7 +30,7 @@ modules:
 # take a single index that the engine expands into a value/result/id
 # triple by splitting the text on commas, before names are resolved. A
 # name there would store the measurement and drop the other two.
-values: programs/cargo/cargo-coords.json
+values: programs/cargo/cargo-values.json
 
 vars:
   # board detection
