@@ -28,7 +28,7 @@ CAL_DIR = "tools/calibration"
 
 def build(**sections):
     doc = {"modules": {"Flow": "FlowManager", "Vision": "ImageProcessManager",
-                       "Camera": "BaluffManager"}}
+                       "Camera": "BaluffManager", "TestData": "TestData"}}
     doc.update(sections)
     return from_dict(doc).finalize()
 
@@ -1074,3 +1074,90 @@ def test_a_calibration_without_a_sites_pattern_takes_everything():
     everything = cal.Calibration(path="x", title="all", target="y")
     site = cal.Site(uut=0, cx=1, cy=2, tol=10, file_key="anything")
     assert everything.covers(site)
+
+
+# --- a looping fixture judges the board in front of it ------------------
+
+def test_a_verdict_is_about_the_current_board_not_the_run():
+    """cargo's table loops, so one run holds many boards.
+
+    Reported from the bench: a unit with 28 passes still showed FAIL. It had
+    failed two boards earlier, and VALIDATE read every point the run had ever
+    recorded.
+    """
+    from ngwart.engine.runrecord import RunRecord, TestPoint
+
+    record = RunRecord(program_name="cargo")
+
+    record.begin_cycle()                       # board 1: this one really failed
+    record.add_point(TestPoint(name="INTENSITY_G", uut=0, result="FAIL",
+                               measured="NOT_FOUND"))
+    for i in range(27):
+        record.add_point(TestPoint(name=f"T{i}", uut=0, result="PASS"))
+
+    record.begin_cycle()                       # board 2: a good one
+    for i in range(28):
+        record.add_point(TestPoint(name=f"T{i}", uut=0, result="PASS"))
+
+    current = record.points_for(0, this_cycle=True)
+    assert len(current) == 28
+    assert not [p for p in current if p.result == "FAIL"]
+
+    # The whole run still holds both boards -- reports and history want that.
+    everything = record.points_for(0)
+    assert len(everything) == 56
+    assert len([p for p in everything if p.result == "FAIL"]) == 1
+
+
+def test_startalive_opens_a_new_board():
+    """It is what a looping table runs at the top of each pass."""
+    from ngwart.engine import REGISTRY
+    from ngwart.engine.context import Context
+    from ngwart.engine.runrecord import RunRecord, TestPoint
+
+    program = build(exec=[["TestData", "STARTALIVE"]])
+    ctx = Context(program, simulate=True)
+    ctx.init_alive(2)
+    ctx.record = RunRecord(program_name="t")
+    ctx.record.add_point(TestPoint(name="old", uut=0, result="FAIL"))
+
+    row = next(program.rows[i] for i in program.body("Exec")
+               if program.rows[i].verb == "STARTALIVE")
+    REGISTRY.require("TestData", "STARTALIVE").fn(ctx, row)
+
+    assert ctx.record.points_for(0, this_cycle=True) == []
+    assert len(ctx.record.points_for(0)) == 1
+
+
+def test_evalleds_stores_its_verdict_not_just_the_colour():
+    """It decides PASS/FAIL and can kill a unit, so it has to record it.
+
+    cargo names one destination cell; zipping three values against it wrote the
+    colour and dropped the rest, leaving 43 result cells reading '-' in a log
+    where every one had been decided.
+    """
+    import numpy as np
+
+    from ngwart.engine import REGISTRY
+    from ngwart.engine.context import Context
+    from ngwart.engine.runrecord import RunRecord
+
+    program = build(
+        vars={"img": "0,0,0", "res": "6,0,1"},
+        exec=[["Vision", "EVALLEDS", "*img", "128,120,20,50", "res",
+               "60,220,90", "0,COLOR_A"]])
+    ctx = Context(program, simulate=True)
+    ctx.init_data(40, 3, 32)
+    ctx.init_alive(1)
+    ctx.record = RunRecord(program_name="t")
+
+    frame = np.zeros((240, 320, 3), np.uint8)
+    cv2.circle(frame, (128, 120), 18, (60, 220, 90), -1)
+    ctx.set_data("img", frame, stringify=False)
+
+    row = next(program.rows[i] for i in program.body("Exec")
+               if program.rows[i].verb == "EVALLEDS")
+    REGISTRY.require("ImageProcessManager", "EVALLEDS").fn(ctx, row)
+
+    assert ctx.get_data("6,1,1") == "PASS"      # the verdict, not '-'
+    assert ctx.get_data("6,2,1") == "COLOR_A"   # and the test id

@@ -43,10 +43,17 @@ def update_labels(ctx, row):
 
 @verb("TestData", "STARTALIVE")
 def start_alive(ctx, row):
-    """Bring every UUT back to alive."""
+    """Bring every UUT back to alive, and start a new board.
+
+    A looping table runs this at the top of each pass, so it is also where
+    one board ends and the next begins -- and the verdict has to be about
+    the board on the fixture, not every board the run has seen.
+    """
     if not ctx.alive:
         raise VerbError("STARTALIVE: alive mask not sized -- call initAlive first")
     ctx.start_alive()
+    if ctx.record is not None:
+        ctx.record.begin_cycle()
     ctx.log("All units alive.")
 
 

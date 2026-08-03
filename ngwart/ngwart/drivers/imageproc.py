@@ -407,8 +407,7 @@ def evalleds(ctx, row):
         raise VerbError(f"EVALLEDS: target colour '{row.raw(5)}' is not numeric") from None
 
     kill_index, test_id = _kill_and_id(ctx, row)
-    cells = [ctx.resolve_name(c.strip())
-             for c in ctx.text(row.raw(4)).split(";") if c.strip()]
+    cells = ctx.text(row.raw(4))
 
     overall_pass = True
     centres = None
@@ -464,8 +463,12 @@ def evalleds(ctx, row):
             + (f" (matched {colour})" if matched else ""),
             "pass" if matched else "fail")
 
-    for cell, value in zip(cells, [colour, result, test_id]):
-        ctx.set_data(cell, value)
+    # Through the shared helper, which derives the other two cells by
+    # incrementing the column when only one is named. cargo names one, so
+    # zipping three values against it wrote the colour and silently dropped
+    # the verdict and the test id -- 43 result cells reading '-' in a log
+    # where every one of them had been decided.
+    _store_triplet(ctx, row, colour, result, test_id)
 
     low = "-".join(str(v - LED_TOLERANCE) for v in target_bgr)
     high = "-".join(str(v + LED_TOLERANCE) for v in target_bgr)

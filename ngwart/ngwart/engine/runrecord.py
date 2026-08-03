@@ -64,6 +64,11 @@ class RunRecord:
         self.ended: _dt.datetime | None = None
         self.steps: list[StepRecord] = []
         self.points: list[TestPoint] = []
+        #: Index into `points` where the board currently on the fixture
+        #: started. A fixture program loops -- test a board, wait for it to
+        #: be pulled, jump back to the top -- so one run holds many boards,
+        #: and a verdict must be about the one in front of the operator.
+        self.cycle_start: int = 0
         self.barcodes: dict[int, str] = {}
         self.final_alive: list[int] = []
         self.aborted: bool = False
@@ -81,6 +86,18 @@ class RunRecord:
             point.at = _dt.datetime.now().isoformat(timespec="seconds")
         with self._lock:
             self.points.append(point)
+
+    def begin_cycle(self) -> int:
+        """Mark the start of a new board.
+
+        Called by STARTALIVE, which is what a looping table runs at the top of
+        each pass. Without it every board after the first inherits the previous
+        one's failures: VALIDATE reads points_for(uut), sees a FAIL from two
+        boards ago, and reports FAIL on a unit that just passed everything.
+        """
+        with self._lock:
+            self.cycle_start = len(self.points)
+            return self.cycle_start
 
     def set_barcode(self, uut: int, code: str) -> None:
         with self._lock:
@@ -100,9 +117,16 @@ class RunRecord:
         end = self.ended or _dt.datetime.now()
         return (end - self.started).total_seconds()
 
-    def points_for(self, uut: int | None) -> list[TestPoint]:
+    def points_for(self, uut: int | None,
+                   this_cycle: bool = False) -> list[TestPoint]:
+        """Points for one unit -- over the whole run, or the current board.
+
+        Reports and history want everything the run produced. A verdict wants
+        only the board being tested now.
+        """
         with self._lock:
-            return [p for p in self.points if p.uut == uut]
+            points = self.points[self.cycle_start:] if this_cycle else self.points
+            return [p for p in points if p.uut == uut]
 
     def passed(self, uut: int | None = None) -> bool:
         """A UUT passes when it has at least one judged point and none failed.

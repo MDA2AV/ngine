@@ -136,7 +136,9 @@ def validate(ctx, row):
 
     verdicts: dict[int, bool] = {}
     for uut in range(len(ctx.alive)):
-        points = ctx.record.points_for(uut)
+        # This board only. The record spans the whole run, and a looping
+        # fixture puts many boards in it.
+        points = ctx.record.points_for(uut, this_cycle=True)
         failed = [pt for pt in points if pt.result == "FAIL"]
         enough = expected is None or len(points) >= expected
         alive = ctx.alive[uut] == 1
