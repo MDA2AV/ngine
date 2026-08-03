@@ -59,7 +59,9 @@ ngwart/
                     lit indicator
   reports/          XML / JSON / CSV from the run record
   calibration.py    coordinate sites, click resolution, the values file
-tools/calibration/  capture programs offered under Tools -> Calibrate
+tools/calibration/<product>/
+                    capture programs, one folder per product. Tools ->
+                    Calibrate offers only those naming the loaded table
 programs/<product>/ one folder per product: the table and the values
                     it loads, kept together
 ```

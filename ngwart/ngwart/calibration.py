@@ -933,6 +933,28 @@ def calibration_dir(program: str | None = None) -> str:
     return CALIBRATION_DIR
 
 
+def calibrations_for(directory: str, program) -> list[Calibration]:
+    """The calibrations that belong to one program.
+
+    A calibration names the table it calibrates and writes into that table's
+    values file, so offering another product's is worse than useless: it would
+    power a fixture for a board that is not being tested and write coordinates
+    into a file the loaded program never reads.
+
+    With no program loaded, everything is offered -- each one loads its own
+    target, so it is still a valid thing to run.
+    """
+    found = calibrations(directory)
+    if program is None:
+        return found
+    target = os.path.abspath(program.source or "")
+    if not target:
+        return found
+    mine = [c for c in found
+            if os.path.abspath(_resolve_path(program, c.target)) == target]
+    return mine
+
+
 def calibrations(directory: str) -> list[Calibration]:
     """Every calibration program in a directory, by title.
 
@@ -944,15 +966,27 @@ def calibrations(directory: str) -> list[Calibration]:
     found: list[Calibration] = []
     if not directory or not os.path.isdir(directory):
         return found
-    try:
-        entries = sorted(os.listdir(directory))
-    except OSError:
-        return found
 
-    for entry in entries:
-        if os.path.splitext(entry)[1].lower() not in NATIVE_EXTS:
+    def scan(folder):
+        try:
+            return sorted(os.listdir(folder))
+        except OSError:
+            return []
+
+    # One folder per product, as programs/ does -- so a second product's
+    # calibrations do not sit in the same list as this one's. Flat files are
+    # still read, for a tree that has not been split up yet.
+    candidates = []
+    for entry in scan(directory):
+        full = os.path.join(directory, entry)
+        if os.path.isdir(full):
+            candidates += [os.path.join(full, inner) for inner in scan(full)]
+        else:
+            candidates.append(full)
+
+    for path in candidates:
+        if os.path.splitext(path)[1].lower() not in NATIVE_EXTS:
             continue
-        path = os.path.join(directory, entry)
         try:
             import yaml
 

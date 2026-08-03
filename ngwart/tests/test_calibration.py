@@ -338,7 +338,7 @@ def test_capture_run_yields_a_frame_and_clickable_contours():
     """The whole phase-1 path, against the simulated camera."""
     from ngwart.engine.loaders import load
 
-    program = load("tools/calibration/demo_calibrate.yaml")
+    program = load("tools/calibration/demo/demo_calibrate.yaml")
     result = cal.run_capture(program, simulate=True)
 
     assert result.ok
@@ -356,7 +356,7 @@ def test_teaching_the_demo_table_against_a_real_capture():
     from ngwart.engine.loaders import load
 
     sites, notes = cal.sites_from_program(load("programs/demo/demo.yaml"))
-    result = cal.run_capture(load("tools/calibration/demo_calibrate.yaml"), simulate=True)
+    result = cal.run_capture(load("tools/calibration/demo/demo_calibrate.yaml"), simulate=True)
 
     assert notes == []
     assert len(sites) == 4
@@ -493,7 +493,7 @@ def shifted():
 
 def _capture():
     from ngwart.engine.loaders import load
-    return cal.run_capture(load("tools/calibration/demo_calibrate.yaml"), simulate=True)
+    return cal.run_capture(load("tools/calibration/demo/demo_calibrate.yaml"), simulate=True)
 
 
 def _sites():
@@ -1335,3 +1335,52 @@ def test_an_older_stamp_is_dropped_rather_than_carried(tmp_path):
 
     assert "_teach" not in doc
     assert set(k for k in doc if k.startswith("_")) == {cal.PROVENANCE}
+
+
+# --- calibrations belong to a product ------------------------------------
+
+def test_calibrations_are_found_one_folder_per_product():
+    """As programs/ is laid out, so a second product has its own folder."""
+    found = cal.calibrations(CAL_DIR)
+    assert found, "nothing discovered"
+    for c in found:
+        product = pathlib.Path(c.path).parent.name
+        assert product != "calibration", f"{c.title} is loose in the root"
+        assert product in c.target.replace("\\", "/"), \
+            f"{c.title} sits under {product} but calibrates {c.target}"
+
+
+def test_only_the_loaded_program_is_offered():
+    """Another product's would power a fixture for a board that is not on it,
+    and write into a values file the loaded program never reads."""
+    from ngwart.engine.loaders import load
+
+    cargo = load("programs/cargo/cargo.yaml")
+    demo = load("programs/demo/demo.yaml")
+
+    for_cargo = cal.calibrations_for(CAL_DIR, cargo)
+    assert {c.title for c in for_cargo} == {
+        "LEDs A-F", "Button LED - UUT 1+2", "Button LED - UUT 3+4",
+        "White balance"}
+    assert cal.calibrations_for(CAL_DIR, demo) == []
+    # With nothing loaded each one still loads its own target, so all are valid.
+    assert len(cal.calibrations_for(CAL_DIR, None)) == len(cal.calibrations(CAL_DIR))
+
+
+def test_the_menu_follows_the_loaded_program(app):
+    from ngwart.ui.main_window import MainWindow
+
+    def offered(window):
+        return [a.text().rstrip("…")
+                for a in window.calibrate_menu.actions() if a.isEnabled()]
+
+    window = MainWindow(simulate=True, history_path="")
+    window.open_program("programs/demo/demo.yaml")
+    assert offered(window) == []
+
+    window.open_program("programs/cargo/cargo.yaml")
+    assert "White balance" in offered(window)
+
+    window.open_program("programs/demo/demo.yaml")
+    assert offered(window) == [], "cargo's calibrations survived a program change"
+    window.close()

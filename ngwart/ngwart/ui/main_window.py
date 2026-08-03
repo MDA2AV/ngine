@@ -682,6 +682,11 @@ class MainWindow(QMainWindow):
             f"{program.meta.get('name', os.path.basename(path))} — "
             f"NGWART {__version__}")
 
+        # Tools -> Calibrate lists this program's calibrations, so it has to be
+        # rebuilt whenever the program changes -- not once at startup, when
+        # there may be no program at all.
+        self._build_calibrations()
+
         from ..engine.validator import _declared_alive_size
 
         self._set_uut_count(_declared_alive_size(program) or 0)
@@ -1120,14 +1125,20 @@ class MainWindow(QMainWindow):
         self.calibrate_menu.clear()
         directory = cal.calibration_dir(
             self.program.source if self.program else None)
-        self._calibrations = cal.calibrations(directory)
+        # This program's calibrations only. Another product's would power a
+        # fixture for a board that is not on it, and write into a values file
+        # the loaded program never reads.
+        self._calibrations = cal.calibrations_for(directory, self.program)
 
         if not self._calibrations:
-            empty = self.calibrate_menu.addAction("No calibrations found")
+            name = (os.path.basename(self.program.source or "this program")
+                    if self.program else "any program")
+            empty = self.calibrate_menu.addAction(f"None for {name}")
             empty.setEnabled(False)
             self.calibrate_menu.setToolTip(
-                f"A calibration is a capture program in {directory} whose meta "
-                f"names what it calibrates.")
+                f"A calibration is a capture program under {directory} whose "
+                f"meta names the table it calibrates. Nothing there names "
+                f"{name}.")
             return
 
         for calibration in self._calibrations:
