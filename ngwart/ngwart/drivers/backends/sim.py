@@ -297,6 +297,10 @@ class SimCamera:
         self._wb = (2.0, 1.0, 1.9)
         return self._wb
 
+    def set_white_balance(self, red: float, green: float, blue: float) -> tuple:
+        self._wb = (float(red), float(green), float(blue))
+        return self._wb
+
     def white_balance_gains(self):
         return getattr(self, "_wb", None)
 

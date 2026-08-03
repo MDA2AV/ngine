@@ -246,6 +246,27 @@ class MvImpactCamera:
 
         return self.white_balance_gains() or (1.0, 1.0, 1.0)
 
+    def set_white_balance(self, red: float, green: float, blue: float) -> tuple:
+        """Write gains straight into the User1 set, skipping calibration.
+
+        Calibrating needs a neutral reference in view, which a fixture only has
+        at one moment -- while the indicators are lit. Measuring once and
+        applying the result every session is both more repeatable and possible
+        at config time, where a grey-world pass would otherwise be looking at
+        bare PCB and pulling green down to neutralise it.
+        """
+        acquire, helper = self._acquire, self._helper
+        ip = self._processing
+        if self._fi is None:
+            raise HardwareError(f"camera {self.serial} is not open")
+        helper.conditionalSetProperty(ip.colorProcessing, acquire.cpmAuto)
+        helper.conditionalSetProperty(ip.whiteBalance, acquire.wbpUser1)
+        wbs = ip.getWBUserSetting(0)
+        wbs.redGain.write(float(red))
+        wbs.greenGain.write(float(green))
+        wbs.blueGain.write(float(blue))
+        return (wbs.redGain.read(), wbs.greenGain.read(), wbs.blueGain.read())
+
     def white_balance_gains(self):
         """(red, green, blue) from the User1 set, or None."""
         try:

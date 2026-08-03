@@ -1161,3 +1161,105 @@ def test_evalleds_stores_its_verdict_not_just_the_colour():
 
     assert ctx.get_data("6,1,1") == "PASS"      # the verdict, not '-'
     assert ctx.get_data("6,2,1") == "COLOR_A"   # and the test id
+
+
+# --- a calibration that measures rather than asks ------------------------
+
+def test_the_white_balance_calibration_declares_what_it_captures():
+    by_title = {c.title: c for c in cal.calibrations(CAL_DIR)}
+    wb = by_title["White balance"]
+
+    assert wb.measures == ["cam.wb"]
+    assert not wb.sites, "a measuring calibration has nothing to click"
+    # The others teach coordinates and measure nothing.
+    assert all(not c.measures for t, c in by_title.items() if t != "White balance")
+
+
+def test_the_white_balance_capture_lights_the_board_before_measuring():
+    """The whole point: CALIBRATEWB neutralises whatever is in view.
+
+    Run against a bare fixture it reads the solder mask as a cast and pulls
+    green down. The indicators have to be lit before it fires.
+    """
+    from ngwart.engine.loaders import load
+
+    wb = next(c for c in cal.calibrations(CAL_DIR) if c.measures)
+    program = load(wb.path)
+    body = list(program.body("Exec"))
+
+    def first(verb):
+        return next(i for i in body if program.rows[i].verb.upper() == verb)
+
+    power = max(i for i in body if ",43," in program.rows[i].raw(3))
+    assert power < first("CALIBRATEWB"), "calibrates before the board is lit"
+    assert first("CALIBRATEWB") < first("GETWB")
+    # And it is not left in <Config>, where nothing is powered yet.
+    assert not [i for i in program.body("Config")
+                if program.rows[i].verb.upper() == "CALIBRATEWB"]
+
+
+def test_measured_values_merge_without_losing_the_coordinates(tmp_path):
+    """One calibration must not delete what another taught."""
+    import json as _json
+    import shutil
+
+    values = tmp_path / "cargo-coords.json"
+    shutil.copy("programs/cargo/cargo-coords.json", values)
+    before = {k: v for k, v in _json.loads(values.read_text()).items()
+              if not k.startswith("_")}
+
+    cal.write_values(str(values), {"cam.wb": "2.0000,1.0000,1.9000"})
+
+    after = {k: v for k, v in _json.loads(values.read_text()).items()
+             if not k.startswith("_")}
+    assert set(after) == set(before)
+    assert after["cam.wb"] == "2.0000,1.0000,1.9000"
+    assert after["led.u0.a.cont"] == before["led.u0.a.cont"]
+
+
+def test_cargo_applies_the_stored_gains_instead_of_recalibrating():
+    from ngwart.engine import REGISTRY
+    from ngwart.engine.context import Context
+    from ngwart.engine.loaders import load
+
+    program = load("programs/cargo/cargo.yaml")
+    assert program.value_problems == []
+    assert "cam.wb" in program.var_values
+
+    config = list(program.body("Config"))
+    verbs = [program.rows[i].verb.upper() for i in config]
+    assert "SETWB" in verbs
+    assert "CALIBRATEWB" not in verbs, "config has nothing lit to calibrate on"
+
+    ctx = Context(program, simulate=True)
+    ctx.init_data(40, 3, 32)
+    for i in config:
+        row = program.rows[i]
+        if row.module == "Camera" and row.verb.upper() in ("OPENALL", "SETPROPS",
+                                                           "SETWB"):
+            REGISTRY.require("BaluffManager", row.verb).fn(ctx, row)
+
+    camera = list(ctx.store["camera"]["cameras"].values())[0]
+    expected = tuple(float(x) for x in program.var_values["cam.wb"].split(","))
+    assert camera.white_balance_gains() == expected
+
+
+def test_getwb_writes_what_setwb_reads():
+    """Same shape both ways, so nothing reformats between measure and apply."""
+    from ngwart.engine import REGISTRY
+    from ngwart.engine.context import Context
+
+    program = build(
+        vars={"wb": "0,0,0"},
+        config=[["Camera", "OPENALL"]],
+        exec=[["Camera", "SETWB", "UB101256", "2.5,1.0,1.75"],
+              ["Camera", "GETWB", "UB101256", "wb"]])
+    ctx = Context(program, simulate=True)
+    ctx.init_data(10, 3, 3)
+    for section in ("Config", "Exec"):
+        for i in program.body(section):
+            row = program.rows[i]
+            if row.module == "Camera":
+                REGISTRY.require("BaluffManager", row.verb).fn(ctx, row)
+
+    assert ctx.get_data("wb") == "2.5000,1.0000,1.7500"

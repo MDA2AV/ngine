@@ -491,6 +491,56 @@ def read_coords(path: str) -> dict:
     return flat
 
 
+def read_measured(ctx, names: list[str]) -> dict[str, str]:
+    """What a calibration measured, read out of its finished context.
+
+    The program writes each value into the variable that will later carry it,
+    so the name in the values file is the name the test reads -- nothing has to
+    be mapped between measuring and applying.
+    """
+    out: dict[str, str] = {}
+    for name in names:
+        try:
+            value = ctx.get_data(name)
+        except Exception:  # noqa: BLE001 - an unwritten cell is not fatal here
+            value = None
+        if value not in (None, ""):
+            out[name] = str(value)
+    return out
+
+
+def write_values(path: str, values: dict[str, str],
+                 meta: dict | None = None) -> str:
+    """Merge measured values into the file a program loads.
+
+    Same file and the same merge rule as the coordinates: read what is there,
+    update these keys, leave everything else. A calibration that measured one
+    thing must not delete the twenty-eight another one taught.
+    """
+    doc: dict = {}
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                existing = json.load(fh)
+            if isinstance(existing, dict):
+                doc = {k: v for k, v in existing.items()
+                       if not str(k).startswith("_")}
+        except (OSError, ValueError):
+            doc = {}
+
+    doc.update({str(k): str(v) for k, v in values.items()})
+    if meta:
+        doc["_calibration"] = dict(meta)
+
+    parent = os.path.dirname(os.path.abspath(path))
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+    return path
+
+
 def write_coords(path: str, sites: list, meta: dict | None = None) -> str:
     """Update the values file the program loads, in place.
 
@@ -759,6 +809,13 @@ class Calibration:
     #: the ones invisible at this exposure -- which an operator has no way to
     #: tell apart from ones they simply have not clicked yet.
     sites: str = ""
+    #: Variables whose runtime value this calibration measures and writes to
+    #: the values file, comma-separated. For a calibration that computes a
+    #: number rather than asking an operator to point at one -- white
+    #: balance is the case: the camera works the gains out, and the job is
+    #: to keep them so the test can apply them instead of re-deriving them
+    #: against whatever happens to be in front of the lens.
+    captures: str = ""
     #: Smallest contour this calibration lets you click, in pixels. Defaults to
     #: the runtime's own floor.
     #:
@@ -769,6 +826,11 @@ class Calibration:
     #: lowering this lets you teach a coordinate the test can never match --
     #: which is the exact failure the shared constant exists to prevent.
     min_area: int = MIN_CONTOUR_PIXELS
+
+    @property
+    def measures(self) -> list[str]:
+        """Variable names this calibration captures, in declaration order."""
+        return [n.strip() for n in self.captures.split(",") if n.strip()]
 
     @property
     def lowered_floor(self) -> bool:
@@ -855,6 +917,7 @@ def calibrations(directory: str) -> list[Calibration]:
             product=str(meta.get("product") or ""),
             notes=str(meta.get("notes") or ""),
             sites=str(meta.get("sites") or ""),
+            captures=str(meta.get("captures") or ""),
             min_area=max(1, floor)))
     return found
 

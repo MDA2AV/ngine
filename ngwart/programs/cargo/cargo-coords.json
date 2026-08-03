@@ -8,6 +8,7 @@
     "target_program": "programs/cargo.yaml",
     "written_by": "ngwart teach"
   },
+  "cam.wb": "1.0000,1.0000,1.0000",
   "led.u0.a.cont": "1016,698,10,50,1",
   "led.u0.a.leds": "1016,698,10,50",
   "led.u0.b.cont": "999,698,10,50,1",

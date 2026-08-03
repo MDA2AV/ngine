@@ -60,6 +60,9 @@ class Camera(Protocol):
     def calibrate_white_balance(self, exposure_us: float, warmup: int) -> tuple:
         """Calibrate and lock gains; return (red, green, blue)."""
 
+    def set_white_balance(self, red: float, green: float, blue: float) -> tuple:
+        """Apply gains measured earlier; return what was actually set."""
+
     def white_balance_gains(self):
         """Current (red, green, blue) gains, or None."""
 

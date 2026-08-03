@@ -197,6 +197,53 @@ def calibrate_wb(ctx, row):
                 f"dark to measure. Calibrate on a brighter white target.", "warn")
 
 
+@verb(MODULE, "SETWB", params=[p(2, "serial"), p(3, "gains", doc="red,green,blue")],
+      config_only=True)
+def set_wb(ctx, row):
+    """Apply white-balance gains measured earlier.
+
+    The alternative is CALIBRATEWB at config time, which grey-worlds whatever is
+    in front of the camera -- on a fixture that is bare PCB, so it pulls green
+    down to neutralise the solder mask and every indicator then reads ~25 counts
+    green-deficient. Measuring once against lit indicators and applying the
+    result here is both repeatable and possible before anything is powered.
+    """
+    serial = ctx.text(row.raw(2))
+    cam = _get(ctx, serial)
+    parts = [x.strip() for x in str(ctx.text(row.raw(3))).split(",") if x.strip()]
+    if len(parts) != 3:
+        raise VerbError(
+            f"SETWB: expected 'red,green,blue', got '{row.raw(3)}'")
+    try:
+        red, green, blue = (float(x) for x in parts)
+    except ValueError:
+        raise VerbError(f"SETWB: '{row.raw(3)}' is not three numbers") from None
+
+    applied = cam.set_white_balance(red, green, blue)
+    ctx.driver_state(STATE).setdefault("wb", {})[serial] = tuple(applied)
+    ctx.log(f"Camera {serial} WB applied: "
+            f"R={applied[0]:.3f} G={applied[1]:.3f} B={applied[2]:.3f}")
+
+
+@verb(MODULE, "GETWB", params=[p(2, "serial"), p(3, "dest")])
+def get_wb(ctx, row):
+    """Store the camera's current gains as 'red,green,blue'.
+
+    Written in the shape SETWB reads, so a calibration can measure them and a
+    program can apply them without anything in between reformatting.
+    """
+    serial = ctx.text(row.raw(2))
+    cam = _get(ctx, serial)
+    gains = cam.white_balance_gains()
+    if not gains:
+        raise VerbError(
+            f"GETWB: camera {serial} reports no white-balance gains. "
+            f"Run CALIBRATEWB first.")
+    value = ",".join(f"{float(g):.4f}" for g in gains)
+    ctx.set_data(row.raw(3), value)
+    ctx.log(f"Camera {serial} WB gains: {value}")
+
+
 @verb(MODULE, "CAPTURE",
       params=[p(2, "serial"), p(3, "path", required=False),
               p(4, "dest", required=False)])

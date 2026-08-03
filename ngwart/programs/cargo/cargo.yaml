@@ -113,6 +113,13 @@ vars:
   img.u34_on2.binary:   '15,0,25'
   img.u34_on2.contours: '14,1,25'
 
+  # --- camera ---
+  # White-balance gains, measured once by Tools > Calibrate > White balance
+  # against LIT indicators. CALIBRATEWB at config time grey-worlds a bare
+  # unpowered fixture and pulls green down to neutralise the solder mask,
+  # which left every indicator ~25 counts green-deficient.
+  cam.wb:               ['39,2,30', 'cam.wb']
+
   # --- LED geometry -----------------------------------------------------
   # Each variable names the key it takes its value from in the values file
   # above. INITDATA writes them into their cells, so they are set before
@@ -303,7 +310,7 @@ config:
   - [VISA, OPENALL, '10000', '1', '', '', '', '', '', gray]
   - [Camera, OPENALL, '', '', '', '', '', '', '', gray]
   - [Camera, SETPROPS, UB101256, '4,1296,972', '0,0', '0,120', '0,100,0,0', '', '', gray]
-  - [Camera, CALIBRATEWB, UB101256, '50000', '', '', '', '', '', gray]
+  - [Camera, SETWB, UB101256, '*cam.wb', '', '', '', '', '', gray]
   - [UI, GRID1_CONFIG, Place, '0.00', '0.00', '0.5', '0.5', '', '', gray]
   - [UI, GRID1_CONFIG, Add_Columns, 'Test ID,Device,Min,Max,Result', '', '', '', '', '', gray]
   - [UI, GRID1_CONFIG, Edit_Column, 'Test ID,100,0', '', '', '', '', '', gray]
@@ -484,8 +491,8 @@ exec:
   - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on.value, '', VISA_EX, '1', Measure UUT 2 current On]
   - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on.value, '', VISA_EX, '0', Measure UUT 1 current On]
   - []
-  - [Flow, EVAFLOAT, '0,1', '*uut0.i_on.value', 'uut0.i_on.value;uut0.i_on.result;uut0.i_on.id', min, '0,CURRON1', FLOW_EX, '0', Evaluate UUT1 Current On]
-  - [Flow, EVAFLOAT, '0,1', '*uut1.i_on.value', 'uut1.i_on.value;uut1.i_on.result;uut1.i_on.id', min, '1,CURRON1', FLOW_EX, '1', Evaluate UUT2 Current On]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut0.i_on.value', 'uut0.i_on.value;uut0.i_on.result;uut0.i_on.id', min, '0,CURRON1', FLOW_EX, '0', Evaluate UUT1 Current On]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut1.i_on.value', 'uut1.i_on.value;uut1.i_on.result;uut1.i_on.id', min, '1,CURRON1', FLOW_EX, '1', Evaluate UUT2 Current On]
   - []
 
   # ----------------------------------------------------------------------
@@ -545,17 +552,6 @@ exec:
   - []
 
   # ----------------------------------------------------------------------
-  # CURR_IDLE_1_2  --  Current Idle 1,2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, CURR_IDLE_1_2, 'Current Idle 1,2', '', '', '', '', '', yellow]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_idle.value, '', VISA_EX, '1', Measure UUT 2 current Idle]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_idle.value, '', VISA_EX, '0', Measure UUT 1 current Idle]
-  - []
-  - [Flow, EVAFLOAT, '0,1', '*uut0.i_idle.value', 'uut0.i_idle.value;uut0.i_idle.result;uut0.i_idle.id', min, '0,CURRIDLE', FLOW_EX, '0', Evaluate UUT1 Current Idle]
-  - [Flow, EVAFLOAT, '0,1', '*uut1.i_idle.value', 'uut1.i_idle.value;uut1.i_idle.result;uut1.i_idle.id', min, '1,CURRIDLE', FLOW_EX, '1', Evaluate UUT2 Current Idle]
-  - []
-
-  # ----------------------------------------------------------------------
   # OFF_LEDS_1_2  --  LEDs Off 1,2
   # ----------------------------------------------------------------------
   - [Flow, LABEL, OFF_LEDS_1_2, 'LEDs Off 1,2', '', '', '', '', '', yellow]
@@ -579,6 +575,17 @@ exec:
   - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.d.cont', 'res.u1.off.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.e.cont', 'res.u1.off.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.f.cont', 'res.u1.off.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_IDLE_1_2  --  Current Idle 1,2
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_IDLE_1_2, 'Current Idle 1,2', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_idle.value, '', VISA_EX, '1', Measure UUT 2 current Idle]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_idle.value, '', VISA_EX, '0', Measure UUT 1 current Idle]
+  - []
+  - [Flow, EVAFLOAT, '0.009,0.015', '*uut0.i_idle.value', 'uut0.i_idle.value;uut0.i_idle.result;uut0.i_idle.id', min, '0,CURRIDLE', FLOW_EX, '0', Evaluate UUT1 Current Idle]
+  - [Flow, EVAFLOAT, '0.009,0.015', '*uut1.i_idle.value', 'uut1.i_idle.value;uut1.i_idle.result;uut1.i_idle.id', min, '1,CURRIDLE', FLOW_EX, '1', Evaluate UUT2 Current Idle]
   - []
 
   # ----------------------------------------------------------------------
@@ -621,12 +628,6 @@ exec:
   - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
   - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
   - []
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on2.value, '', VISA_EX, '1', Measure UUT 2 current Power]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on2.value, '', VISA_EX, '0', Measure UUT 1 current Power]
-  - []
-  - [Flow, EVAFLOAT, '0,1', '*uut0.i_on2.value', 'uut0.i_on2.value;uut0.i_on2.result;uut0.i_on2.id', min, '0,CURRON2', FLOW_EX, '0', Evaluate UUT1 Current Power]
-  - [Flow, EVAFLOAT, '0,1', '*uut1.i_on2.value', 'uut1.i_on2.value;uut1.i_on2.result;uut1.i_on2.id', min, '1,CURRON2', FLOW_EX, '1', Evaluate UUT2 Current Power]
-  - []
   - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.captures', img.u12_on2.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
   - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.binary', img.u12_on2.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
   - [Camera, CAPTURE, UB101256, '*img.u12_on2.color', '', '', '', CAM_EX, '0,1']
@@ -648,7 +649,11 @@ exec:
   - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.e.cont', 'res.u1.on2.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.f.cont', 'res.u1.on2.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - []
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on2.value, '', VISA_EX, '1', Measure UUT 2 current Power]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on2.value, '', VISA_EX, '0', Measure UUT 1 current Power]
   - []
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut0.i_on2.value', 'uut0.i_on2.value;uut0.i_on2.result;uut0.i_on2.id', min, '0,CURRON2', FLOW_EX, '0', Evaluate UUT1 Current Power]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut1.i_on2.value', 'uut1.i_on2.value;uut1.i_on2.result;uut1.i_on2.id', min, '1,CURRON2', FLOW_EX, '1', Evaluate UUT2 Current Power]
 
   # ----------------------------------------------------------------------
   # UUT_3_4
@@ -671,8 +676,8 @@ exec:
   - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_on.value, '', VISA_EX, '3', Measure UUT 4 current On]
   - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_on.value, '', VISA_EX, '2', Measure UUT 3 current On]
   - []
-  - [Flow, EVAFLOAT, '0,1', '*uut2.i_on.value', 'uut2.i_on.value;uut2.i_on.result;uut2.i_on.id', min, '2,CURRON1', FLOW_EX, '2', Evaluate UUT3 Current On]
-  - [Flow, EVAFLOAT, '0,1', '*uut3.i_on.value', 'uut3.i_on.value;uut3.i_on.result;uut3.i_on.id', min, '3,CURRON1', FLOW_EX, '3', Evaluate UUT4 Current On]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut2.i_on.value', 'uut2.i_on.value;uut2.i_on.result;uut2.i_on.id', min, '2,CURRON1', FLOW_EX, '2', Evaluate UUT3 Current On]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut3.i_on.value', 'uut3.i_on.value;uut3.i_on.result;uut3.i_on.id', min, '3,CURRON1', FLOW_EX, '3', Evaluate UUT4 Current On]
   - []
   - [Flow, STOREF, '%0\UUT_3_4_ON.jpg;*path.captures', img.u34_on.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
   - [Flow, STOREF, '%0\UUT_3_4_ON.jpg;*path.binary', img.u34_on.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
@@ -727,17 +732,6 @@ exec:
   - []
 
   # ----------------------------------------------------------------------
-  # CURR_IDLE_3_4  --  Current Idle 3,4
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, CURR_IDLE_3_4, 'Current Idle 3,4', '', '', '', '', '', yellow]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_idle.value, '', VISA_EX, '3', Measure UUT 4 current Idle]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_idle.value, '', VISA_EX, '2', Measure UUT 3 current Idle]
-  - []
-  - [Flow, EVAFLOAT, '0,1', '*uut2.i_idle.value', 'uut2.i_idle.value;uut2.i_idle.result;uut2.i_idle.id', min, '2,CURRIDLE', FLOW_EX, '2', Evaluate UUT3 Current Idle]
-  - [Flow, EVAFLOAT, '0,1', '*uut3.i_idle.value', 'uut3.i_idle.value;uut3.i_idle.result;uut3.i_idle.id', min, '3,CURRIDLE', FLOW_EX, '3', Evaluate UUT4 Current Idle]
-  - []
-
-  # ----------------------------------------------------------------------
   # OFF_LEDS_3_4  --  LEDs Off 3,4
   # ----------------------------------------------------------------------
   - [Flow, LABEL, OFF_LEDS_3_4, 'LEDs Off 3,4', '', '', '', '', '', yellow]
@@ -761,6 +755,17 @@ exec:
   - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.d.cont', 'res.u3.off.intensity_d', min, '3,INTENSITY_D', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.e.cont', 'res.u3.off.intensity_e', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONTN, '*img.u34_off.contours', '*led.u3.f.cont', 'res.u3.off.intensity_f', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
+  - []
+
+  # ----------------------------------------------------------------------
+  # CURR_IDLE_3_4  --  Current Idle 3,4
+  # ----------------------------------------------------------------------
+  - [Flow, LABEL, CURR_IDLE_3_4, 'Current Idle 3,4', '', '', '', '', '', yellow]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_idle.value, '', VISA_EX, '3', Measure UUT 4 current Idle]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_idle.value, '', VISA_EX, '2', Measure UUT 3 current Idle]
+  - []
+  - [Flow, EVAFLOAT, '0.009,0.015', '*uut2.i_idle.value', 'uut2.i_idle.value;uut2.i_idle.result;uut2.i_idle.id', min, '2,CURRIDLE', FLOW_EX, '2', Evaluate UUT3 Current Idle]
+  - [Flow, EVAFLOAT, '0.009,0.015', '*uut3.i_idle.value', 'uut3.i_idle.value;uut3.i_idle.result;uut3.i_idle.id', min, '3,CURRIDLE', FLOW_EX, '3', Evaluate UUT4 Current Idle]
   - []
 
   # ----------------------------------------------------------------------
@@ -803,12 +808,6 @@ exec:
   - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,45,47,47', '49,50,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ OFF –> DVI2 K12 OFF']
   - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,45,47,47', '49,51,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– OFF –> DVI1 K13 OFF']
   - []
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_on2.value, '', VISA_EX, '3', Measure UUT 4 current Power]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_on2.value, '', VISA_EX, '2', Measure UUT 3 current Power]
-  - []
-  - [Flow, EVAFLOAT, '0,1', '*uut2.i_on2.value', 'uut2.i_on2.value;uut2.i_on2.result;uut2.i_on2.id', min, '2,CURRON2', FLOW_EX, '2', Evaluate UUT1 Current Power]
-  - [Flow, EVAFLOAT, '0,1', '*uut3.i_on2.value', 'uut3.i_on2.value;uut3.i_on2.result;uut3.i_on2.id', min, '3,CURRON2', FLOW_EX, '3', Evaluate UUT2 Current Power]
-  - []
   - [Flow, STOREF, '%0\UUT_3_4_ON2.jpg;*path.captures', img.u34_on2.color, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
   - [Flow, STOREF, '%0\UUT_3_4_ON2.jpg;*path.binary', img.u34_on2.binary, '', '', '', FLOW_EX, '2,3', Create Directory to save image]
   - [Camera, CAPTURE, UB101256, '*img.u34_on2.color', '', '', '', CAM_EX, '2,3']
@@ -830,6 +829,11 @@ exec:
   - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.e.cont', 'res.u3.on2.intensity_e', min, '3,INTENSITY_E', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u34_on2.contours', '*led.u3.f.cont', 'res.u3.on2.intensity_f', min, '3,INTENSITY_F', IMPRO_EX, '3', Evaluate if any contour matches criteria]
   - []
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut3.i_on2.value, '', VISA_EX, '3', Measure UUT 4 current Power]
+  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut2.i_on2.value, '', VISA_EX, '2', Measure UUT 3 current Power]
+  - []
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut2.i_on2.value', 'uut2.i_on2.value;uut2.i_on2.result;uut2.i_on2.id', min, '2,CURRON2', FLOW_EX, '2', Evaluate UUT1 Current Power]
+  - [Flow, EVAFLOAT, '0.163,0.271', '*uut3.i_on2.value', 'uut3.i_on2.value;uut3.i_on2.result;uut3.i_on2.id', min, '3,CURRON2', FLOW_EX, '3', Evaluate UUT2 Current Power]
 
   # ----------------------------------------------------------------------
   # VALIDATE  --  VALIDATE

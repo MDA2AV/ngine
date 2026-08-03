@@ -1172,6 +1172,12 @@ class MainWindow(QMainWindow):
 
         if self._last_ctx is None:
             return
+        # A calibration that measures a value rather than asking for clicks is
+        # done the moment the run is: read what it computed, show it, keep it.
+        if calibration.measures:
+            self._finish_measurement(calibration, target)
+            return
+
         try:
             capture = cal.capture_from_context(
                 load(calibration.path), self._last_ctx)
@@ -1204,6 +1210,60 @@ class MainWindow(QMainWindow):
             context=self._last_ctx, title=calibration.label,
             capture_program=calibration.path,
             min_area=calibration.min_area)
+
+    def _finish_measurement(self, calibration, target) -> None:
+        """Show what a measuring calibration computed, and offer to keep it.
+
+        Confirmed rather than written silently: these values change what the
+        test measures on every board afterwards, and the operator has just
+        watched the frame they were derived from.
+        """
+        from .. import calibration as cal
+
+        measured = cal.read_measured(self._last_ctx, calibration.measures)
+        missing = [n for n in calibration.measures if n not in measured]
+
+        for name, value in sorted(measured.items()):
+            was = target.values_loaded.get(name, "(not set)")
+            self.log.append(f"{calibration.label}: {name} = {value}   (was {was})")
+        for name in missing:
+            self.log.append(f"{calibration.label}: {name} was never written",
+                            "error")
+
+        if not measured:
+            QMessageBox.warning(
+                self, calibration.label,
+                "The run finished but measured nothing.\n\n"
+                "It should have written: " + ", ".join(calibration.measures))
+            return
+
+        path = cal._resolve_path(target, target.values_source)   # noqa: SLF001
+        detail = "\n".join(
+            f"    {name}\n        now  {value}\n        was  "
+            f"{target.values_loaded.get(name, '(not set)')}"
+            for name, value in sorted(measured.items()))
+        warn = ("\n\nNot written: " + ", ".join(missing)) if missing else ""
+
+        answer = QMessageBox.question(
+            self, calibration.label,
+            "Measured:\n\n" + detail + warn
+            + "\n\nWrite these to " + os.path.basename(path) + "?\n"
+            + os.path.basename(target.source or "the program")
+            + " applies them at config time.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        if answer != QMessageBox.Yes:
+            self.log.append("Not saved.", "warn")
+            return
+
+        written = cal.write_values(
+            path, measured,
+            meta={"written_by": "ngwart calibrate",
+                  "calibration": calibration.label,
+                  "simulated": self.simulate_action.isChecked(),
+                  "station": self.station, "operator": self.operator})
+        self.log.append(
+            f"Saved to {os.path.abspath(written)}. Reload the program to apply.",
+            "pass")
 
     # -- teaching ---------------------------------------------------------
 
