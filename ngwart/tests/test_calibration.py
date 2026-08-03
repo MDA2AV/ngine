@@ -1435,3 +1435,71 @@ def test_cargo_config_runs_to_the_end():
     expected = tuple(float(x)
                      for x in program.var_values["cam.wb"].split(","))
     assert camera.white_balance_gains() == expected
+
+
+# --- holding the fixture while the camera is adjusted --------------------
+
+def test_the_camera_tool_holds_the_fixture():
+    """Aiming and focusing need the board lit and the frame re-taken.
+
+    A capture that powers up, shoots once and tears down is no use: by the time
+    the frame is on screen the indicators are dark.
+    """
+    from ngwart.engine.loaders import load
+
+    holding = [c for c in cal.calibrations(CAL_DIR) if c.holds]
+    assert len(holding) == 1
+    tool = holding[0]
+    assert tool.title == "Camera position and focus"
+    assert not tool.measures and not tool.sites, "it produces no values"
+
+    # It can re-take a picture without powering anything a second time.
+    program = load(tool.path)
+    rows = cal.refresh_rows(program)
+    verbs = [program.rows[i].verb.upper() for i in rows]
+    assert "CAPTURE" in verbs
+    assert any(v.endswith("2CONT") for v in verbs)
+    assert not [v for v in verbs if v == "EXCHANGEBYTES_LVS"], \
+        "a re-capture must not touch the relays"
+
+
+def test_sharpness_rises_with_focus():
+    """The number an operator turns the ring against."""
+    import numpy as np
+
+    sharp = np.zeros((200, 200), np.uint8)
+    cv2.circle(sharp, (100, 100), 40, 255, -1)
+    blurred = cv2.GaussianBlur(sharp, (31, 31), 0)
+
+    assert cal.sharpness(sharp) > cal.sharpness(blurred)
+    assert cal.sharpness(None) == 0.0
+
+
+def test_the_focus_window_powers_down_when_closed(app):
+    """Closing the window is not a reason to leave a supply at 13.5 V."""
+    from ngwart.ui.focus_window import FocusWindow
+
+    powered = [True]
+    window = FocusWindow("Camera position and focus")
+    window.on_done = lambda: powered.__setitem__(0, False)
+
+    window.close()
+    assert powered[0] is False
+
+
+def test_calibrations_are_grouped_by_product_in_the_menu(app):
+    from ngwart.ui.main_window import MainWindow
+
+    window = MainWindow(program_path="programs/cargo/cargo.yaml",
+                        simulate=True, history_path="")
+    groups = {a.text(): a.menu() for a in window.calibrate_menu.actions()
+              if a.menu() is not None}
+    assert groups, "calibrations are not grouped"
+
+    # The loaded product is first and says so.
+    first = list(groups)[0]
+    assert first.startswith("cargo") and "loaded" in first
+    titles = [a.text().rstrip("…") for a in groups[first].actions()]
+    assert "Camera position and focus" in titles
+    assert "White balance" in titles
+    window.close()

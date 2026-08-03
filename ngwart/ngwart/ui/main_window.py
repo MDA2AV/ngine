@@ -56,6 +56,9 @@ class MainWindow(QMainWindow):
         #: (Calibration, target Program) while a calibration capture runs.
         self._calibration = None
         self._calibrations = []
+        #: Open focus window, and the capture program driving it.
+        self._focus_window = None
+        self._focus_program = None
         self._points = 0
         self._failed = 0
         self._program_ok = False
@@ -1059,6 +1062,13 @@ class MainWindow(QMainWindow):
         self.save_report_action.setEnabled(self._last_record is not None)
         self._sync_calibrate_action()
 
+        if self._focus_window is not None and self._calibration is None:
+            # A re-capture inside a holding calibration: show it and stop.
+            self._partial_run = 0
+            self._session_run = False
+            self._show_focus_frame()
+            return
+
         if self._calibration is not None:
             # A calibration capture is not a board. It gets no verdict, no
             # history row and no grid scoring -- it exists to produce a frame.
@@ -1125,27 +1135,39 @@ class MainWindow(QMainWindow):
         self.calibrate_menu.clear()
         directory = cal.calibration_dir(
             self.program.source if self.program else None)
-        # This program's calibrations only. Another product's would power a
-        # fixture for a board that is not on it, and write into a values file
-        # the loaded program never reads.
-        self._calibrations = cal.calibrations_for(directory, self.program)
+        self._calibrations = cal.calibrations(directory)
 
         if not self._calibrations:
-            name = (os.path.basename(self.program.source or "this program")
-                    if self.program else "any program")
-            empty = self.calibrate_menu.addAction(f"None for {name}")
+            empty = self.calibrate_menu.addAction("No calibrations found")
             empty.setEnabled(False)
             self.calibrate_menu.setToolTip(
                 f"A calibration is a capture program under {directory} whose "
-                f"meta names the table it calibrates. Nothing there names "
-                f"{name}.")
+                f"meta names the table it calibrates.")
             return
 
+        # Grouped by product, all of them shown. Each one loads its own target,
+        # so another product's is a legitimate thing to run -- but it powers a
+        # different fixture and writes a different values file, so which
+        # product it belongs to has to be visible before it is clicked.
+        groups: dict[str, list] = {}
         for calibration in self._calibrations:
-            action = self.calibrate_menu.addAction(calibration.label + "…")
-            action.setToolTip(calibration.notes[:200])
-            action.triggered.connect(
-                lambda _=False, c=calibration: self._start_calibration(c))
+            groups.setdefault(calibration.group, []).append(calibration)
+
+        mine = ""
+        if self.program:
+            mine = os.path.basename(
+                os.path.dirname(os.path.abspath(self.program.source or "")))
+
+        # The loaded product first: it is what the operator is almost certainly
+        # after, and the rest are one keystroke further away rather than hidden.
+        for product in sorted(groups, key=lambda g: (g != mine, g.lower())):
+            label = f"{product}  (loaded)" if product == mine else product
+            submenu = self.calibrate_menu.addMenu(label)
+            for calibration in sorted(groups[product], key=lambda c: c.label):
+                action = submenu.addAction(calibration.label + "…")
+                action.setToolTip(calibration.notes[:200])
+                action.triggered.connect(
+                    lambda _=False, c=calibration: self._start_calibration(c))
 
     def _start_calibration(self, calibration) -> None:
         """Run a calibration capture, then open the canvas over it."""
@@ -1172,7 +1194,11 @@ class MainWindow(QMainWindow):
         self._calibration = (calibration, target_program)
         self.banner.show_status(f"CALIBRATING — {calibration.label}",
                                 theme.palette(self.dark)["warn"])
-        self._launch(capture_program)
+        if calibration.holds:
+            self.log.append(
+                f"{calibration.label}: the fixture stays powered until you "
+                f"close the window.", "warn")
+        self._launch(capture_program, session=calibration.holds)
 
     def _finish_calibration(self) -> None:
         """Open the teach canvas on what the calibration run captured."""
@@ -1185,6 +1211,9 @@ class MainWindow(QMainWindow):
             return
         # A calibration that measures a value rather than asking for clicks is
         # done the moment the run is: read what it computed, show it, keep it.
+        if calibration.holds:
+            self._open_focus_window(calibration)
+            return
         if calibration.measures:
             self._finish_measurement(calibration, target)
             return
@@ -1221,6 +1250,61 @@ class MainWindow(QMainWindow):
             context=self._last_ctx, title=calibration.label,
             capture_program=calibration.path,
             min_area=calibration.min_area)
+
+    def _open_focus_window(self, calibration) -> None:
+        """Hand over a powered fixture and a re-capture button."""
+        from .. import calibration as cal
+        from .focus_window import FocusWindow
+
+        program = load(calibration.path)
+        self._focus_program = program
+        window = FocusWindow(calibration.label, dark=self.dark, parent=self)
+        self._focus_window = window
+        window.on_refresh = self._refresh_focus_frame
+        window.on_done = self._close_focus
+
+        window.setWindowFlag(Qt.Window, True)
+        window.show()
+        self._show_focus_frame()
+
+    def _show_focus_frame(self) -> None:
+        from .. import calibration as cal
+
+        window, program = self._focus_window, self._focus_program
+        if window is None or self._session_ctx is None:
+            return
+        try:
+            capture = cal.capture_from_context(program, self._session_ctx)
+        except Exception as exc:  # noqa: BLE001
+            window.status.setText(f"Could not read the frame: {exc}")
+            return
+        window.set_busy(False)
+        window.show_frame(capture.frame, capture.binary, capture.contours)
+
+    def _refresh_focus_frame(self) -> None:
+        """Re-take the picture against the live session."""
+        from .. import calibration as cal
+
+        if self._session_ctx is None or self.is_running:
+            return
+        rows = cal.refresh_rows(self._focus_program)
+        if not rows:
+            self._focus_window.status.setText(
+                "This program has no CAPTURE row to repeat.")
+            return
+        self._focus_window.set_busy(True)
+        # No setup and no config: the fixture is already powered and its ports
+        # are open. This retakes the picture and nothing else.
+        self._launch(self._focus_program.subset(rows, with_setup=False,
+                                                with_config=False),
+                     partial=len(rows), session=True)
+
+    def _close_focus(self) -> None:
+        window, self._focus_window = self._focus_window, None
+        self._focus_program = None
+        self.end_session()
+        if window is not None:
+            self.log.append("Camera adjustment finished; fixture powered down.")
 
     def _finish_measurement(self, calibration, target) -> None:
         """Show what a measuring calibration computed, and offer to keep it.

@@ -834,6 +834,54 @@ def is_conversion(verb: str) -> bool:
     return str(verb).upper().endswith(_CONVERSION_SUFFIXES)
 
 
+def sharpness(image) -> float:
+    """How sharp a frame is: the variance of its Laplacian.
+
+    A single number that rises as focus improves, which is what a focus ring
+    needs -- "sharper than the last frame" is a judgement an operator cannot
+    reliably make by eye through a fixture window, and can make trivially
+    against a number that peaks.
+
+    Absolute values mean nothing across scenes; only the direction of change
+    matters, which is why it is shown next to a Capture again button.
+    """
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        return 0.0
+    if image is None:
+        return 0.0
+    try:
+        grey = image if getattr(image, "ndim", 0) == 2 else cv2.cvtColor(
+            image, cv2.COLOR_BGR2GRAY)
+        return float(cv2.Laplacian(grey, cv2.CV_64F).var())
+    except Exception:  # noqa: BLE001 - a readout must not raise
+        return 0.0
+
+
+def refresh_rows(program: Program) -> list[int]:
+    """The rows that take a fresh picture, for re-running while adjusting.
+
+    From the first CAPTURE to the *2CONT that consumes it: the shortest span
+    that produces a new frame without powering anything again. Everything
+    before it is setup that is already done and must not be repeated.
+    """
+    body = list(program.body("Exec"))
+    starts = [i for i in body if program.rows[i].verb.upper() == "CAPTURE"]
+    if not starts:
+        return []
+    ends = [i for i in body if program.rows[i].verb.upper().endswith("2CONT")]
+    last = max(ends) if ends else max(starts)
+    # SETEXPOSURE rows around the capture belong to it -- the frame is not the
+    # same picture without them.
+    first = min(starts)
+    for i in body:
+        if i < first and program.rows[i].verb.upper() == "SETEXPOSURE":
+            first = min(first, i)
+    return [i for i in body if first <= i <= last]
+
+
 def contour_rows(program: Program) -> list:
     """Every ``*2CONT`` row, in program order."""
     return [r for r in program.rows if r.verb.upper().endswith("2CONT")]
@@ -865,6 +913,11 @@ class Calibration:
     #: the ones invisible at this exposure -- which an operator has no way to
     #: tell apart from ones they simply have not clicked yet.
     sites: str = ""
+    #: Leave the fixture powered when the run ends and hand the operator a
+    #: window instead of a result. For the jobs that are physical -- moving
+    #: the camera, turning a focus ring -- where the point is to keep the
+    #: board lit and see the frame change as something is adjusted.
+    holds: bool = False
     #: Variables whose runtime value this calibration measures and writes to
     #: the values file, comma-separated. For a calibration that computes a
     #: number rather than asking an operator to point at one -- white
@@ -895,6 +948,20 @@ class Calibration:
     @property
     def label(self) -> str:
         return self.title or os.path.splitext(os.path.basename(self.path))[0]
+
+    @property
+    def group(self) -> str:
+        """Which product this belongs to -- the folder it sits in.
+
+        The folder rather than meta's `product`, because the folder is what an
+        operator sees on disk and what decides where a new one goes. Falls back
+        to the target's own folder for a tree not yet split up.
+        """
+        parent = os.path.basename(os.path.dirname(os.path.abspath(self.path)))
+        if parent and parent.lower() != "calibration":
+            return parent
+        target = os.path.dirname(os.path.abspath(self.target or ""))
+        return os.path.basename(target) or "other"
 
     def covers(self, site) -> bool:
         """Whether this calibration is responsible for a site."""
@@ -1007,6 +1074,7 @@ def calibrations(directory: str) -> list[Calibration]:
             product=str(meta.get("product") or ""),
             notes=str(meta.get("notes") or ""),
             sites=str(meta.get("sites") or ""),
+            holds=bool(meta.get("holds") or False),
             captures=str(meta.get("captures") or ""),
             min_area=max(1, floor)))
     return found
