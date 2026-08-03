@@ -1062,13 +1062,6 @@ class MainWindow(QMainWindow):
         self.save_report_action.setEnabled(self._last_record is not None)
         self._sync_calibrate_action()
 
-        if self._focus_window is not None and self._calibration is None:
-            # A re-capture inside a holding calibration: show it and stop.
-            self._partial_run = 0
-            self._session_run = False
-            self._show_focus_frame()
-            return
-
         if self._calibration is not None:
             # A calibration capture is not a board. It gets no verdict, no
             # history row and no grid scoring -- it exists to produce a frame.
@@ -1260,47 +1253,53 @@ class MainWindow(QMainWindow):
         self._focus_program = program
         window = FocusWindow(calibration.label, dark=self.dark, parent=self)
         self._focus_window = window
-        window.on_refresh = self._refresh_focus_frame
         window.on_done = self._close_focus
 
         window.setWindowFlag(Qt.Window, True)
         window.show()
-        self._show_focus_frame()
 
-    def _show_focus_frame(self) -> None:
-        from .. import calibration as cal
-
-        window, program = self._focus_window, self._focus_program
-        if window is None or self._session_ctx is None:
-            return
+        # Stream straight from the camera the run left open, at the exposure
+        # and threshold the test itself uses -- so what is on screen while the
+        # lens is being turned is what the test will see.
+        cells = None
         try:
-            capture = cal.capture_from_context(program, self._session_ctx)
-        except Exception as exc:  # noqa: BLE001
-            window.status.setText(f"Could not read the frame: {exc}")
-            return
-        window.set_busy(False)
-        window.show_frame(capture.frame, capture.binary, capture.contours)
+            cells = cal.find_capture(program)
+        except Exception:  # noqa: BLE001
+            pass
+        window.start_stream(
+            self._session_camera(),
+            exposure_us=self._program_exposure(program),
+            threshold=(cells.threshold if cells and cells.threshold else 127.0))
 
-    def _refresh_focus_frame(self) -> None:
-        """Re-take the picture against the live session."""
-        from .. import calibration as cal
+    def _session_camera(self):
+        """The camera the holding run opened, or None."""
+        if self._session_ctx is None:
+            return None
+        cameras = self._session_ctx.store.get("camera", {}).get("cameras", {})
+        return next(iter(cameras.values()), None)
 
-        if self._session_ctx is None or self.is_running:
-            return
-        rows = cal.refresh_rows(self._focus_program)
-        if not rows:
-            self._focus_window.status.setText(
-                "This program has no CAPTURE row to repeat.")
-            return
-        self._focus_window.set_busy(True)
-        # No setup and no config: the fixture is already powered and its ports
-        # are open. This retakes the picture and nothing else.
-        self._launch(self._focus_program.subset(rows, with_setup=False,
-                                                with_config=False),
-                     partial=len(rows), session=True)
+    @staticmethod
+    def _program_exposure(program) -> float:
+        """The exposure the program's own capture runs at.
+
+        Read rather than assumed: the frame is only representative of what the
+        test sees if it is taken the way the test takes it.
+        """
+        for i in program.body("Exec"):
+            row = program.rows[i]
+            if row.verb.upper() == "SETEXPOSURE" and row.module and row.has(3):
+                try:
+                    return float(row.raw(3))
+                except ValueError:
+                    continue
+        return 120.0
 
     def _close_focus(self) -> None:
         window, self._focus_window = self._focus_window, None
+        # Before end_session: teardown restores the camera exposure, and
+        # two threads on one camera is how a vendor SDK crashes.
+        if window is not None:
+            window.stop_stream()
         self._focus_program = None
         self.end_session()
         if window is not None:

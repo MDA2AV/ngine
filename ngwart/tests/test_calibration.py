@@ -1503,3 +1503,76 @@ def test_calibrations_are_grouped_by_product_in_the_menu(app):
     assert "Camera position and focus" in titles
     assert "White balance" in titles
     window.close()
+
+
+def test_the_camera_tool_streams_at_the_test_exposure(app):
+    """What is on screen while the lens is turned must be what the test sees."""
+    from ngwart.engine.loaders import load
+    from ngwart.ui.main_window import MainWindow
+
+    tool = next(c for c in cal.calibrations(CAL_DIR) if c.holds)
+    program = load(tool.path)
+
+    window = MainWindow(simulate=True, history_path="")
+    assert window._program_exposure(program) == 120.0
+    assert cal.find_capture(program).threshold == 180.0
+    window.close()
+
+
+def test_the_streamer_stops_before_anything_else_touches_the_camera(app):
+    """Teardown restores the exposure; two threads on one camera is a crash."""
+    from ngwart.drivers.backends.sim import SimCamera
+    from ngwart.ui.focus_window import FocusWindow
+
+    camera = SimCamera("SIM", width=320, height=240)
+    camera.open()
+
+    window = FocusWindow("Camera position and focus")
+    window.start_stream(camera, exposure_us=120.0, threshold=180.0)
+    assert window._streamer is not None and window._streamer.isRunning()
+
+    window.stop_stream()
+    assert window._streamer is None
+    window.close()
+
+
+def test_a_dropped_frame_does_not_end_the_stream(app):
+    """A camera being physically handled drops frames -- which is exactly when
+    this window is in use."""
+    from ngwart.ui.focus_window import FrameStreamer
+
+    class Flaky:
+        def __init__(self):
+            self.calls = 0
+
+        def set_exposure(self, us):
+            return us
+
+        def capture(self):
+            self.calls += 1
+            raise OSError("dropped")
+
+    camera = Flaky()
+    streamer = FrameStreamer(camera, 120.0, 180.0, interval_s=0.01)
+    problems = []
+    streamer.failed.connect(problems.append)
+    streamer.start()
+
+    from PySide6.QtCore import QEventLoop, QTimer
+    loop = QEventLoop()
+    QTimer.singleShot(1200, loop.quit)
+    loop.exec()
+    streamer.stop()
+
+    assert camera.calls > 1, "the stream gave up after one bad grab"
+    assert problems, "the failure was never reported"
+
+
+def test_streaming_never_runs_without_a_camera(app):
+    from ngwart.ui.focus_window import FocusWindow
+
+    window = FocusWindow("Camera position and focus")
+    window.start_stream(None, exposure_us=120.0, threshold=180.0)
+    assert window._streamer is None
+    assert "No camera" in window.status.text()
+    window.close()
