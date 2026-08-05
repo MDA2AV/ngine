@@ -1,0 +1,131 @@
+meta:
+  name: smoked_cal_whitebalance
+  product: SMOKED
+  revision: 1
+  calibrates: programs/smoked/smoked.yaml
+  # Measures a value rather than asking anyone to point at one. The variable
+  # named here is read out of the finished run and written to the values file,
+  # under the same name the test applies it with.
+  captures: cam.wb
+  title: White balance
+  notes: >
+    Measures the camera's white-balance gains against LIT indicators, and keeps
+    them so the test can apply them instead of re-deriving them every session.
+
+    Why it exists: CALIBRATEWB grey-worlds whatever is in front of the lens. Run
+    at config time, as cargo.yaml used to, that is a bare unpowered fixture --
+    so it reads the green solder mask as a colour cast and pulls green gain down
+    to neutralise it. Every indicator then measures about 25 counts
+    green-deficient, the whole population crowds the lower edge of the EVALLEDS
+    window, and single LEDs fail at random on good boards.
+
+    So this powers both units first. The indicators are the thing being
+    measured, so they are the right reference to neutralise on.
+
+    Afterwards, cargo.yaml applies the stored gains with SETWB at config time --
+    which is also possible before anything is powered, where a calibration is
+    not.
+
+    Re-run it when the lens, the lighting or the camera changes. The frame it
+    captures is shown so the result can be looked at before it is kept.
+
+modules:
+  Flow: FlowManager
+  UI: UIManager
+  Cargo: CargoManager
+  VISA: GlobalVISAManager
+  Camera: BaluffManager
+  Serial: WinSerialManager
+  ImageProcess: ImageProcessManager
+
+vars:
+  cam.wb:        '3,0,0'
+  img.path:      '2,0,0'
+  img.color:     '0,0,0'
+  img.binary:    '0,1,0'
+  img.contours:  '0,2,0'
+
+config:
+  - ['TestData', 'initAlive', '4', '', '', '', '', '', '', 'gray']
+  - ['TestData', 'updateLabels', '', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', 'CONTROL', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '9600,1', 'DAE006GCA', 'D1', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '9600,1', 'DAE00646A', 'D2', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'CONTROL', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'D1', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'D2', '', '', '', '', '', '', 'gray']
+  - ['VISA', 'OPENALL', '10000', '1', '', '', '', '', '', 'gray']
+  - ['Camera', 'OPENALL', '', '', '', '', '', '', '', 'gray']
+  - ['Camera', 'SETPROPS', 'UB101256', '4,1296,972', '0,0', '0,120', '0,100,0,0', '', '', 'gray']
+
+exec:
+  - [Flow, LABEL, START, 'WHITE BALANCE', '', '#4C9AFF', '', '', '', yellow]
+  - [TestData, STARTALIVE]
+  - [TestData, INITDATA, '40', '3', '32']
+  - [Flow, CREATEDIR, 'debug/calibration', '', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_whitebalance.jpg', '*img.path', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_whitebalance_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
+
+  # Clear the fixture, then power both. Reset only -- no EIMAN needed to
+  # light an indicator, and an unenergised magnet stays out of the view.
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 1']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 2']
+
+  - [Flow, LABEL, POWER, 'POWERING 1-2', '', '#4C9AFF', '', '', '', yellow]
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,49,43,47,47', '48,49,43,47,47', '5,5', '', SERIAL_EX, '', 'CH1 + ON -> K1  UUT 2']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,50,43,47,47', '48,50,43,47,47', '5,5', '', SERIAL_EX, '', 'CH1 - ON -> K2  shared return']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,51,43,47,47', '48,51,43,47,47', '5,5', '', SERIAL_EX, '', 'CH2 + ON -> K3  UUT 1']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,52,43,47,47', '48,52,43,47,47', '5,5', '', SERIAL_EX, '', 'CH2 - ON -> K4  shared return']
+
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX, '', 'Select CH1']
+  - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
+  - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', VISA_EX, '', 'Select CH2']
+  - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
+  - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
+  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let all four settle']
+
+  # --- the measurement --------------------------------------------------
+  # Next-frame calibration, with the indicators lit. 50000 us matches what
+  # cargo.yaml used; the gains are ratios, so the exposure only has to be
+  # bright enough to measure on.
+  - [Flow, LABEL, MEASURE, 'CALIBRATING', '', '#4C9AFF', '', '', '', yellow]
+  - [Camera, CALIBRATEWB, UB101256, '50000', '', '', '', CAM_EX]
+  - [Camera, GETWB, UB101256, '*cam.wb', '', '', '', CAM_EX, '', 'keep what it measured']
+
+  # --- a frame to look at -----------------------------------------------
+  # Taken at the test's own exposure and threshold, so what is on screen is
+  # what the test will see once these gains are applied.
+  - [Flow, LABEL, VERIFY, 'VERIFYING', '', '#4C9AFF', '', '', '', yellow]
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
+  - [Flow, DELAY, '0.3', '', '', '', '', FLOW_EX, '', 'let the sensor settle']
+  - [Camera, CAPTURE, UB101256, '*img.path', '*img.color', '', '', CAM_EX, '', 'save it, and keep it in memory']
+  - [Flow, DELAY, '0.1', '', '', '', '', FLOW_EX]
+  - [ImageProcess, BGR2CONT, '*img.color', '', img.contours, '*img.binary', '180', IMPRO_EX]
+  - [Flow, J, DONE]
+
+ehandling:
+  - [Flow, LABEL, FLOW_EX, 'FLOW FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, SERIAL_EX, 'SERIAL FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, VISA_EX, 'INSTRUMENT FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, CAM_EX, 'CAMERA FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, IMPRO_EX, 'VISION FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, STD_EX, 'SYSTEM FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, DONE, '', '', '', '', '', '', gray]
+
+teardown:
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', '', '', 'leave the camera as found']
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', '', '', 'select channel 1']
+  - [VISA, WRITE, DP2A243200206, 'OUTP OFF', '', '', '', '', '', 'de-energise CH1']
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', '', '', 'select channel 2']
+  - [VISA, WRITE, DP2A243200206, 'OUTP OFF', '', '', '', '', '', 'de-energise CH2']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', '', '', 'open all D1 relays']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', '', '', 'open all D2 relays']

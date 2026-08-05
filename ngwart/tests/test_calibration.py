@@ -1576,3 +1576,71 @@ def test_streaming_never_runs_without_a_camera(app):
     assert window._streamer is None
     assert "No camera" in window.status.text()
     window.close()
+
+
+# --- smoked: cargo's fixture, two boards ---------------------------------
+
+def test_smoked_is_cargos_first_half():
+    from ngwart.engine.loaders import load
+
+    smoked = load("programs/smoked/smoked.yaml")
+    assert smoked.value_problems == []
+
+    alive = next(r for r in smoked.rows if r.verb == "initAlive")
+    assert alive.raw(2) == "2"
+
+    # Nothing addresses a third or fourth board.
+    for row in smoked.rows:
+        if row.verb.upper() in ("EVALCONT", "EVALCONTN", "EVALLEDS") and row.raw(6):
+            assert row.raw(6).split(",")[0] in ("0", "1")
+    assert not [n for n in smoked.labels if "3_4" in n]
+    assert not [k for k in smoked.values_loaded if k.startswith(("led.u2", "led.u3"))]
+
+    # Two grids, and they are the whole height rather than two of four
+    # quadrants.
+    for grid in (3, 4):
+        assert not [r for r in smoked.rows
+                    if r.verb.upper().startswith(f"GRID{grid}")]
+    for grid in (1, 2):
+        place = next(r for r in smoked.rows
+                     if r.verb.upper() == f"GRID{grid}_CONFIG"
+                     and r.raw(2) == "Place")
+        assert place.raw(6) == "1.0"
+
+
+def test_smoked_has_its_own_calibrations_and_values():
+    from ngwart.engine.loaders import load
+
+    smoked = load("programs/smoked/smoked.yaml")
+    assert smoked.values_source.endswith("smoked-values.json")
+
+    sites, notes = cal.sites_from_program(smoked)
+    assert notes == []
+    assert len(sites) == 14                       # 7 per board
+    assert {s.uut for s in sites} == {0, 1}
+
+    mine = [c for c in cal.calibrations(CAL_DIR) if c.group == "smoked"]
+    assert {c.title for c in mine} == {
+        "LEDs A-F", "Button LED", "White balance", "Camera position and focus"}
+    assert all(c.target.endswith("smoked.yaml") for c in mine)
+
+    # The two coordinate calibrations cover every site exactly once.
+    covered = [s for c in mine if c.sites for s in c.select(sites)]
+    assert len(covered) == len(sites)
+    assert len({id(s) for s in covered}) == len(sites)
+
+
+def test_smoked_captures_power_only_two_boards():
+    """cargo's light all four; on this fixture that is two boards too many."""
+    from ngwart.engine.loaders import load
+
+    for path in pathlib.Path(CAL_DIR, "smoked").glob("*.yaml"):
+        program = load(str(path))
+        closes = [r for r in program.rows
+                  if ",43," in r.raw(3) and "CH" in r.comment]
+        if not closes:
+            continue
+        assert len(closes) == 4, f"{path.name} closes {len(closes)} relays"
+        assert not [r for r in closes if "K15" in r.comment or "K16" in r.comment]
+        # One board per channel, so cargo's doubled limit does not apply.
+        assert not [r for r in program.rows if "CURR 2A" in r.raw(3)]

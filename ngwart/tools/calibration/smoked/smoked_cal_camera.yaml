@@ -1,0 +1,119 @@
+meta:
+  name: smoked_cal_camera
+  product: SMOKED
+  revision: 1
+  calibrates: programs/smoked/smoked.yaml
+  # Leaves the fixture powered and hands over a window instead of a result.
+  holds: true
+  title: Camera position and focus
+  notes: >
+    Powers both boards and holds them there while the camera is aimed and
+    focused by hand.
+
+    Aiming and focusing are physical jobs: the indicators have to stay lit and
+    the frame has to be re-taken after every small movement. A capture that
+    powers up, takes one picture and tears down is no use -- by the time the
+    frame is on screen the board is dark again.
+
+    So this one does not power down on its own. Capture again re-takes the
+    picture against the fixture that is already powered, and the sharpness
+    figure beside it rises as focus improves; its absolute value means nothing,
+    but watching it peak is a judgement that can be made reliably where "does
+    that look sharper" cannot. Done runs teardown and releases the ports.
+
+    Exposure 120 and threshold 180 are the test's own, so what is on screen is
+    what the test will see. Re-run the LED position calibration afterwards --
+    moving the camera is precisely what invalidates those coordinates.
+
+modules:
+  Flow: FlowManager
+  UI: UIManager
+  Cargo: CargoManager
+  VISA: GlobalVISAManager
+  Camera: BaluffManager
+  Serial: WinSerialManager
+  ImageProcess: ImageProcessManager
+
+vars:
+  img.path:      '2,0,0'
+  img.color:     '0,0,0'
+  img.binary:    '0,1,0'
+  img.contours:  '0,2,0'
+
+config:
+  - ['TestData', 'initAlive', '4', '', '', '', '', '', '', 'gray']
+  - ['TestData', 'updateLabels', '', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', 'CONTROL', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '9600,1', 'DAE006GCA', 'D1', '', '', '', '', 'gray']
+  - ['Serial', 'FINDPORT', '9600,1', 'DAE00646A', 'D2', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'CONTROL', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'D1', '', '', '', '', '', '', 'gray']
+  - ['Serial', 'OPEN', 'D2', '', '', '', '', '', '', 'gray']
+  - ['VISA', 'OPENALL', '10000', '1', '', '', '', '', '', 'gray']
+  - ['Camera', 'OPENALL', '', '', '', '', '', '', '', 'gray']
+  - ['Camera', 'SETPROPS', 'UB101256', '4,1296,972', '0,0', '0,120', '0,100,0,0', '', '', 'gray']
+  - ['Camera', 'CALIBRATEWB', 'UB101256', '50000', '', '', '', '', '', 'gray']
+
+exec:
+  - [Flow, LABEL, START, 'LEDS A-F', '', '#4C9AFF', '', '', '', yellow]
+  - [TestData, STARTALIVE]
+  - [TestData, INITDATA, '40', '3', '32']
+  - [Flow, CREATEDIR, 'debug/calibration', '', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_camera_setup.jpg', '*img.path', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_camera_setup_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
+
+  # Clear the fixture, then power both boards. Reset only, no EIMAN:
+  # nothing needs actuating to see an indicator, and an unenergised magnet keeps
+  # its armature out of the view.
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 1']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 2']
+
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,49,43,47,47', '48,49,43,47,47', '5,5', '', SERIAL_EX, '', 'CH1 + ON -> K1  UUT 2']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,50,43,47,47', '48,50,43,47,47', '5,5', '', SERIAL_EX, '', 'CH1 - ON -> K2  shared return']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,51,43,47,47', '48,51,43,47,47', '5,5', '', SERIAL_EX, '', 'CH2 + ON -> K3  UUT 1']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '48,52,43,47,47', '48,52,43,47,47', '5,5', '', SERIAL_EX, '', 'CH2 - ON -> K4  shared return']
+
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', VISA_EX, '', 'Select CH1']
+  - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX, '', 'Set Output @ 13.5VDC']
+  - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
+  - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', VISA_EX, '', 'Select CH2']
+  - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX, '', 'Set Output @ 13.5VDC']
+  - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
+  - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
+  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let all four settle']
+
+  # --- the picture ------------------------------------------------------
+  - [Flow, LABEL, CAPTURE_FRAME, 'CAPTURING', '', '#4C9AFF', '', '', '', yellow]
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
+  - [Flow, DELAY, '0.3', '', '', '', '', FLOW_EX, '', 'let the sensor settle']
+  - [Camera, CAPTURE, UB101256, '*img.path', '*img.color', '', '', CAM_EX, '', 'save it, and keep it in memory']
+  - [Flow, DELAY, '0.1', '', '', '', '', FLOW_EX]
+  - [ImageProcess, BGR2CONT, '*img.color', '', img.contours, '*img.binary', '180', IMPRO_EX]
+  - [Flow, J, DONE]
+
+ehandling:
+  - [Flow, LABEL, FLOW_EX, 'FLOW FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, SERIAL_EX, 'SERIAL FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, VISA_EX, 'INSTRUMENT FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, CAM_EX, 'CAMERA FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, IMPRO_EX, 'VISION FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, STD_EX, 'SYSTEM FAILURE', '', '#E5484D', '', '', '', red]
+  - [Flow, J, DONE]
+  - [Flow, LABEL, DONE, '', '', '', '', '', '', gray]
+
+# Runs on pass, fail, stop or crash. The operator then spends minutes clicking,
+# and this is what makes that safe.
+teardown:
+  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', '', '', 'leave the camera as found']
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 1', '', '', '', '', '', 'select channel 1']
+  - [VISA, WRITE, DP2A243200206, 'OUTP OFF', '', '', '', '', '', 'de-energise CH1']
+  - [VISA, WRITE, DP2A243200206, 'INST:NSEL 2', '', '', '', '', '', 'select channel 2']
+  - [VISA, WRITE, DP2A243200206, 'OUTP OFF', '', '', '', '', '', 'de-energise CH2']
+  - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', '', '', 'open all D1 relays']
+  - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', '', '', 'open all D2 relays']
