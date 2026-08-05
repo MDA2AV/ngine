@@ -139,14 +139,24 @@ class Ref:
     #: Key in the values file, when the value lives outside the table.
     cell_key: str = ""
 
-    def rewritten(self, cx: int, cy: int) -> str:
-        """This cell with the coordinate replaced and everything else kept."""
-        groups = self.cell.split(";") if self.group or ";" in self.cell else [self.cell]
-        parts = [p.strip() for p in groups[self.group].split(",")]
+    def rewritten(self, cx: int, cy: int, template: str = "") -> str:
+        """This cell with the coordinate replaced and everything else kept.
+
+        `template` stands in when the coordinate is being measured for the
+        first time and so has no cell of its own to keep the tail of. What
+        follows the point is the verb's qualification -- tolerance and minimum
+        area for EVALCONT, crop and threshold for EVALLEDS -- and that is
+        shared by every indicator the verb reads, so a sibling's serves.
+        """
+        source, index = self.cell, self.group
+        if not source.strip():
+            source, index = template, 0
+        groups = source.split(";") if index or ";" in source else [source]
+        parts = [p.strip() for p in groups[index].split(",")]
         if len(parts) < 2:
             return self.cell
         parts[0], parts[1] = str(cx), str(cy)
-        groups[self.group] = ",".join(parts)
+        groups[index] = ",".join(parts)
         return ";".join(groups)
 
 
@@ -622,15 +632,34 @@ def write_coords(path: str, sites: list, meta: dict | None = None) -> str:
         except (OSError, ValueError):
             doc = {}
 
+    # A key being measured for the first time has no spec to keep the tail of,
+    # so a sibling lends one. Keys ending in the same part are read by the same
+    # verb, and everything after the point belongs to the verb, not the place.
+    templates: dict[str, str] = {}
+    for key, value in doc.items():
+        if str(key).startswith("_") or not isinstance(value, str):
+            continue
+        if len(value.split(",")) >= 2:
+            templates.setdefault(str(key).rsplit(".", 1)[-1], value)
+
+    written: list[str] = []
     for site in sites:
         point = site.taught or ((site.cx, site.cy) if site.known else None)
         for ref in site.refs:
             if not ref.cell_key:
                 continue
-            doc[ref.cell_key] = (ref.rewritten(*point) if point else ref.cell)
+            if point is None and not ref.cell.strip():
+                # Never measured, and not clicked this time either. Leaving the
+                # key out keeps it reported as missing, which is what it is;
+                # writing an empty one turns that into a bad data reference at
+                # the first step that reads it.
+                continue
+            template = templates.get(ref.cell_key.rsplit(".", 1)[-1], "")
+            doc[ref.cell_key] = (ref.rewritten(*point, template=template)
+                                 if point else ref.cell)
+            written.append(ref.cell_key)
 
-    _stamp(doc, [r.cell_key for site in sites for r in site.refs if r.cell_key],
-           meta)
+    _stamp(doc, written, meta)
 
     parent = os.path.dirname(os.path.abspath(path))
     if parent:
@@ -700,10 +729,20 @@ def sites_from_program(program: Program) -> tuple[list[Site], list[str]]:
             if origin.kind == "file" and cx is None:
                 missing.add((origin.path, origin.key))
 
-            # Grouped by physical location only. One LED is one place even
-            # though EVALCONT and EVALLEDS read it through two different keys
-            # -- and both keys have to move together, so both are refs here.
-            group_key = (uut, cx, cy)
+            # Grouped by physical location. One LED is one place even though
+            # EVALCONT and EVALLEDS read it through two different keys -- and
+            # both keys have to move together, so both are refs here.
+            #
+            # Until a coordinate has been measured there is no location to
+            # group on, and every unmeasured one would collapse into a single
+            # site that teaches all of them the same point. So group those by
+            # the key instead, minus its last part: `led.u0.g.cont` and
+            # `led.u0.g.leds` are the two readings of one indicator, which is
+            # what the naming already says.
+            if cx is None:
+                group_key = (uut, origin.key.rsplit(".", 1)[0])
+            else:
+                group_key = (uut, cx, cy)
             site = sites.get(group_key)
             if site is None:
                 site = sites[group_key] = Site(

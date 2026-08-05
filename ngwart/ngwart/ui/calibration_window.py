@@ -310,7 +310,10 @@ class ImageCanvas(QWidget):
             current = index == self._current
             taught = site.taught is not None
 
-            if self._show_windows:
+            # A site that has never been measured has no window to draw. Its
+            # cx,cy is 0,0 -- a placeholder, not a position -- and drawing a box
+            # there would put every unmeasured site in a heap at the corner.
+            if self._show_windows and site.known:
                 # The window as the table has it now: this is what the test
                 # searches today, so seeing it empty is the diagnosis.
                 colour = QColor(pal["accent"] if current else pal["faint"])
@@ -324,7 +327,9 @@ class ImageCanvas(QWidget):
             if taught:
                 cx, cy = site.taught
                 ok = site.within_tolerance
-                colour = QColor(pal["pass"] if ok else pal["warn"])
+                # None when there was nothing to compare against: a first
+                # measurement cannot be out of tolerance with itself.
+                colour = QColor(pal["warn"] if ok is False else pal["pass"])
                 painter.setPen(QPen(colour, hair * 2))
                 painter.setBrush(QBrush(QColor(colour.red(), colour.green(),
                                                colour.blue(), 70)))
@@ -335,19 +340,21 @@ class ImageCanvas(QWidget):
                                  QPointF(cx + radius * 1.6, cy))
                 painter.drawLine(QPointF(cx, cy - radius * 1.6),
                                  QPointF(cx, cy + radius * 1.6))
-                if (cx, cy) != (site.cx, site.cy):
+                if site.known and (cx, cy) != (site.cx, site.cy):
                     # The move itself, drawn. A field of parallel arrows is the
                     # signature of a camera that shifted; one odd arrow is a
-                    # site that was mis-taught.
+                    # site that was mis-taught. Nothing to draw from when the
+                    # point is being measured for the first time.
                     painter.setPen(QPen(QColor(pal["warn"]), hair,
                                         Qt.DotLine))
                     painter.drawLine(QPointF(site.cx, site.cy), QPointF(cx, cy))
 
-            if current:
+            if current and (site.known or taught):
                 painter.setPen(QPen(QColor(pal["accent"]), hair * 2))
                 painter.setBrush(Qt.NoBrush)
+                at = site.taught if not site.known else (site.cx, site.cy)
                 reach = site.tol * 2.2
-                painter.drawEllipse(QPointF(site.cx, site.cy), reach, reach)
+                painter.drawEllipse(QPointF(*at), reach, reach)
 
 
 class CalibrationWindow(QMainWindow):
@@ -603,7 +610,9 @@ class CalibrationWindow(QMainWindow):
         values = [
             "--" if site.uut is None else str(site.uut),
             site.name,
-            f"{site.cx},{site.cy}",
+            # 0,0 is what an unmeasured site holds, and showing it as a
+            # coordinate invites someone to read it as one.
+            f"{site.cx},{site.cy}" if site.known else "not measured",
             f"{taught[0]},{taught[1]}" if taught else "",
             f"{delta[0]:+d},{delta[1]:+d}" if delta else "",
             f"{site.area:.0f}" if site.area else "",
@@ -626,7 +635,9 @@ class CalibrationWindow(QMainWindow):
 
         tone = "faint"
         if site.taught is not None:
-            tone = "pass" if site.within_tolerance else "warn"
+            # within_tolerance is None when the site had no coordinate to
+            # begin with; a first measurement is not a suspicious one.
+            tone = "warn" if site.within_tolerance is False else "pass"
         colour = QColor(self.palette_[tone])
         for column in range(self.table.columnCount()):
             self.table.item(index, column).setForeground(colour)

@@ -6,11 +6,11 @@ meta:
   # Tools -> Calibrate with this title. Nothing has to be loaded first.
   calibrates: programs/smoked/smoked.yaml
   # Which sites this capture can teach: all of them. smoked has no button
-  # indicator, so A-F is every coordinate the test uses.
-  sites: 'led.*.[a-f].*'
-  title: LEDs A-F
+  # indicator, so A-I is every coordinate the test uses.
+  sites: 'led.*.[a-i].*'
+  title: LEDs A-I
   notes: >
-    Calibrates all 12 indicators -- six on each board.
+    Calibrates all 18 indicators -- nine on each board.
 
     Powers both boards and takes one frame at exposure 120, threshold 180: the same settings smoked.yaml uses for its capture, so these are the contours the test itself sees. One board per supply channel at 1 A, as the test runs it.
 
@@ -44,12 +44,12 @@ config:
   - ['Camera', 'CALIBRATEWB', 'UB101256', '50000', '', '', '', '', '', 'gray']
 
 exec:
-  - [Flow, LABEL, START, 'LEDS A-F', '', '#4C9AFF', '', '', '', yellow]
+  - [Flow, LABEL, START, 'LEDS A-I', '', '#4C9AFF', '', '', '', yellow]
   - [TestData, STARTALIVE]
   - [TestData, INITDATA, '40', '3', '32']
   - [Flow, CREATEDIR, 'debug/calibration', '', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/calibration/smoked_leds_af.jpg', '*img.path', '', '', '', FLOW_EX]
-  - [Flow, STORE, 'debug/calibration/smoked_leds_af_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_leds_ai.jpg', '*img.path', '', '', '', FLOW_EX]
+  - [Flow, STORE, 'debug/calibration/smoked_leds_ai_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
 
   # Clear the fixture, then power both boards. A reset is the whole of it:
   # this fixture has no electromagnet, and an indicator lights on power alone.

@@ -1590,7 +1590,6 @@ def test_smoked_powers_up_once_and_reads_once():
     from ngwart.engine.loaders import load
 
     smoked = load("programs/smoked/smoked.yaml")
-    assert smoked.value_problems == []
 
     alive = next(r for r in smoked.rows if r.verb == "initAlive")
     assert alive.raw(2) == "2"
@@ -1608,11 +1607,16 @@ def test_smoked_powers_up_once_and_reads_once():
         assert label not in smoked.labels
 
     # One frame, read twice -- once for brightness, once for colour.
+    # Nine indicators on each of two boards.
     captures = [r for r in smoked.rows if r.verb.upper() == "CAPTURE"]
     assert len(captures) == 1
     assert not [r for r in smoked.rows if r.verb.upper() == "EVALCONTN"]
-    assert len([r for r in smoked.rows if r.verb.upper() == "EVALCONT"]) == 12
-    assert len([r for r in smoked.rows if r.verb.upper() == "EVALLEDS"]) == 12
+    assert len([r for r in smoked.rows if r.verb.upper() == "EVALCONT"]) == 18
+    assert len([r for r in smoked.rows if r.verb.upper() == "EVALLEDS"]) == 18
+    for uut in (0, 1):
+        for letter in "abcdefghi":
+            assert f"led.u{uut}.{letter}.cont" in smoked.var_sources
+            assert f"led.u{uut}.{letter}.leds" in smoked.var_sources
 
     # Two grids, and they are the whole height rather than two of four
     # quadrants.
@@ -1645,8 +1649,7 @@ def test_smoked_has_its_own_calibrations_and_values():
     assert smoked.values_source.endswith("smoked-values.json")
 
     sites, notes = cal.sites_from_program(smoked)
-    assert notes == []
-    assert len(sites) == 12                       # six per board, no button
+    assert len(sites) == 18                       # nine per board, no button
     assert {s.uut for s in sites} == {0, 1}
 
     mine = [c for c in cal.calibrations(CAL_DIR) if c.group == "smoked"]
@@ -1677,3 +1680,131 @@ def test_smoked_captures_power_only_two_boards():
         # And nothing here actuates a magnet the fixture does not have.
         assert not [r for r in program.rows
                     if "EIMAN" in (r.comment or "").upper()]
+
+
+def test_unmeasured_coordinates_are_separate_sites():
+    """Absence of a position is not a position.
+
+    Grouping by (uut, cx, cy) put every not-yet-measured coordinate on one
+    board into a single site, so one click would teach all of them the same
+    point -- and the indicators that most need calibrating are exactly the
+    ones that have never been measured.
+    """
+    from ngwart.engine.loaders import load
+
+    smoked = load("programs/smoked/smoked.yaml")
+    sites, _ = cal.sites_from_program(smoked)
+    unmeasured = [s for s in sites if not s.known]
+    assert len(unmeasured) == 6                   # G, H and I on both boards
+
+    # Each is one indicator read two ways, not two indicators.
+    for site in unmeasured:
+        keys = sorted(r.cell_key for r in site.refs)
+        assert len(keys) == 2
+        assert keys[0].rsplit(".", 1)[0] == keys[1].rsplit(".", 1)[0]
+    assert len({tuple(sorted(r.cell_key for r in s.refs))
+                for s in unmeasured}) == 6
+
+
+def test_a_first_measurement_creates_a_usable_entry(tmp_path):
+    """The note says "click it to create one", so clicking has to create one.
+
+    A key with no entry has no tail to keep, and rewriting produced an empty
+    string -- which loads as a missing value and fails at the first step that
+    reads it.
+    """
+    import json as _json
+    import shutil
+
+    from ngwart.engine.loaders import load
+
+    shutil.copytree("programs/smoked", tmp_path / "smoked")
+    program = tmp_path / "smoked" / "smoked.yaml"
+    values = tmp_path / "smoked" / "smoked-values.json"
+    program.write_text(program.read_text(encoding="utf-8").replace(
+        "values: programs/smoked/smoked-values.json",
+        f"values: {values.as_posix()}"), encoding="utf-8")
+
+    sites, _ = cal.sites_from_program(load(str(program)))
+    for n, site in enumerate(s for s in sites if not s.known):
+        site.taught = (700 + n * 20, 500)
+    cal.write_coords(str(values), sites, {"calibration": "LEDs A-I"})
+
+    doc = _json.loads(values.read_text(encoding="utf-8"))
+    # The point is the click's; the tail is a sibling's, because it belongs to
+    # the verb rather than to the place.
+    assert doc["led.u0.g.cont"] == "700,500,10,50,1"
+    assert doc["led.u0.g.leds"] == "700,500,10,50"
+    assert doc["led.u0.a.cont"] == "1013,681,10,50,1"      # untouched
+
+    after = load(str(program))
+    assert after.value_problems == []
+    assert all(s.known for s in cal.sites_from_program(after)[0])
+
+
+def test_an_unclicked_coordinate_is_left_out_rather_than_blanked(tmp_path):
+    """Writing an empty value would trade a clear error for a confusing one."""
+    import json as _json
+    import shutil
+
+    from ngwart.engine.loaders import load
+
+    values = tmp_path / "smoked-values.json"
+    shutil.copy("programs/smoked/smoked-values.json", values)
+
+    sites, _ = cal.sites_from_program(load("programs/smoked/smoked.yaml"))
+    cal.write_coords(str(values), sites, {"calibration": "LEDs A-I"})
+
+    doc = _json.loads(values.read_text(encoding="utf-8"))
+    assert not [k for k, v in doc.items()
+                if not k.startswith("_") and not str(v).strip()]
+    assert "led.u0.g.cont" not in doc
+    # And it claims only what it wrote.
+    claimed = doc[cal.PROVENANCE]["LEDs A-I"]["keys"].split()
+    assert "led.u0.g.cont" not in claimed
+    assert "led.u0.a.cont" in claimed
+
+
+def test_smoked_ships_uncalibrated_on_purpose():
+    """G, H and I have never been measured, and the table says so loudly.
+
+    Inventing coordinates for them would be worse than refusing to run: a
+    plausible-looking point near a real indicator finds the wrong blob and
+    passes.
+    """
+    from ngwart.engine.loaders import load
+    from ngwart.engine.registry import REGISTRY
+    from ngwart.engine.validator import validate
+
+    smoked = load("programs/smoked/smoked.yaml")
+    errors = [str(d) for d in validate(smoked, REGISTRY) if d.is_error]
+    assert len(errors) == 12                      # cont and leds, G-I, x2
+    assert all(any(f".{x}." in e for x in "ghi") for e in errors)
+
+
+def test_an_unmeasured_site_reads_as_unmeasured(app):
+    """0,0 is a placeholder. Shown as a coordinate, it reads as a position."""
+    import numpy as np
+
+    from ngwart.engine.loaders import load
+    from ngwart.ui.calibration_window import CalibrationWindow
+
+    sites, notes = cal.sites_from_program(load("programs/smoked/smoked.yaml"))
+    frame = np.zeros((972, 1296, 3), dtype=np.uint8)
+    window = CalibrationWindow(
+        sites, cal.Capture(frame=frame, binary=frame[:, :, 0].copy()),
+        notes, {"calibration": "LEDs A-I"}, "unused.json")
+
+    unmeasured = next(s for s in sites if not s.known)
+    index = sites.index(unmeasured)
+    assert window.table.item(index, 2).text() == "not measured"
+
+    # A first measurement has nothing to be out of tolerance with, so it must
+    # not be coloured as though it were suspicious.
+    window._select(index)
+    window._on_pick(700, 500, 64.0)
+    assert unmeasured.taught == (700, 500)
+    assert unmeasured.within_tolerance is None
+    tone = window.table.item(index, 0).foreground().color().name().lower()
+    assert tone == window.palette_["pass"].lower()
+    window.close()

@@ -80,6 +80,9 @@ vars:
   #
   # Tools > Calibrate rewrites the JSON. This table is not touched by a
   # re-measure, and the tolerances below stay where they were qualified.
+  #
+  # Nine indicators on each board, A to I. Ten lines per board, so the tens
+  # digit of the line says which board a coordinate belongs to.
 
   led.u0.a.cont:        ['0,0,30', 'led.u0.a.cont']      # INTENSITY_A/COLOR_A
   led.u0.a.leds:        ['0,1,30', 'led.u0.a.leds']
@@ -93,19 +96,31 @@ vars:
   led.u0.e.leds:        ['4,1,30', 'led.u0.e.leds']
   led.u0.f.cont:        ['5,0,30', 'led.u0.f.cont']      # INTENSITY_F/COLOR_F
   led.u0.f.leds:        ['5,1,30', 'led.u0.f.leds']
+  led.u0.g.cont:        ['6,0,30', 'led.u0.g.cont']      # INTENSITY_G/COLOR_G
+  led.u0.g.leds:        ['6,1,30', 'led.u0.g.leds']
+  led.u0.h.cont:        ['7,0,30', 'led.u0.h.cont']      # INTENSITY_H/COLOR_H
+  led.u0.h.leds:        ['7,1,30', 'led.u0.h.leds']
+  led.u0.i.cont:        ['8,0,30', 'led.u0.i.cont']      # INTENSITY_I/COLOR_I
+  led.u0.i.leds:        ['8,1,30', 'led.u0.i.leds']
 
-  led.u1.a.cont:        ['7,0,30', 'led.u1.a.cont']      # INTENSITY_A/COLOR_A
-  led.u1.a.leds:        ['7,1,30', 'led.u1.a.leds']
-  led.u1.b.cont:        ['8,0,30', 'led.u1.b.cont']      # INTENSITY_B/COLOR_B
-  led.u1.b.leds:        ['8,1,30', 'led.u1.b.leds']
-  led.u1.c.cont:        ['9,0,30', 'led.u1.c.cont']      # INTENSITY_C/COLOR_C
-  led.u1.c.leds:        ['9,1,30', 'led.u1.c.leds']
-  led.u1.d.cont:        ['10,0,30', 'led.u1.d.cont']      # INTENSITY_D/COLOR_D
-  led.u1.d.leds:        ['10,1,30', 'led.u1.d.leds']
-  led.u1.e.cont:        ['11,0,30', 'led.u1.e.cont']      # INTENSITY_E/COLOR_E
-  led.u1.e.leds:        ['11,1,30', 'led.u1.e.leds']
-  led.u1.f.cont:        ['12,0,30', 'led.u1.f.cont']      # INTENSITY_F/COLOR_F
-  led.u1.f.leds:        ['12,1,30', 'led.u1.f.leds']
+  led.u1.a.cont:        ['10,0,30', 'led.u1.a.cont']      # INTENSITY_A/COLOR_A
+  led.u1.a.leds:        ['10,1,30', 'led.u1.a.leds']
+  led.u1.b.cont:        ['11,0,30', 'led.u1.b.cont']      # INTENSITY_B/COLOR_B
+  led.u1.b.leds:        ['11,1,30', 'led.u1.b.leds']
+  led.u1.c.cont:        ['12,0,30', 'led.u1.c.cont']      # INTENSITY_C/COLOR_C
+  led.u1.c.leds:        ['12,1,30', 'led.u1.c.leds']
+  led.u1.d.cont:        ['13,0,30', 'led.u1.d.cont']      # INTENSITY_D/COLOR_D
+  led.u1.d.leds:        ['13,1,30', 'led.u1.d.leds']
+  led.u1.e.cont:        ['14,0,30', 'led.u1.e.cont']      # INTENSITY_E/COLOR_E
+  led.u1.e.leds:        ['14,1,30', 'led.u1.e.leds']
+  led.u1.f.cont:        ['15,0,30', 'led.u1.f.cont']      # INTENSITY_F/COLOR_F
+  led.u1.f.leds:        ['15,1,30', 'led.u1.f.leds']
+  led.u1.g.cont:        ['16,0,30', 'led.u1.g.cont']      # INTENSITY_G/COLOR_G
+  led.u1.g.leds:        ['16,1,30', 'led.u1.g.leds']
+  led.u1.h.cont:        ['17,0,30', 'led.u1.h.cont']      # INTENSITY_H/COLOR_H
+  led.u1.h.leds:        ['17,1,30', 'led.u1.h.leds']
+  led.u1.i.cont:        ['18,0,30', 'led.u1.i.cont']      # INTENSITY_I/COLOR_I
+  led.u1.i.leds:        ['18,1,30', 'led.u1.i.leds']
 
 
   # --- LED results ------------------------------------------------------
@@ -114,37 +129,49 @@ vars:
   # `on` is the contour pass over the thresholded image, `color` the
   # EVALLEDS pass over the same colour frame.
   #
-  # The numbering has gaps. It is cargo's, kept so that a data file from
-  # either product puts the same test on the same line.
+  # A page per board, and ten lines per check: 0-8 is the contour pass,
+  # 10-18 the colour pass over the same frame.
   #
   # The verb derives the other two cells by incrementing the column, so
   # these name the first of the three.
 
-  res.u0.color.color_a:     '6,0,1'
-  res.u0.color.color_b:     '7,0,1'
-  res.u0.color.color_c:     '8,0,1'
-  res.u0.color.color_d:     '9,0,1'
-  res.u0.color.color_e:     '10,0,1'
-  res.u0.color.color_f:     '11,0,1'
+  res.u0.color.color_a:     '10,0,1'
+  res.u0.color.color_b:     '11,0,1'
+  res.u0.color.color_c:     '12,0,1'
+  res.u0.color.color_d:     '13,0,1'
+  res.u0.color.color_e:     '14,0,1'
+  res.u0.color.color_f:     '15,0,1'
+  res.u0.color.color_g:     '16,0,1'
+  res.u0.color.color_h:     '17,0,1'
+  res.u0.color.color_i:     '18,0,1'
   res.u0.on.intensity_a:    '0,0,1'
   res.u0.on.intensity_b:    '1,0,1'
   res.u0.on.intensity_c:    '2,0,1'
   res.u0.on.intensity_d:    '3,0,1'
   res.u0.on.intensity_e:    '4,0,1'
   res.u0.on.intensity_f:    '5,0,1'
+  res.u0.on.intensity_g:    '6,0,1'
+  res.u0.on.intensity_h:    '7,0,1'
+  res.u0.on.intensity_i:    '8,0,1'
 
-  res.u1.color.color_a:     '6,0,2'
-  res.u1.color.color_b:     '7,0,2'
-  res.u1.color.color_c:     '8,0,2'
-  res.u1.color.color_d:     '9,0,2'
-  res.u1.color.color_e:     '10,0,2'
-  res.u1.color.color_f:     '11,0,2'
+  res.u1.color.color_a:     '10,0,2'
+  res.u1.color.color_b:     '11,0,2'
+  res.u1.color.color_c:     '12,0,2'
+  res.u1.color.color_d:     '13,0,2'
+  res.u1.color.color_e:     '14,0,2'
+  res.u1.color.color_f:     '15,0,2'
+  res.u1.color.color_g:     '16,0,2'
+  res.u1.color.color_h:     '17,0,2'
+  res.u1.color.color_i:     '18,0,2'
   res.u1.on.intensity_a:    '0,0,2'
   res.u1.on.intensity_b:    '1,0,2'
   res.u1.on.intensity_c:    '2,0,2'
   res.u1.on.intensity_d:    '3,0,2'
   res.u1.on.intensity_e:    '4,0,2'
   res.u1.on.intensity_f:    '5,0,2'
+  res.u1.on.intensity_g:    '6,0,2'
+  res.u1.on.intensity_h:    '7,0,2'
+  res.u1.on.intensity_i:    '8,0,2'
 
 
 config:
@@ -323,13 +350,9 @@ exec:
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.d.cont', 'res.u0.on.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.e.cont', 'res.u0.on.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.f.cont', 'res.u0.on.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - []
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.a.leds', 'res.u0.color.color_a', '240,240,240', '0,COLOR_A,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.b.leds', 'res.u0.color.color_b', '240,240,240', '0,COLOR_B,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.c.leds', 'res.u0.color.color_c', '240,240,240', '0,COLOR_C,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.d.leds', 'res.u0.color.color_d', '240,240,240', '0,COLOR_D,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.e.leds', 'res.u0.color.color_e', '240,240,240', '0,COLOR_E,min', IMPRO_EX, '0']
-  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.f.leds', 'res.u0.color.color_f', '240,240,240', '0,COLOR_F,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.g.cont', 'res.u0.on.intensity_g', min, '0,INTENSITY_G', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.h.cont', 'res.u0.on.intensity_h', min, '0,INTENSITY_H', IMPRO_EX, '0', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u0.i.cont', 'res.u0.on.intensity_i', min, '0,INTENSITY_I', IMPRO_EX, '0', Evaluate if any contour matches criteria]
   - []
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.a.cont', 'res.u1.on.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.b.cont', 'res.u1.on.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
@@ -337,6 +360,19 @@ exec:
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.d.cont', 'res.u1.on.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.e.cont', 'res.u1.on.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
   - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.f.cont', 'res.u1.on.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.g.cont', 'res.u1.on.intensity_g', min, '1,INTENSITY_G', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.h.cont', 'res.u1.on.intensity_h', min, '1,INTENSITY_H', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - [ImageProcess, EVALCONT, '*img.u12_on.contours', '*led.u1.i.cont', 'res.u1.on.intensity_i', min, '1,INTENSITY_I', IMPRO_EX, '1', Evaluate if any contour matches criteria]
+  - []
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.a.leds', 'res.u0.color.color_a', '240,240,240', '0,COLOR_A,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.b.leds', 'res.u0.color.color_b', '240,240,240', '0,COLOR_B,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.c.leds', 'res.u0.color.color_c', '240,240,240', '0,COLOR_C,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.d.leds', 'res.u0.color.color_d', '240,240,240', '0,COLOR_D,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.e.leds', 'res.u0.color.color_e', '240,240,240', '0,COLOR_E,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.f.leds', 'res.u0.color.color_f', '240,240,240', '0,COLOR_F,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.g.leds', 'res.u0.color.color_g', '240,240,240', '0,COLOR_G,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.h.leds', 'res.u0.color.color_h', '240,240,240', '0,COLOR_H,min', IMPRO_EX, '0']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u0.i.leds', 'res.u0.color.color_i', '240,240,240', '0,COLOR_I,min', IMPRO_EX, '0']
   - []
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.a.leds', 'res.u1.color.color_a', '240,240,240', '1,COLOR_A,min', IMPRO_EX, '1']
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.b.leds', 'res.u1.color.color_b', '240,240,240', '1,COLOR_B,min', IMPRO_EX, '1']
@@ -344,6 +380,9 @@ exec:
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.d.leds', 'res.u1.color.color_d', '240,240,240', '1,COLOR_D,min', IMPRO_EX, '1']
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.e.leds', 'res.u1.color.color_e', '240,240,240', '1,COLOR_E,min', IMPRO_EX, '1']
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.f.leds', 'res.u1.color.color_f', '240,240,240', '1,COLOR_F,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.g.leds', 'res.u1.color.color_g', '240,240,240', '1,COLOR_G,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.h.leds', 'res.u1.color.color_h', '240,240,240', '1,COLOR_H,min', IMPRO_EX, '1']
+  - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.i.leds', 'res.u1.color.color_i', '240,240,240', '1,COLOR_I,min', IMPRO_EX, '1']
   - []
 
   # That is the measurement: power on, one frame, one verdict per indicator.
