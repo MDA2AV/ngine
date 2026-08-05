@@ -13,7 +13,7 @@ meta:
     them so the test can apply them instead of re-deriving them every session.
 
     Why it exists: CALIBRATEWB grey-worlds whatever is in front of the lens. Run
-    at config time, as cargo.yaml used to, that is a bare unpowered fixture --
+    at config time, as this table used to, that is a bare unpowered fixture --
     so it reads the green solder mask as a colour cast and pulls green gain down
     to neutralise it. Every indicator then measures about 25 counts
     green-deficient, the whole population crowds the lower edge of the EVALLEDS
@@ -22,7 +22,7 @@ meta:
     So this powers both units first. The indicators are the thing being
     measured, so they are the right reference to neutralise on.
 
-    Afterwards, cargo.yaml applies the stored gains with SETWB at config time --
+    Afterwards, smoked.yaml applies the stored gains with SETWB at config time --
     which is also possible before anything is powered, where a calibration is
     not.
 
@@ -46,7 +46,7 @@ vars:
   img.contours:  '0,2,0'
 
 config:
-  - ['TestData', 'initAlive', '4', '', '', '', '', '', '', 'gray']
+  - ['TestData', 'initAlive', '2', '', '', '', '', '', '', 'gray']
   - ['TestData', 'updateLabels', '', '', '', '', '', '', '', 'gray']
   - ['Serial', 'FINDPORT', '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', 'CONTROL', '', '', '', '', 'gray']
   - ['Serial', 'FINDPORT', '9600,1', 'DAE006GCA', 'D1', '', '', '', '', 'gray']
@@ -66,8 +66,8 @@ exec:
   - [Flow, STORE, 'debug/calibration/smoked_whitebalance.jpg', '*img.path', '', '', '', FLOW_EX]
   - [Flow, STORE, 'debug/calibration/smoked_whitebalance_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
 
-  # Clear the fixture, then power both. Reset only -- no EIMAN needed to
-  # light an indicator, and an unenergised magnet stays out of the view.
+  # Clear the fixture, then power both boards. A reset is the whole of it:
+  # this fixture has no electromagnet, and an indicator lights on power alone.
   - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 1']
   - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 2']
 
@@ -85,11 +85,11 @@ exec:
   - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX]
   - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
   - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
-  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let all four settle']
+  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let both settle']
 
   # --- the measurement --------------------------------------------------
   # Next-frame calibration, with the indicators lit. 50000 us matches what
-  # cargo.yaml used; the gains are ratios, so the exposure only has to be
+  # smoked.yaml uses; the gains are ratios, so the exposure only has to be
   # bright enough to measure on.
   - [Flow, LABEL, MEASURE, 'CALIBRATING', '', '#4C9AFF', '', '', '', yellow]
   - [Camera, CALIBRATEWB, UB101256, '50000', '', '', '', CAM_EX]

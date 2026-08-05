@@ -41,7 +41,7 @@ vars:
   img.contours:  '0,2,0'
 
 config:
-  - ['TestData', 'initAlive', '4', '', '', '', '', '', '', 'gray']
+  - ['TestData', 'initAlive', '2', '', '', '', '', '', '', 'gray']
   - ['TestData', 'updateLabels', '', '', '', '', '', '', '', 'gray']
   - ['Serial', 'FINDPORT', '115200,1', '066CFF3833554B3043165348 LOCATION=1-1:x.2', 'CONTROL', '', '', '', '', 'gray']
   - ['Serial', 'FINDPORT', '9600,1', 'DAE006GCA', 'D1', '', '', '', '', 'gray']
@@ -62,9 +62,8 @@ exec:
   - [Flow, STORE, 'debug/calibration/smoked_camera_setup.jpg', '*img.path', '', '', '', FLOW_EX]
   - [Flow, STORE, 'debug/calibration/smoked_camera_setup_bin.jpg', '*img.binary', '', '', '', FLOW_EX]
 
-  # Clear the fixture, then power both boards. Reset only, no EIMAN:
-  # nothing needs actuating to see an indicator, and an unenergised magnet keeps
-  # its armature out of the view.
+  # Clear the fixture, then power both boards. A reset is the whole of it:
+  # this fixture has no electromagnet, and an indicator lights on power alone.
   - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 1']
   - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', 'Reset DENKOVI 2']
 
@@ -81,7 +80,7 @@ exec:
   - [VISA, WRITE, DP2A243200206, 'VOLT 13.5V', '', '', '', VISA_EX, '', 'Set Output @ 13.5VDC']
   - [VISA, WRITE, DP2A243200206, 'CURR 1A', '', '', '', VISA_EX, '', 'One board on this channel']
   - [VISA, WRITE, DP2A243200206, 'OUTP ON', '', '', '', VISA_EX]
-  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let all four settle']
+  - [Flow, DELAY, '1.5', '', '', '', '', FLOW_EX, '', 'let both settle']
 
   # --- the picture ------------------------------------------------------
   - [Flow, LABEL, CAPTURE_FRAME, 'CAPTURING', '', '#4C9AFF', '', '', '', yellow]

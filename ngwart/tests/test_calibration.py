@@ -1578,9 +1578,15 @@ def test_streaming_never_runs_without_a_camera(app):
     window.close()
 
 
-# --- smoked: cargo's fixture, two boards ---------------------------------
+# --- smoked: cargo's fixture, two boards, one reading ---------------------
 
-def test_smoked_is_cargos_first_half():
+def test_smoked_powers_up_once_and_reads_once():
+    """No electromagnet and no button indicator on this fixture.
+
+    So everything cargo does after its first frame is absent: the press, the
+    dark re-read, the idle current, the button's indicator, the second
+    reading -- and the whole UUT 3+4 pass.
+    """
     from ngwart.engine.loaders import load
 
     smoked = load("programs/smoked/smoked.yaml")
@@ -1594,7 +1600,19 @@ def test_smoked_is_cargos_first_half():
         if row.verb.upper() in ("EVALCONT", "EVALCONTN", "EVALLEDS") and row.raw(6):
             assert row.raw(6).split(",")[0] in ("0", "1")
     assert not [n for n in smoked.labels if "3_4" in n]
-    assert not [k for k in smoked.values_loaded if k.startswith(("led.u2", "led.u3"))]
+
+    # Nothing drives a magnet, and nothing waits for one to move.
+    assert not [r for r in smoked.rows if "EIMAN" in (r.comment or "").upper()]
+    for label in ("EIMAN_1_2", "OFF_LEDS_1_2", "CURR_IDLE_1_2",
+                  "BUTTON_LED_1_2", "ON_AGAIN_1_2"):
+        assert label not in smoked.labels
+
+    # One frame, read twice -- once for brightness, once for colour.
+    captures = [r for r in smoked.rows if r.verb.upper() == "CAPTURE"]
+    assert len(captures) == 1
+    assert not [r for r in smoked.rows if r.verb.upper() == "EVALCONTN"]
+    assert len([r for r in smoked.rows if r.verb.upper() == "EVALCONT"]) == 12
+    assert len([r for r in smoked.rows if r.verb.upper() == "EVALLEDS"]) == 12
 
     # Two grids, and they are the whole height rather than two of four
     # quadrants.
@@ -1608,6 +1626,18 @@ def test_smoked_is_cargos_first_half():
         assert place.raw(6) == "1.0"
 
 
+def test_smoked_declares_no_cell_nothing_writes():
+    """A name for a dead cell is worse than no name: it reads as a result."""
+    from ngwart.engine.loaders import load
+
+    smoked = load("programs/smoked/smoked.yaml")
+    dead = ("i_idle", "i_on2", "uut2.", "uut3.", ".off.", ".on2.", ".btn.",
+            "u12_off", "u12_btn", "u12_on2", "u34_", "led.u0.g", "led.u1.g")
+    assert not [n for n in smoked.var_sources if any(d in n for d in dead)]
+    assert not [k for k in smoked.values_loaded
+                if k.startswith(("led.u2", "led.u3")) or ".g." in k]
+
+
 def test_smoked_has_its_own_calibrations_and_values():
     from ngwart.engine.loaders import load
 
@@ -1616,18 +1646,18 @@ def test_smoked_has_its_own_calibrations_and_values():
 
     sites, notes = cal.sites_from_program(smoked)
     assert notes == []
-    assert len(sites) == 14                       # 7 per board
+    assert len(sites) == 12                       # six per board, no button
     assert {s.uut for s in sites} == {0, 1}
 
     mine = [c for c in cal.calibrations(CAL_DIR) if c.group == "smoked"]
     assert {c.title for c in mine} == {
-        "LEDs A-F", "Button LED", "White balance", "Camera position and focus"}
+        "LEDs A-F", "White balance", "Camera position and focus"}
     assert all(c.target.endswith("smoked.yaml") for c in mine)
 
-    # The two coordinate calibrations cover every site exactly once.
-    covered = [s for c in mine if c.sites for s in c.select(sites)]
-    assert len(covered) == len(sites)
-    assert len({id(s) for s in covered}) == len(sites)
+    # One coordinate calibration, and it covers every site.
+    coords = [c for c in mine if c.sites]
+    assert len(coords) == 1
+    assert len(coords[0].select(sites)) == len(sites)
 
 
 def test_smoked_captures_power_only_two_boards():
@@ -1644,3 +1674,6 @@ def test_smoked_captures_power_only_two_boards():
         assert not [r for r in closes if "K15" in r.comment or "K16" in r.comment]
         # One board per channel, so cargo's doubled limit does not apply.
         assert not [r for r in program.rows if "CURR 2A" in r.raw(3)]
+        # And nothing here actuates a magnet the fixture does not have.
+        assert not [r for r in program.rows
+                    if "EIMAN" in (r.comment or "").upper()]

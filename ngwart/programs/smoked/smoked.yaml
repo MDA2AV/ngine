@@ -1,19 +1,22 @@
-# NGWART native program -- generated from cargo.ods, then reviewed.
+# NGWART native program -- derived from cargo, for a two-board fixture.
 #
-# Same steps, same order, same arguments as the legacy table. What is
-# different is that the data store is addressed by name: see `vars`.
+# The same modules, the same relays, the same camera. What is gone is the
+# electromagnet and the button indicator, which this fixture does not have,
+# and with them everything cargo does after its first frame.
 #
-# Run it with:   ngwart run programs/cargo.yaml
-#      check:    ngwart check programs/cargo.yaml
+# Run it with:   ngwart run programs/smoked/smoked.yaml
+#      check:    ngwart check programs/smoked/smoked.yaml
 
 meta:
   name: smoked
   product: SMOKED
-  source: cargobay/src/TestTables/cargo.ods
+  source: programs/cargo/cargo.yaml
   notes: >
-    Four-up LED and current test. Paths, supply channels and camera
-    serials are the ones the real fixture uses -- running this drives
-    hardware unless --simulate is given.
+    Two-up LED test. Power both boards, measure the supply current, take
+    one frame, and check six indicators per board for brightness and
+    colour. Paths, supply channels and camera serials are the ones the
+    real fixture uses -- running this drives hardware unless --simulate
+    is given.
 
 modules:
   Flow: FlowManager
@@ -56,62 +59,11 @@ vars:
   uut1.i_on.value:      '1,0,0'
   uut1.i_on.result:     '1,1,0'
   uut1.i_on.id:         '1,2,0'
-  uut0.i_idle.value:    '2,0,0'
-  uut0.i_idle.result:   '2,1,0'
-  uut0.i_idle.id:       '2,2,0'
-  uut1.i_idle.value:    '3,0,0'
-  uut1.i_idle.result:   '3,1,0'
-  uut1.i_idle.id:       '3,2,0'
-  uut0.i_on2.value:     '4,0,0'
-  uut0.i_on2.result:    '4,1,0'
-  uut0.i_on2.id:        '4,2,0'
-  uut1.i_on2.value:     '5,0,0'
-  uut1.i_on2.result:    '5,1,0'
-  uut1.i_on2.id:        '5,2,0'
-  uut2.i_on.value:      '6,0,0'
-  uut2.i_on.result:     '6,1,0'
-  uut2.i_on.id:         '6,2,0'
-  uut3.i_on.value:      '7,0,0'
-  uut3.i_on.result:     '7,1,0'
-  uut3.i_on.id:         '7,2,0'
-  uut2.i_idle.value:    '8,0,0'
-  uut2.i_idle.result:   '8,1,0'
-  uut2.i_idle.id:       '8,2,0'
-  uut3.i_idle.value:    '9,0,0'
-  uut3.i_idle.result:   '9,1,0'
-  uut3.i_idle.id:       '9,2,0'
-  uut2.i_on2.value:     '10,0,0'
-  uut2.i_on2.result:    '10,1,0'
-  uut2.i_on2.id:        '10,2,0'
-  uut3.i_on2.value:     '11,0,0'
-  uut3.i_on2.result:    '11,1,0'
-  uut3.i_on2.id:        '11,2,0'
 
   # capture slots: colour file, thresholded file, contours
   img.u12_on.color:     '0,0,25'
   img.u12_on.binary:    '1,0,25'
   img.u12_on.contours:  '0,1,25'
-  img.u12_off.color:    '2,0,25'
-  img.u12_off.binary:   '3,0,25'
-  img.u12_off.contours: '2,1,25'
-  img.u12_btn.color:    '4,0,25'
-  img.u12_btn.binary:   '5,0,25'
-  img.u12_btn.contours: '4,1,25'
-  img.u12_on2.color:    '6,0,25'
-  img.u12_on2.binary:   '7,0,25'
-  img.u12_on2.contours: '6,1,25'
-  img.u34_on.color:     '8,0,25'
-  img.u34_on.binary:    '9,0,25'
-  img.u34_on.contours:  '8,1,25'
-  img.u34_off.color:    '10,0,25'
-  img.u34_off.binary:   '11,0,25'
-  img.u34_off.contours: '10,1,25'
-  img.u34_btn.color:    '12,0,25'
-  img.u34_btn.binary:   '13,0,25'
-  img.u34_btn.contours: '12,1,25'
-  img.u34_on2.color:    '14,0,25'
-  img.u34_on2.binary:   '15,0,25'
-  img.u34_on2.contours: '14,1,25'
 
   # --- camera ---
   # White-balance gains, measured once by Tools > Calibrate > White balance
@@ -126,8 +78,8 @@ vars:
   # the first step runs and again after the per-board re-init at TOP --
   # static for the whole session, with nothing in <Config> to set up.
   #
-  # `ngwart teach` rewrites the JSON. This table is not touched by a
-  # re-teach, and the tolerances below stay where they were qualified.
+  # Tools > Calibrate rewrites the JSON. This table is not touched by a
+  # re-measure, and the tolerances below stay where they were qualified.
 
   led.u0.a.cont:        ['0,0,30', 'led.u0.a.cont']      # INTENSITY_A/COLOR_A
   led.u0.a.leds:        ['0,1,30', 'led.u0.a.leds']
@@ -141,7 +93,6 @@ vars:
   led.u0.e.leds:        ['4,1,30', 'led.u0.e.leds']
   led.u0.f.cont:        ['5,0,30', 'led.u0.f.cont']      # INTENSITY_F/COLOR_F
   led.u0.f.leds:        ['5,1,30', 'led.u0.f.leds']
-  led.u0.g.cont:        ['6,0,30', 'led.u0.g.cont']      # INTENSITY_G
 
   led.u1.a.cont:        ['7,0,30', 'led.u1.a.cont']      # INTENSITY_A/COLOR_A
   led.u1.a.leds:        ['7,1,30', 'led.u1.a.leds']
@@ -155,71 +106,45 @@ vars:
   led.u1.e.leds:        ['11,1,30', 'led.u1.e.leds']
   led.u1.f.cont:        ['12,0,30', 'led.u1.f.cont']      # INTENSITY_F/COLOR_F
   led.u1.f.leds:        ['12,1,30', 'led.u1.f.leds']
-  led.u1.g.cont:        ['13,0,30', 'led.u1.g.cont']      # INTENSITY_G
-
 
 
   # --- LED results ------------------------------------------------------
   # Where each optical check writes its value / verdict / test-id triple.
-  # One name per (board, phase, indicator); the phase is which frame the
-  # row reads -- on, off, on2 for the re-check, btn for the button, and
-  # color for the EVALLEDS pass over the same frame as `on`.
+  # One name per (board, check, indicator). There is one frame, read twice:
+  # `on` is the contour pass over the thresholded image, `color` the
+  # EVALLEDS pass over the same colour frame.
+  #
+  # The numbering has gaps. It is cargo's, kept so that a data file from
+  # either product puts the same test on the same line.
   #
   # The verb derives the other two cells by incrementing the column, so
   # these name the first of the three.
 
-  res.u0.btn.intensity_g:   '18,0,1'
   res.u0.color.color_a:     '6,0,1'
   res.u0.color.color_b:     '7,0,1'
   res.u0.color.color_c:     '8,0,1'
   res.u0.color.color_d:     '9,0,1'
   res.u0.color.color_e:     '10,0,1'
   res.u0.color.color_f:     '11,0,1'
-  res.u0.off.intensity_a:   '12,0,1'
-  res.u0.off.intensity_b:   '13,0,1'
-  res.u0.off.intensity_c:   '14,0,1'
-  res.u0.off.intensity_d:   '15,0,1'
-  res.u0.off.intensity_e:   '16,0,1'
-  res.u0.off.intensity_f:   '17,0,1'
   res.u0.on.intensity_a:    '0,0,1'
   res.u0.on.intensity_b:    '1,0,1'
   res.u0.on.intensity_c:    '2,0,1'
   res.u0.on.intensity_d:    '3,0,1'
   res.u0.on.intensity_e:    '4,0,1'
   res.u0.on.intensity_f:    '5,0,1'
-  res.u0.on2.intensity_a:   '19,0,1'
-  res.u0.on2.intensity_b:   '20,0,1'
-  res.u0.on2.intensity_c:   '21,0,1'
-  res.u0.on2.intensity_d:   '22,0,1'
-  res.u0.on2.intensity_e:   '23,0,1'
-  res.u0.on2.intensity_f:   '24,0,1'
 
-  res.u1.btn.intensity_g:   '18,0,2'
   res.u1.color.color_a:     '6,0,2'
   res.u1.color.color_b:     '7,0,2'
   res.u1.color.color_c:     '8,0,2'
   res.u1.color.color_d:     '9,0,2'
   res.u1.color.color_e:     '10,0,2'
   res.u1.color.color_f:     '11,0,2'
-  res.u1.off.intensity_a:   '12,0,2'
-  res.u1.off.intensity_b:   '13,0,2'
-  res.u1.off.intensity_c:   '14,0,2'
-  res.u1.off.intensity_d:   '15,0,2'
-  res.u1.off.intensity_e:   '16,0,2'
-  res.u1.off.intensity_f:   '17,0,2'
   res.u1.on.intensity_a:    '0,0,2'
   res.u1.on.intensity_b:    '1,0,2'
   res.u1.on.intensity_c:    '2,0,2'
   res.u1.on.intensity_d:    '3,0,2'
   res.u1.on.intensity_e:    '4,0,2'
   res.u1.on.intensity_f:    '5,0,2'
-  res.u1.on2.intensity_a:   '19,0,2'
-  res.u1.on2.intensity_b:   '20,0,2'
-  res.u1.on2.intensity_c:   '21,0,2'
-  res.u1.on2.intensity_d:   '22,0,2'
-  res.u1.on2.intensity_e:   '23,0,2'
-  res.u1.on2.intensity_f:   '24,0,2'
-
 
 
 config:
@@ -337,14 +262,10 @@ exec:
   - []
 
   # ----------------------------------------------------------------------
-  # INITIAL_CONDITIONS
+  # INITIAL_CONDITIONS  --  all relays open
   # ----------------------------------------------------------------------
   - [Flow, LABEL, INITIAL_CONDITIONS, '', '', '', '', '', '', yellow]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
-  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
+  # No electromagnet to park, so this is just a known relay state.
   - [Serial, EXCHANGEBYTES_LVS, D1, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 1]
   - [Serial, EXCHANGEBYTES_LVS, D2, '111,102,102,47,47', '111,102,102,47,47', '5,5', '', SERIAL_EX, '', Reset DENKOVI 2]
   - []
@@ -425,128 +346,13 @@ exec:
   - [ImageProcess, EVALLEDS, '*img.u12_on.color', '*led.u1.f.leds', 'res.u1.color.color_f', '240,240,240', '1,COLOR_F,min', IMPRO_EX, '1']
   - []
 
-  # ----------------------------------------------------------------------
-  # EIMAN_1_2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, EIMAN_1_2, '', '', '', '', '', '', yellow]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,43,47,47', '48,57,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,43,47,47', '49,48,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 ON']
-  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,45,47,47', '48,57,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,45,47,47', '49,54,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
-  - []
-  - []
-
-  # ----------------------------------------------------------------------
-  # OFF_LEDS_1_2  --  LEDs Off 1,2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, OFF_LEDS_1_2, 'LEDs Off 1,2', '', '', '', '', '', yellow]
-  - [Flow, STOREF, '%0\UUT_1_2_OFF.jpg;*path.captures', img.u12_off.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Flow, STOREF, '%0\UUT_1_2_OFF.jpg;*path.binary', img.u12_off.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Camera, CAPTURE, UB101256, '*img.u12_off.color', '', '', '', CAM_EX, '0,1']
-  - [Flow, DELAY, '0.1']
-  - []
-  - [ImageProcess, BGR2CONT, '', '*img.u12_off.color', img.u12_off.contours, '*img.u12_off.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
-  - []
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.a.cont', 'res.u0.off.intensity_a', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.b.cont', 'res.u0.off.intensity_b', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.c.cont', 'res.u0.off.intensity_c', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.d.cont', 'res.u0.off.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.e.cont', 'res.u0.off.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u0.f.cont', 'res.u0.off.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - []
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.a.cont', 'res.u1.off.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.b.cont', 'res.u1.off.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.c.cont', 'res.u1.off.intensity_c', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.d.cont', 'res.u1.off.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.e.cont', 'res.u1.off.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONTN, '*img.u12_off.contours', '*led.u1.f.cont', 'res.u1.off.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - []
-
-  # ----------------------------------------------------------------------
-  # CURR_IDLE_1_2  --  Current Idle 1,2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, CURR_IDLE_1_2, 'Current Idle 1,2', '', '', '', '', '', yellow]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_idle.value, '', VISA_EX, '1', Measure UUT 2 current Idle]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_idle.value, '', VISA_EX, '0', Measure UUT 1 current Idle]
-  - []
-  - [Flow, EVAFLOAT, '0.009,0.015', '*uut0.i_idle.value', 'uut0.i_idle.value;uut0.i_idle.result;uut0.i_idle.id', min, '0,CURRIDLE', FLOW_EX, '0', Evaluate UUT1 Current Idle]
-  - [Flow, EVAFLOAT, '0.009,0.015', '*uut1.i_idle.value', 'uut1.i_idle.value;uut1.i_idle.result;uut1.i_idle.id', min, '1,CURRIDLE', FLOW_EX, '1', Evaluate UUT2 Current Idle]
-  - []
-
-  # ----------------------------------------------------------------------
-  # BUTTON_LED_1_2  --  Button LED 1,2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, BUTTON_LED_1_2, 'Button LED 1,2', '', '', '', '', '', yellow]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,43,47,47', '49,49,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ ON –> DVI2 K11 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,43,47,47', '49,52,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- ON –> DVI1 K14 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,43,47,47', '49,50,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ ON –> DVI2 K12 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,43,47,47', '49,51,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– ON –> DVI1 K13 ON']
-  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,49,45,47,47', '49,49,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3+ OFF –> DVI2 K11 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,52,45,47,47', '49,52,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 3- OFF –> DVI1 K14 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,50,45,47,47', '49,50,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4+ OFF –> DVI2 K12 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,51,45,47,47', '49,51,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 4– OFF –> DVI1 K13 OFF']
-  - []
-  - [Camera, SETEXPOSURE, UB101256, '30000', '', '', '', CAM_EX, '0,1']
-  - [Flow, STOREF, '%0\UUT_1_2_BUTTON.jpg;*path.captures', img.u12_btn.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Flow, STOREF, '%0\UUT_1_2_BUTTON.jpg;*path.binary', img.u12_btn.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Camera, CAPTURE, UB101256, '*img.u12_btn.color', '', '', '', CAM_EX, '0,1']
-  - []
-  - [ImageProcess, BGR2CONT, '', '*img.u12_btn.color', img.u12_btn.contours, '*img.u12_btn.binary', '100', IMPRO_EX, '0,1', Extract Contours from image]
-  - [Camera, SETEXPOSURE, UB101256, '120', '', '', '', CAM_EX]
-  - []
-  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u0.g.cont', 'res.u0.btn.intensity_g', min, '0,INTENSITY_G', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_btn.contours', '*led.u1.g.cont', 'res.u1.btn.intensity_g', min, '1,INTENSITY_G', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - []
-
-  # ----------------------------------------------------------------------
-  # ON_AGAIN_1_2  --  On Again 1,2
-  # ----------------------------------------------------------------------
-  - [Flow, LABEL, ON_AGAIN_1_2, 'On Again 1,2', '', '', '', '', '', yellow]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,43,47,47', '48,57,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,43,47,47', '49,54,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,43,47,47', '49,48,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 ON']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,43,47,47', '49,53,43,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 ON']
-  - [Flow, DELAY, '1', '', '', '', '', FLOW_EX]
-  - [Serial, EXCHANGEBYTES_LVS, D2, '48,57,45,47,47', '48,57,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1+ ON –> DVI2 K9 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,54,45,47,47', '49,54,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 1- ON –> DVI1 K16 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D2, '49,48,45,47,47', '49,48,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2+ ON –> DVI2 K10 OFF']
-  - [Serial, EXCHANGEBYTES_LVS, D1, '49,53,45,47,47', '49,53,45,47,47', '5,5', '', SERIAL_EX, '', 'EIMAN 2– ON –> DVI1 K15 OFF']
-  - []
-  - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.captures', img.u12_on2.color, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Flow, STOREF, '%0\UUT_1_2_ON2.jpg;*path.binary', img.u12_on2.binary, '', '', '', FLOW_EX, '0,1', Create Directory to save image]
-  - [Camera, CAPTURE, UB101256, '*img.u12_on2.color', '', '', '', CAM_EX, '0,1']
-  - [Flow, DELAY, '0.1']
-  - []
-  - [ImageProcess, BGR2CONT, '', '*img.u12_on2.color', img.u12_on2.contours, '*img.u12_on2.binary', '180', IMPRO_EX, '0,1', Extract Contours from image]
-  - []
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.a.cont', 'res.u0.on2.intensity_a', min, '0,INTENSITY_A', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.b.cont', 'res.u0.on2.intensity_b', min, '0,INTENSITY_B', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.c.cont', 'res.u0.on2.intensity_c', min, '0,INTENSITY_C', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.d.cont', 'res.u0.on2.intensity_d', min, '0,INTENSITY_D', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.e.cont', 'res.u0.on2.intensity_e', min, '0,INTENSITY_E', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u0.f.cont', 'res.u0.on2.intensity_f', min, '0,INTENSITY_F', IMPRO_EX, '0', Evaluate if any contour matches criteria]
-  - []
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.a.cont', 'res.u1.on2.intensity_a', min, '1,INTENSITY_A', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.b.cont', 'res.u1.on2.intensity_b', min, '1,INTENSITY_B', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.c.cont', 'res.u1.on2.intensity_c', min, '1,INTENSITY_C', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.d.cont', 'res.u1.on2.intensity_d', min, '1,INTENSITY_D', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.e.cont', 'res.u1.on2.intensity_e', min, '1,INTENSITY_E', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - [ImageProcess, EVALCONT, '*img.u12_on2.contours', '*led.u1.f.cont', 'res.u1.on2.intensity_f', min, '1,INTENSITY_F', IMPRO_EX, '1', Evaluate if any contour matches criteria]
-  - []
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH1', '', uut1.i_on2.value, '', VISA_EX, '1', Measure UUT 2 current Power]
-  - [VISA, MEASURE, DP2A243200206, 'MEAS:CURR? CH2', '', uut0.i_on2.value, '', VISA_EX, '0', Measure UUT 1 current Power]
-  - []
-  - [Flow, EVAFLOAT, '0.163,0.271', '*uut0.i_on2.value', 'uut0.i_on2.value;uut0.i_on2.result;uut0.i_on2.id', min, '0,CURRON2', FLOW_EX, '0', Evaluate UUT1 Current Power]
-  - [Flow, EVAFLOAT, '0.163,0.271', '*uut1.i_on2.value', 'uut1.i_on2.value;uut1.i_on2.result;uut1.i_on2.id', min, '1,CURRON2', FLOW_EX, '1', Evaluate UUT2 Current Power]
-
-  # cargo tests four boards in two passes; smoked has two, so the
-  # UUT 3+4 pass is not here. Everything above is cargo's 1+2 path.
+  # That is the measurement: power on, one frame, one verdict per indicator.
+  #
+  # cargo carries on from here. It presses the buttons with the electromagnet,
+  # re-reads the indicators dark, measures the idle current, checks the
+  # button's own indicator at a longer exposure and reads everything a second
+  # time -- then repeats all of it for boards 3 and 4. This fixture has no
+  # electromagnet and no button indicator, so none of that is here.
 
   - [Flow, LABEL, VALIDATE, VALIDATE, '', '', '', FLOW_EX, '', yellow]
   - [Cargo, VALIDATE]
