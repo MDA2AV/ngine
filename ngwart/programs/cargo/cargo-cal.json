@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "taught_at": "2026-08-03T17:32:31",
+  "meta": {
+    "capture_program": "tools\\calibration\\cargo\\cargo_cal_button_34.yaml",
+    "target_program": "programs/cargo/cargo.yaml",
+    "simulated": false,
+    "station": "",
+    "operator": "",
+    "calibration": "Button LED - UUT 3+4",
+    "frame": {
+      "width": 1296,
+      "height": 972
+    }
+  },
+  "notes": [],
+  "sites": [
+    {
+      "uut": 2,
+      "name": "INTENSITY_G",
+      "tests": [
+        "INTENSITY_G"
+      ],
+      "key": "led.u2.g.cont",
+      "file": "programs/cargo/cargo-values.json",
+      "was": {
+        "cx": 899,
+        "cy": 445
+      },
+      "now": {
+        "cx": 892,
+        "cy": 431
+      },
+      "delta": [
+        -7,
+        -14
+      ],
+      "tol": 5.0,
+      "within_tolerance": false,
+      "area": 38.5,
+      "note": "",
+      "refs": [
+        {
+          "row": 122,
+          "module": "",
+          "verb": "<Vars>",
+          "column": 2,
+          "group": 0,
+          "test_id": "INTENSITY_G",
+          "uut": 2,
+          "was_cell": "899,445,5,5,1,5",
+          "now_cell": "892,431,5,5,1,5"
+        }
+      ],
+      "uses": [
+        {
+          "row": 653,
+          "verb": "EVALCONT",
+          "test_id": "INTENSITY_G",
+          "uut": 2
+        }
+      ]
+    },
+    {
+      "uut": 3,
+      "name": "INTENSITY_G",
+      "tests": [
+        "INTENSITY_G"
+      ],
+      "key": "led.u3.g.cont",
+      "file": "programs/cargo/cargo-values.json",
+      "was": {
+        "cx": 524,
+        "cy": 447
+      },
+      "now": {
+        "cx": 523,
+        "cy": 441
+      },
+      "delta": [
+        -1,
+        -6
+      ],
+      "tol": 5.0,
+      "within_tolerance": false,
+      "area": 25.0,
+      "note": "",
+      "refs": [
+        {
+          "row": 135,
+          "module": "",
+          "verb": "<Vars>",
+          "column": 2,
+          "group": 0,
+          "test_id": "INTENSITY_G",
+          "uut": 3,
+          "was_cell": "524,447,5,5,1,5",
+          "now_cell": "523,441,5,5,1,5"
+        }
+      ],
+      "uses": [
+        {
+          "row": 654,
+          "verb": "EVALCONT",
+          "test_id": "INTENSITY_G",
+          "uut": 3
+        }
+      ]
+    }
+  ]
+}

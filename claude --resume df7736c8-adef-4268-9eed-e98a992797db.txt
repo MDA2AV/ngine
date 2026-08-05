@@ -1,0 +1,15 @@
+TODOs
+
+be ableto load programs or tools one after the other
+
+showleds during tests on the UI, with target when found
+
+click to run test table lines
+
+fix stats and how results variables work
+
+fix cargo test table indexes for led tests to vars
+
+
+
+claude --resume 24781043-8eaf-42ae-ba5b-ba88290b5644
